@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+    <rect width="512" height="512" rx="96" fill="#4f46e5"/>
+    <g fill="none" stroke="#ffffff" stroke-width="20" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M120 190h60l26-40h100l26 40h60a24 24 0 0 1 24 24v148a24 24 0 0 1-24 24H120a24 24 0 0 1-24-24V214a24 24 0 0 1 24-24Z"/>
+        <circle cx="256" cy="290" r="66"/>
+    </g>
+    <text x="256" y="300" text-anchor="middle" font-family="Arial, sans-serif" font-size="60" font-weight="700" fill="#ffffff">DMA</text>
+</svg>
