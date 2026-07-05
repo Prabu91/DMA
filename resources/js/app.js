@@ -1,7 +1,2 @@
-
-
-import Alpine from 'alpinejs';
-
-window.Alpine = Alpine;
-
-Alpine.start();
+// Alpine disediakan oleh Livewire (@livewireScripts di layout).
+// Jangan import/start Alpine di sini — akan bentrok "multiple instances of Alpine".

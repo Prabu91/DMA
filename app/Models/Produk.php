@@ -11,6 +11,12 @@ class Produk extends Model
 {
     protected $table = 'produk';
 
+    /** Gaya produk (atribut produk, tidak terkait desain). */
+    public const GAYA = ['MINIMALIS', 'BLOK', '3D', 'GLITER', 'LEMBARAN'];
+
+    /** Status produk. */
+    public const STATUS = ['aktif' => 'Aktif', 'nonaktif' => 'Nonaktif'];
+
     protected $fillable = [
         'kategori_id',
         'nama',
@@ -19,6 +25,10 @@ class Produk extends Model
         'foto',
         'harga',
         'status',
+    ];
+
+    protected $casts = [
+        'harga' => 'integer',
     ];
 
     public function kategori(): BelongsTo

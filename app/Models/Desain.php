@@ -10,6 +10,12 @@ class Desain extends Model
 {
     protected $table = 'desain';
 
+    /** Orientasi desain. */
+    public const ORIENTASI = ['portrait' => 'Portrait', 'landscape' => 'Landscape'];
+
+    /** Status desain. */
+    public const STATUS = ['aktif' => 'Aktif', 'nonaktif' => 'Nonaktif'];
+
     protected $fillable = [
         'kategori_id',
         'kode',

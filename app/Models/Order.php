@@ -14,11 +14,17 @@ class Order extends Model
 {
     protected $table = 'orders';
 
+    /** Jalur asal order. */
+    public const SUMBER_SEKOLAH = 'sekolah';
+
+    public const SUMBER_MARKETING = 'marketing';
+
     protected $fillable = [
         'booking_code',
         'sekolah_id',
         'marketing_id',
         'cabang_id',
+        'sumber',
         'status',
         'event_status',
         'tanggal_event',

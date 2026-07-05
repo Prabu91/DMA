@@ -9,6 +9,12 @@ class AturanFreeSekolah extends Model
 {
     protected $table = 'aturan_free_sekolah';
 
+    /** Basis evaluasi aturan. */
+    public const BASIS = ['qty' => 'Jumlah siswa', 'omset' => 'Total omset'];
+
+    /** Operator perbandingan ambang. */
+    public const OPERATOR = ['>=' => '≥ (lebih dari atau sama dengan)', '<' => '< (kurang dari)'];
+
     protected $fillable = [
         'paket_id',
         'basis',
@@ -16,6 +22,10 @@ class AturanFreeSekolah extends Model
         'nilai',
         'hasil_produk_id',
         'hasil_ukuran',
+    ];
+
+    protected $casts = [
+        'nilai' => 'integer',
     ];
 
     public function paket(): BelongsTo

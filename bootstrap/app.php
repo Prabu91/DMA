@@ -18,6 +18,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
         ]);
+
+        // Portal sekolah ada di /sekolah/* (bukan /sekolah yang milik staf).
+        // Tamu di portal sekolah diarahkan ke login sekolah; selain itu ke login staf.
+        $middleware->redirectGuestsTo(fn (Request $request) => $request->is('sekolah/*')
+            ? route('sekolah.login')
+            : route('login'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

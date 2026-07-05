@@ -11,7 +11,7 @@
 @php
     $id = $attributes->get('id') ?? $name;
     $err = $error ?? ($name ? $errors->first($name) : null);
-    $current = old($name, $selected);
+    $current = $name ? old($name, $selected) : $selected;
 @endphp
 
 <div class="space-y-1.5">

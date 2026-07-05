@@ -42,6 +42,12 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        // Guard terpisah untuk login sekolah (self-service booking).
+        'sekolah' => [
+            'driver' => 'session',
+            'provider' => 'sekolah',
+        ],
     ],
 
     /*
@@ -67,10 +73,10 @@ return [
             'model' => env('AUTH_MODEL', User::class),
         ],
 
-        // 'users' => [
-        //     'driver' => 'database',
-        //     'table' => 'users',
-        // ],
+        'sekolah' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\Sekolah::class,
+        ],
     ],
 
     /*

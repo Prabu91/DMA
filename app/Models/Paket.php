@@ -10,7 +10,14 @@ class Paket extends Model
 {
     protected $table = 'paket';
 
+    /** Status paket. */
+    public const STATUS = ['aktif' => 'Aktif', 'nonaktif' => 'Nonaktif'];
+
     protected $fillable = ['nama', 'deskripsi', 'harga', 'status'];
+
+    protected $casts = [
+        'harga' => 'integer',
+    ];
 
     public function produk(): BelongsToMany
     {

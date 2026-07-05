@@ -23,14 +23,16 @@
         <x-card title="Master data" subtitle="Akses pengaturan data inti">
             <div class="grid grid-cols-2 gap-3">
                 @foreach ([
-                    ['Cabang', 'building', 'cabang.index'],
-                    ['Pengguna', 'users', 'pengguna.index'],
-                    ['Sekolah', 'school', null],
-                    ['Produk', 'product', null],
-                    ['Desain', 'photo', null],
-                    ['Paket', 'order', null],
-                ] as [$label, $iconKey, $routeName])
-                    @if ($routeName && auth()->user()->hasRole('super_admin'))
+                    ['Cabang', 'building', 'cabang.index', ['super_admin']],
+                    ['Pengguna', 'users', 'pengguna.index', ['super_admin']],
+                    ['Sekolah', 'school', 'sekolah.index', ['super_admin', 'operasional']],
+                    ['Kategori', 'tag', 'kategori.index', ['super_admin', 'operasional']],
+                    ['Produk', 'product', 'produk.index', ['super_admin', 'operasional']],
+                    ['Paket', 'cube', 'paket.index', ['super_admin', 'operasional']],
+                    ['Desain', 'photo', 'desain.index', ['super_admin', 'operasional']],
+                    ['Free sekolah', 'gift', 'aturan-free.index', ['super_admin', 'operasional']],
+                ] as [$label, $iconKey, $routeName, $roles])
+                    @if ($routeName && auth()->user()->hasAnyRole($roles))
                         <a href="{{ route($routeName) }}"
                            class="flex items-center gap-2.5 rounded-lg border border-line px-3 py-2.5 text-sm text-ink transition-colors hover:bg-page">
                             <svg class="h-5 w-5 shrink-0 text-navy" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">

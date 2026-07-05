@@ -10,8 +10,11 @@
 @php
     $id = $attributes->get('id') ?? $name;
     $err = $error ?? ($name ? $errors->first($name) : null);
-    // password tidak pernah dipulihkan dari old() demi keamanan.
-    $resolved = $type === 'password' ? null : old($name, $value);
+    // password tidak pernah dipulihkan dari old(); old() hanya bila punya name
+    // (tanpa name, old(null) mengembalikan seluruh array input → error).
+    $resolved = $type === 'password'
+        ? null
+        : ($name ? old($name, $value) : $value);
 @endphp
 
 <div class="space-y-1.5">
