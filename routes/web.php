@@ -1,6 +1,9 @@
 <?php
 
+use App\Http\Controllers\CabangController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EventController;
+use App\Http\Controllers\PenggunaController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -24,7 +27,19 @@ foreach (DashboardController::ROLE_DASHBOARDS as $role) {
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Aksi tim event: tandai event selesai.
+    Route::post('/events/{order}/selesai', [EventController::class, 'complete'])->name('events.complete');
+});
+
+// Master data admin — khusus super_admin.
+Route::middleware(['auth', 'verified', 'role:super_admin'])->group(function () {
+    Route::resource('cabang', CabangController::class)
+        ->parameters(['cabang' => 'cabang'])
+        ->except('show');
+    Route::resource('pengguna', PenggunaController::class)
+        ->parameters(['pengguna' => 'pengguna'])
+        ->except('show');
 });
 
 require __DIR__.'/auth.php';

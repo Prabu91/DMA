@@ -1,3 +1,59 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * Token warna DMA — nilai ditulis sebagai triplet "R G B" (dipakai lewat
+ * rgb(var(--x) / <alpha-value>) di tailwind.config.js).
+ * Ganti nilai di sini untuk menyetel tema tanpa menyentuh markup.
+ */
+:root {
+    --color-brand: 224 128 32;        /* #E08020 */
+    --color-brand-hover: 197 110 26;  /* #C56E1A */
+    --color-navy: 34 64 110;          /* #22406E */
+    --color-navy-hover: 26 51 88;     /* #1A3358 */
+
+    --color-ink: 42 39 36;            /* #2A2724 */
+    --color-ink-muted: 122 115 107;   /* #7A736B */
+
+    --color-page: 250 248 245;        /* #FAF8F5 */
+    --color-card: 255 255 255;        /* #FFFFFF */
+    --color-line: 234 230 223;        /* #EAE6DF */
+
+    --color-success: 22 163 74;       /* #16A34A */
+    --color-pending: 202 138 4;       /* #CA8A04 */
+    --color-info: 37 99 235;          /* #2563EB */
+    --color-danger: 220 38 38;        /* #DC2626 */
+}
+
+/* Dark mode minimal (netral hangat gelap). Aktif via class .dark pada <html>. */
+.dark {
+    --color-navy: 122 150 200;        /* navy dinaikkan agar kontras */
+    --color-navy-hover: 150 174 214;
+
+    --color-ink: 240 235 228;         /* #F0EBE4 */
+    --color-ink-muted: 169 161 153;   /* #A9A199 */
+
+    --color-page: 26 23 20;           /* #1A1714 */
+    --color-card: 36 33 29;           /* #24211D */
+    --color-line: 58 53 47;           /* #3A352F */
+}
+
+@layer base {
+    body {
+        @apply bg-page text-ink antialiased;
+        font-weight: 400;
+    }
+
+    /* Berat font dibatasi 400 & 500 — heading pakai medium, bukan bold. */
+    h1, h2, h3, h4, h5, h6 {
+        @apply font-medium text-ink;
+    }
+
+    /* Border telanjang (`border`) memakai warna line by default. */
+    *,
+    ::before,
+    ::after {
+        border-color: rgb(var(--color-line));
+    }
+}

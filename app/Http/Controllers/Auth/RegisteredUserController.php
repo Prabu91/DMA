@@ -36,8 +36,11 @@ class RegisteredUserController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
+        // Nama tunggal disimpan ke 'name' (dipakai Breeze) sekaligus 'nama' (kolom ERD).
+        // cabang_id & role sengaja dibiarkan null — diatur admin, bukan oleh pendaftar.
         $user = User::create([
             'name' => $request->name,
+            'nama' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);

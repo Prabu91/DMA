@@ -1,29 +1,37 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Profile') }}
-        </h2>
+        <h1 class="text-lg font-medium text-ink">Profil</h1>
+        <p class="text-sm text-ink-muted">Kelola informasi akun dan kata sandi Anda.</p>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-            <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
-                <div class="max-w-xl">
-                    @include('profile.partials.update-profile-information-form')
-                </div>
-            </div>
+    @php
+        $roleLabel = $user->getRoleNames()->first();
+        $roleLabel = $roleLabel ? \Illuminate\Support\Str::headline($roleLabel) : null;
+        $cabangLabel = $user->seesAllCabang() ? 'Semua cabang' : ($user->cabang?->nama ?? 'Tanpa cabang');
+    @endphp
 
-            <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
-                <div class="max-w-xl">
-                    @include('profile.partials.update-password-form')
+    <div class="mx-auto max-w-2xl space-y-6">
+        {{-- Header identitas --}}
+        <x-card>
+            <div class="flex items-center gap-4">
+                <x-avatar :name="$user->nama ?? $user->name" size="lg" />
+                <div class="min-w-0">
+                    <div class="truncate text-base font-medium text-ink">{{ $user->nama ?? $user->name }}</div>
+                    <div class="truncate text-sm text-ink-muted">{{ $user->email }}</div>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                        <x-badge variant="brand">{{ $roleLabel ?? 'Tanpa peran' }}</x-badge>
+                        <x-badge variant="navy">{{ $cabangLabel }}</x-badge>
+                    </div>
                 </div>
             </div>
+        </x-card>
 
-            <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
-                <div class="max-w-xl">
-                    @include('profile.partials.delete-user-form')
-                </div>
-            </div>
-        </div>
+        <x-card>
+            @include('profile.partials.update-profile-information-form')
+        </x-card>
+
+        <x-card>
+            @include('profile.partials.update-password-form')
+        </x-card>
     </div>
 </x-app-layout>

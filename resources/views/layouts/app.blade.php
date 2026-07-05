@@ -5,46 +5,49 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ config('app.name', 'Laravel') }}</title>
+        <title>{{ config('app.name', 'DMA') }}</title>
 
         <!-- PWA -->
         <link rel="manifest" href="{{ asset('manifest.json') }}">
-        <meta name="theme-color" content="#4f46e5">
+        <meta name="theme-color" content="#E08020">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="default">
         <meta name="apple-mobile-web-app-title" content="{{ config('app.name') }}">
         <link rel="apple-touch-icon" href="{{ asset('icons/icon.svg') }}">
 
         <!-- Fonts -->
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500&display=swap" rel="stylesheet" />
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans antialiased">
-        <div class="min-h-screen bg-gray-100">
-            @include('layouts.navigation')
+        <div class="min-h-screen bg-page">
+            @include('layouts.sidebar')
 
-            <!-- Page Heading -->
-            @isset($header)
-                <header class="bg-white shadow">
-                    <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-                        {{ $header }}
+            <div class="lg:pl-64">
+                @include('layouts.topbar')
+
+                {{-- Judul halaman (opsional) --}}
+                @isset($header)
+                    <div class="border-b border-line bg-card px-4 py-4 sm:px-6">
+                        <div class="mx-auto w-full max-w-6xl">
+                            {{ $header }}
+                        </div>
                     </div>
-                </header>
-            @endisset
+                @endisset
 
-            <!-- Page Content (pb agar tidak tertutup bottom-nav di mobile) -->
-            <main class="pb-20 sm:pb-0">
-                {{ $slot }}
-            </main>
-        </div>
+                {{-- Konten; pb-24 agar tak tertutup bottom-nav di mobile --}}
+                <main class="mx-auto w-full max-w-6xl px-4 py-6 pb-24 sm:px-6 lg:pb-8">
+                    @include('layouts.flash')
+                    {{ $slot }}
+                </main>
+            </div>
 
-        <!-- Bottom navigation (mobile-first) -->
-        @auth
             @include('layouts.bottom-nav')
-        @endauth
+        </div>
 
         <!-- Registrasi service worker PWA -->
         <script>

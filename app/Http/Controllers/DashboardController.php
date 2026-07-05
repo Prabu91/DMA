@@ -37,14 +37,18 @@ class DashboardController extends Controller
     }
 
     /**
-     * Dashboard placeholder per role.
+     * Dashboard per role dengan data nyata (ter-scope cabang).
      */
     public function show(Request $request, string $role): View
     {
         $view = 'dashboard.'.$role;
 
-        return view()->exists($view)
-            ? view($view)
-            : view('dashboard', ['role' => $role]);
+        if (! view()->exists($view)) {
+            return view('dashboard', ['role' => $role]);
+        }
+
+        return view($view, [
+            'data' => \App\Support\DashboardData::for($request->user(), $role),
+        ]);
     }
 }

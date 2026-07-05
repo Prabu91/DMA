@@ -29,15 +29,16 @@ class RoleMenu
 
     /**
      * Definisi item tambahan (selain Dashboard) per role.
-     * Format tiap entri: [label, icon-key].
+     * Format tiap entri: [label, icon-key, route?, active-pattern?].
+     * route null = fitur belum ada (placeholder "Segera").
      */
     private const MENUS = [
         'super_admin' => [
-            ['Cabang', 'building'],
+            ['Cabang', 'building', 'cabang.index', 'cabang.*'],
+            ['Pengguna', 'users', 'pengguna.index', 'pengguna.*'],
             ['Sekolah', 'school'],
             ['Produk', 'product'],
             ['Order', 'order'],
-            ['Pengguna', 'users'],
         ],
         'operasional' => [
             ['Order', 'order'],
@@ -82,12 +83,14 @@ class RoleMenu
             'active' => 'dashboard*',
         ]];
 
-        foreach (self::MENUS[$role] ?? [] as [$label, $iconKey]) {
+        foreach (self::MENUS[$role] ?? [] as $entry) {
+            [$label, $iconKey] = $entry;
+
             $items[] = [
                 'label' => $label,
                 'icon' => self::ICONS[$iconKey],
-                'route' => null, // Fitur Fase 2 — belum ada route.
-                'active' => '',
+                'route' => $entry[2] ?? null,       // null = placeholder "Segera"
+                'active' => $entry[3] ?? '',
             ];
         }
 

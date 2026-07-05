@@ -40,7 +40,7 @@ class DashboardTest extends TestCase
         $this->actingAs($user)
             ->get(route('dashboard.marketing'))
             ->assertOk()
-            ->assertSee('Dashboard Marketing');
+            ->assertSee('Dashboard marketing');
     }
 
     public function test_user_tidak_bisa_membuka_dashboard_role_lain(): void
