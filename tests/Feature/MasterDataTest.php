@@ -35,15 +35,15 @@ class MasterDataTest extends TestCase
         $marketing = User::factory()->create();
         $marketing->assignRole('marketing');
 
-        $this->actingAs($marketing)->get(route('cabang.index'))->assertForbidden();
-        $this->actingAs($marketing)->get(route('pengguna.index'))->assertForbidden();
+        $this->actingAs($marketing)->get(route('app.cabang.index'))->assertForbidden();
+        $this->actingAs($marketing)->get(route('app.pengguna.index'))->assertForbidden();
     }
 
     public function test_super_admin_bisa_membuat_cabang(): void
     {
         $this->actingAs($this->superAdmin())
-            ->post(route('cabang.store'), ['nama' => 'DMA Medan', 'kode_area' => 'MDN'])
-            ->assertRedirect(route('cabang.index'));
+            ->post(route('app.cabang.store'), ['nama' => 'DMA Medan', 'kode_area' => 'MDN'])
+            ->assertRedirect(route('app.cabang.index'));
 
         $this->assertDatabaseHas('cabang', ['nama' => 'DMA Medan', 'kode_area' => 'MDN']);
     }
@@ -54,10 +54,25 @@ class MasterDataTest extends TestCase
         $penghuni = User::factory()->create(['cabang_id' => $cabang->id]);
 
         $this->actingAs($this->superAdmin())
-            ->delete(route('cabang.destroy', $cabang))
+            ->delete(route('app.cabang.destroy', $cabang))
             ->assertSessionHas('error');
 
         $this->assertDatabaseHas('cabang', ['id' => $cabang->id]);
+    }
+
+    public function test_cabang_dengan_kota_tetap_bisa_dihapus_kota_dilepas(): void
+    {
+        $cabang = Cabang::create(['nama' => 'DMA Kota', 'kode_area' => 'KOT']);
+        $kota = \App\Models\Kota::create(['nama' => 'Kota X', 'cabang_id' => $cabang->id]);
+
+        $this->actingAs($this->superAdmin())
+            ->delete(route('app.cabang.destroy', $cabang))
+            ->assertRedirect(route('app.cabang.index'))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('cabang', ['id' => $cabang->id]);
+        // Kota tidak ikut terhapus, hanya dilepas (cabang_id null).
+        $this->assertDatabaseHas('kota', ['id' => $kota->id, 'cabang_id' => null]);
     }
 
     public function test_super_admin_bisa_membuat_pengguna_dengan_role_dan_cabang(): void
@@ -65,7 +80,7 @@ class MasterDataTest extends TestCase
         $cabang = Cabang::create(['nama' => 'DMA A', 'kode_area' => 'A']);
 
         $this->actingAs($this->superAdmin())
-            ->post(route('pengguna.store'), [
+            ->post(route('app.pengguna.store'), [
                 'nama' => 'Rina Marketing',
                 'email' => 'rina@dma.test',
                 'no_telp' => '0811',
@@ -74,7 +89,7 @@ class MasterDataTest extends TestCase
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
             ])
-            ->assertRedirect(route('pengguna.index'));
+            ->assertRedirect(route('app.pengguna.index'));
 
         $user = User::where('email', 'rina@dma.test')->firstOrFail();
         $this->assertTrue($user->hasRole('marketing'));
@@ -88,7 +103,7 @@ class MasterDataTest extends TestCase
         $cabang = Cabang::create(['nama' => 'DMA A', 'kode_area' => 'A']);
 
         $this->actingAs($this->superAdmin())
-            ->post(route('pengguna.store'), [
+            ->post(route('app.pengguna.store'), [
                 'nama' => 'Ops Pusat',
                 'email' => 'ops2@dma.test',
                 'role' => 'operasional',
@@ -96,7 +111,7 @@ class MasterDataTest extends TestCase
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
             ])
-            ->assertRedirect(route('pengguna.index'));
+            ->assertRedirect(route('app.pengguna.index'));
 
         $user = User::where('email', 'ops2@dma.test')->firstOrFail();
         $this->assertNull($user->cabang_id);
@@ -107,7 +122,7 @@ class MasterDataTest extends TestCase
         $admin = $this->superAdmin();
 
         $this->actingAs($admin)
-            ->delete(route('pengguna.destroy', $admin))
+            ->delete(route('app.pengguna.destroy', $admin))
             ->assertSessionHas('error');
 
         $this->assertDatabaseHas('users', ['id' => $admin->id]);

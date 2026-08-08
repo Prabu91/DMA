@@ -28,6 +28,8 @@ class ProdukForm extends Component
 
     public int $harga = 0;
 
+    public string $satuan = 'qty';
+
     public string $status = 'aktif';
 
     public $foto = null;              // file upload sementara
@@ -49,6 +51,7 @@ class ProdukForm extends Component
             $this->gaya = $produk->gaya;
             $this->deskripsi = $produk->deskripsi;
             $this->harga = (int) $produk->harga;
+            $this->satuan = $produk->satuan ?: 'qty';
             $this->status = $produk->status ?: 'aktif';
             $this->fotoExisting = $produk->foto;
 
@@ -84,6 +87,12 @@ class ProdukForm extends Component
     public function statusOptions(): array
     {
         return Produk::STATUS;
+    }
+
+    #[Computed]
+    public function satuanOptions(): array
+    {
+        return Produk::SATUAN;
     }
 
     #[Computed]
@@ -126,6 +135,7 @@ class ProdukForm extends Component
             'gaya' => ['nullable', 'in:'.implode(',', Produk::GAYA)],
             'deskripsi' => ['nullable', 'string', 'max:1000'],
             'harga' => ['required', 'integer', 'min:0'],
+            'satuan' => ['required', 'in:'.implode(',', array_keys(Produk::SATUAN))],
             'status' => ['required', 'in:'.implode(',', array_keys(Produk::STATUS))],
             'foto' => ['nullable', 'image', 'max:2048'],
 
@@ -151,6 +161,7 @@ class ProdukForm extends Component
             'gaya' => $this->gaya,
             'deskripsi' => $this->deskripsi,
             'harga' => $this->harga,
+            'satuan' => $this->satuan,
             'status' => $this->status,
         ];
 
@@ -188,7 +199,7 @@ class ProdukForm extends Component
 
         session()->flash('success', $this->produkId ? 'Produk diperbarui.' : 'Produk ditambahkan.');
 
-        return $this->redirectRoute('produk.index', navigate: true);
+        return $this->redirectRoute('app.produk.index', navigate: true);
     }
 
     public function render()

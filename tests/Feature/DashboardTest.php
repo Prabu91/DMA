@@ -28,8 +28,8 @@ class DashboardTest extends TestCase
         $user->assignRole('marketing');
 
         $this->actingAs($user)
-            ->get('/dashboard')
-            ->assertRedirect(route('dashboard.marketing'));
+            ->get('/app/dashboard')
+            ->assertRedirect(route('app.dashboard.marketing'));
     }
 
     public function test_dashboard_role_menampilkan_placeholder_yang_benar(): void
@@ -38,7 +38,7 @@ class DashboardTest extends TestCase
         $user->assignRole('marketing');
 
         $this->actingAs($user)
-            ->get(route('dashboard.marketing'))
+            ->get(route('app.dashboard.marketing'))
             ->assertOk()
             ->assertSee('Dashboard marketing');
     }
@@ -49,7 +49,7 @@ class DashboardTest extends TestCase
         $user->assignRole('marketing');
 
         $this->actingAs($user)
-            ->get(route('dashboard.super_admin'))
+            ->get(route('app.dashboard.super_admin'))
             ->assertForbidden();
     }
 }

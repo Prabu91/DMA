@@ -37,18 +37,14 @@ class KatalogFase1Test extends TestCase
 
     // ---------- id_sekolah ----------
 
-    public function test_generate_id_sekolah_format_dan_sekuens_per_cabang(): void
+    public function test_generate_id_sekolah_global(): void
     {
         $jkt = Cabang::create(['nama' => 'DMA Jakarta', 'kode_area' => 'JKT']);
-        $bdg = Cabang::create(['nama' => 'DMA Bandung', 'kode_area' => 'BDG']);
 
-        $this->assertSame('SKL-JKT-0001', Sekolah::generateIdSekolah($jkt));
+        $this->assertSame('SKL-000001', Sekolah::generateIdSekolah());
 
-        Sekolah::create(['id_sekolah' => 'SKL-JKT-0001', 'nama' => 'A', 'cabang_id' => $jkt->id]);
-        $this->assertSame('SKL-JKT-0002', Sekolah::generateIdSekolah($jkt));
-
-        // Sekuens terpisah per cabang.
-        $this->assertSame('SKL-BDG-0001', Sekolah::generateIdSekolah($bdg));
+        Sekolah::create(['id_sekolah' => 'SKL-000001', 'nama' => 'A', 'cabang_id' => $jkt->id]);
+        $this->assertSame('SKL-000002', Sekolah::generateIdSekolah());
     }
 
     // ---------- Kategori (katalog global) ----------
@@ -56,7 +52,7 @@ class KatalogFase1Test extends TestCase
     public function test_marketing_tidak_bisa_akses_kategori(): void
     {
         $this->actingAs($this->user('marketing'))
-            ->get(route('kategori.index'))
+            ->get(route('app.kategori.index'))
             ->assertForbidden();
     }
 
@@ -104,7 +100,7 @@ class KatalogFase1Test extends TestCase
 
         $s = Sekolah::withoutGlobalScopes()->where('nama', 'SDN 1 Merdeka')->firstOrFail();
         $this->assertSame($jkt->id, $s->cabang_id);
-        $this->assertSame('SKL-JKT-0001', $s->id_sekolah);
+        $this->assertSame('SKL-000001', $s->id_sekolah);
     }
 
     public function test_marketing_hanya_melihat_sekolah_cabangnya(): void
@@ -136,6 +132,6 @@ class KatalogFase1Test extends TestCase
 
         $s = Sekolah::withoutGlobalScopes()->where('nama', 'SD Kenangan')->firstOrFail();
         $this->assertSame($bdg->id, $s->cabang_id);
-        $this->assertSame('SKL-BDG-0001', $s->id_sekolah);
+        $this->assertSame('SKL-000001', $s->id_sekolah);
     }
 }

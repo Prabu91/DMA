@@ -10,7 +10,7 @@
 
 <header class="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-line bg-card/95 px-4 backdrop-blur sm:px-6">
     {{-- Logo untuk mobile (sidebar disembunyikan) --}}
-    <a href="{{ route('dashboard') }}" class="lg:hidden">
+    <a href="{{ route('app.dashboard') }}" class="lg:hidden">
         <x-brand-logo size="sm" :wordmark="false" />
     </a>
 
@@ -43,7 +43,7 @@
                     <div class="text-sm font-medium text-ink">{{ $user?->nama ?? $user?->name }}</div>
                     <div class="truncate text-xs text-ink-muted">{{ $user?->email }}</div>
                 </div>
-                <x-dropdown-link :href="route('profile.edit')">Profil</x-dropdown-link>
+                <x-dropdown-link :href="route('app.profile.edit')">Profil</x-dropdown-link>
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
                     <x-dropdown-link :href="route('logout')"

@@ -1,4 +1,5 @@
 <div>
+    @php $sf = in_array($konteks, ['publik', 'sekolah'], true); @endphp
     <a href="{{ $this->indexUrl() }}" wire:navigate class="mb-3 inline-flex items-center gap-1 text-sm text-ink-muted hover:text-ink">
         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
         Kembali ke katalog
@@ -11,12 +12,15 @@
                 <x-card>
                     <div class="flex items-center gap-2">
                         <x-badge variant="brand">Paket</x-badge>
-                        <h1 class="text-lg font-medium text-ink">{{ $paket->nama }}</h1>
+                        <h1 class="{{ $sf ? 'text-2xl font-extrabold tracking-tight text-ink' : 'text-lg font-medium text-ink' }}">{{ $paket->nama }}</h1>
                     </div>
                     @if ($paket->deskripsi)
                         <p class="mt-2 text-sm text-ink-muted">{{ $paket->deskripsi }}</p>
                     @endif
-                    <div class="mt-4 text-xl font-medium text-ink">Rp{{ number_format($paket->harga, 0, ',', '.') }}</div>
+                    <div class="mt-4 flex items-baseline gap-2">
+                        <span class="{{ $sf ? 'text-3xl font-extrabold text-navy' : 'text-xl font-bold text-ink' }}">Rp{{ number_format($paket->harga, 0, ',', '.') }}</span>
+                        @if ($sf)<span class="text-xs text-ink-muted">/ paket</span>@endif
+                    </div>
 
                     <div class="mt-5">
                         <h2 class="mb-2 text-sm font-medium text-ink">Produk termasuk</h2>
@@ -32,7 +36,7 @@
                 </x-card>
             </div>
             <div>
-                <x-card title="Booking">
+                <x-card :title="$sf ? 'Pesan paket' : 'Booking'" class="lg:sticky lg:top-20">
                     <div class="flex flex-wrap items-end gap-3">
                         <div class="w-24">
                             <x-input label="Jumlah" type="number" min="1" wire:model="qty" />
@@ -41,10 +45,12 @@
                             <span wire:loading.remove wire:target="tambah">Tambah ke keranjang</span>
                             <span wire:loading wire:target="tambah">Menambah…</span>
                         </x-button>
-                        <a href="{{ $this->keranjangUrl() }}" wire:navigate class="pb-2.5 text-sm font-medium text-brand hover:text-brand-hover">Lihat keranjang →</a>
+                        @unless ($sf)
+                            <a href="{{ $this->keranjangUrl() }}" wire:navigate class="pb-2.5 text-sm font-medium text-brand hover:text-brand-hover">Lihat keranjang →</a>
+                        @endunless
                     </div>
                     @if ($justAdded)
-                        <p class="mt-3 text-sm text-status-success">Ditambahkan ke keranjang.</p>
+                        <p class="mt-3 text-sm font-semibold text-status-success">Ditambahkan ke keranjang.</p>
                     @endif
                     <p class="mt-3 text-xs text-ink-muted">Desain per produk dalam paket dipilih pada tahap berikutnya.</p>
                 </x-card>
@@ -70,14 +76,23 @@
             <div class="lg:col-span-2 space-y-6">
                 <x-card>
                     <div class="flex flex-wrap items-center gap-2">
-                        <h1 class="text-lg font-medium text-ink">{{ $produk->nama }}</h1>
+                        <h1 class="{{ $sf ? 'text-2xl font-extrabold tracking-tight text-ink' : 'text-lg font-medium text-ink' }}">{{ $produk->nama }}</h1>
                         @if ($produk->gaya)<x-badge variant="neutral">{{ $produk->gaya }}</x-badge>@endif
                         <x-badge variant="navy">{{ $produk->kategori?->nama }}</x-badge>
                     </div>
                     @if ($produk->deskripsi)
                         <p class="mt-2 text-sm text-ink-muted">{{ $produk->deskripsi }}</p>
                     @endif
-                    <div class="mt-4 text-xl font-medium text-ink">Rp{{ number_format($produk->harga, 0, ',', '.') }}</div>
+                    <div class="mt-4 flex items-baseline gap-2">
+                        <span class="{{ $sf ? 'text-3xl font-extrabold text-navy' : 'text-xl font-bold text-ink' }}">Rp{{ number_format($produk->harga, 0, ',', '.') }}</span>
+                        <span class="text-xs text-ink-muted">/ {{ $produk->satuanUnit() }}</span>
+                    </div>
+                    @if ($produk->isPerSiswa())
+                        <p class="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-brand/5 px-2.5 py-1 text-xs text-brand">
+                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>
+                            Harga dihitung per siswa — isi jumlah siswa di bawah.
+                        </p>
+                    @endif
                 </x-card>
 
                 {{-- Opsi ukuran --}}
@@ -142,23 +157,25 @@
                     </x-card>
                 @endif
 
-                <x-card>
+                <x-card :title="$sf ? 'Pesan' : null">
                     @error('selectedDesain')<p class="mb-2 text-sm text-status-danger">{{ $message }}</p>@enderror
                     @error('selectedUkuran')<p class="mb-2 text-sm text-status-danger">{{ $message }}</p>@enderror
 
                     <div class="flex flex-wrap items-end gap-3">
-                        <div class="w-24">
-                            <x-input label="Jumlah" type="number" min="1" wire:model="qty" />
+                        <div class="w-32">
+                            <x-input :label="$produk->satuanLabel()" type="number" min="1" wire:model="qty" />
                         </div>
                         <x-button wire:click="tambah">
                             <span wire:loading.remove wire:target="tambah">Tambah ke keranjang</span>
                             <span wire:loading wire:target="tambah">Menambah…</span>
                         </x-button>
-                        <a href="{{ $this->keranjangUrl() }}" wire:navigate class="pb-2.5 text-sm font-medium text-brand hover:text-brand-hover">Lihat keranjang →</a>
+                        @unless ($sf)
+                            <a href="{{ $this->keranjangUrl() }}" wire:navigate class="pb-2.5 text-sm font-medium text-brand hover:text-brand-hover">Lihat keranjang →</a>
+                        @endunless
                     </div>
 
                     @if ($justAdded)
-                        <p class="mt-3 text-sm text-status-success">Ditambahkan ke keranjang.</p>
+                        <p class="mt-3 text-sm font-semibold text-status-success">Ditambahkan ke keranjang.</p>
                     @endif
                 </x-card>
             </div>

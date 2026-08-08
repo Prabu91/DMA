@@ -8,35 +8,38 @@
  * Ganti nilai di sini untuk menyetel tema tanpa menyentuh markup.
  */
 :root {
-    --color-brand: 224 128 32;        /* #E08020 */
-    --color-brand-hover: 197 110 26;  /* #C56E1A */
-    --color-navy: 34 64 110;          /* #22406E */
-    --color-navy-hover: 26 51 88;     /* #1A3358 */
+    /* Palet DMA (modernist) — oranye aksi, navy struktur, biru info. */
+    --color-brand: 247 148 29;        /* #F7941D */
+    --color-brand-hover: 224 125 10;  /* #E07D0A */
+    --color-navy: 46 49 146;          /* #2E3192 */
+    --color-navy-hover: 35 37 110;    /* #23256E */
+    --color-navy-900: 25 27 82;       /* #191B52 — hero/header/footer gelap */
 
-    --color-ink: 42 39 36;            /* #2A2724 */
-    --color-ink-muted: 122 115 107;   /* #7A736B */
+    --color-ink: 32 34 43;            /* #20222B */
+    --color-ink-muted: 122 124 134;   /* #7A7C86 */
 
-    --color-page: 250 248 245;        /* #FAF8F5 */
+    --color-page: 244 244 246;        /* #F4F4F6 */
     --color-card: 255 255 255;        /* #FFFFFF */
-    --color-line: 234 230 223;        /* #EAE6DF */
+    --color-line: 224 224 228;        /* #E0E0E4 (~ink 12%) */
 
-    --color-success: 22 163 74;       /* #16A34A */
-    --color-pending: 202 138 4;       /* #CA8A04 */
-    --color-info: 37 99 235;          /* #2563EB */
+    --color-success: 46 125 70;       /* #2E7D46 */
+    --color-pending: 180 83 9;        /* #B45309 */
+    --color-info: 27 131 204;         /* #1B83CC */
     --color-danger: 220 38 38;        /* #DC2626 */
 }
 
-/* Dark mode minimal (netral hangat gelap). Aktif via class .dark pada <html>. */
+/* Dark mode minimal (netral gelap). Aktif via class .dark pada <html>. */
 .dark {
-    --color-navy: 122 150 200;        /* navy dinaikkan agar kontras */
-    --color-navy-hover: 150 174 214;
+    --color-navy: 129 133 224;        /* indigo dinaikkan agar kontras */
+    --color-navy-hover: 158 161 232;
+    --color-navy-900: 35 37 110;
 
-    --color-ink: 240 235 228;         /* #F0EBE4 */
-    --color-ink-muted: 169 161 153;   /* #A9A199 */
+    --color-ink: 236 236 240;         /* #ECECF0 */
+    --color-ink-muted: 158 160 170;   /* #9EA0AA */
 
-    --color-page: 26 23 20;           /* #1A1714 */
-    --color-card: 36 33 29;           /* #24211D */
-    --color-line: 58 53 47;           /* #3A352F */
+    --color-page: 20 21 30;           /* #14151E */
+    --color-card: 30 31 42;           /* #1E1F2A */
+    --color-line: 52 53 66;           /* #343542 */
 }
 
 @layer base {

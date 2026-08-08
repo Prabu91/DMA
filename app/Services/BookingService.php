@@ -41,7 +41,7 @@ class BookingService
                     'key' => $key, 'tipe' => 'paket',
                     'produk_id' => null, 'paket_id' => $paket->id,
                     'desain_id' => null, 'desain' => null, 'ukuran' => null,
-                    'nama' => $paket->nama, 'qty' => $it['qty'],
+                    'nama' => $paket->nama, 'qty' => $it['qty'], 'satuan' => 'qty',
                     'unit' => $unit, 'total' => $unit * $it['qty'],
                 ];
             } else {
@@ -62,7 +62,7 @@ class BookingService
                     'desain_id' => $it['desain_id'] ?? null,
                     'desain' => ($it['desain_id'] ?? null) ? optional(Desain::find($it['desain_id']))->kode : null,
                     'ukuran' => $it['opsi_ukuran'],
-                    'nama' => $produk->nama, 'qty' => $it['qty'],
+                    'nama' => $produk->nama, 'qty' => $it['qty'], 'satuan' => $produk->satuan ?? 'qty',
                     'unit' => $unit, 'total' => $unit * $it['qty'],
                 ];
             }
@@ -116,9 +116,9 @@ class BookingService
     /**
      * Simpan Order + OrderItems (paid + free) dalam satu transaksi.
      */
-    public function simpan(array $ctx, array $lines, array $freeItems, int $jumlahSiswa, int $subtotal): Order
+    public function simpan(array $ctx, array $lines, array $freeItems, int $jumlahSiswa, int $subtotal, ?string $tanggalEvent = null, ?string $jamEvent = null): Order
     {
-        return DB::transaction(function () use ($ctx, $lines, $freeItems, $jumlahSiswa, $subtotal) {
+        return DB::transaction(function () use ($ctx, $lines, $freeItems, $jumlahSiswa, $subtotal, $tanggalEvent, $jamEvent) {
             $order = Order::create([
                 'sekolah_id' => $ctx['sekolah_id'],
                 'marketing_id' => $ctx['marketing_id'],
@@ -127,6 +127,8 @@ class BookingService
                 'status' => 'baru',
                 'jumlah_siswa' => $jumlahSiswa,
                 'total' => $subtotal, // item free = 0, jadi total = subtotal
+                'tanggal_event' => $tanggalEvent ?: null,
+                'jam_event' => $jamEvent ?: null,
                 'tanggal_booking' => now(),
             ]);
 
@@ -160,6 +162,8 @@ class BookingService
             if ($order->marketing_id) {
                 $this->codeGenerator->generate($order);
             }
+
+            $order->catat('dibuat', $ctx['sumber'] === 'sekolah' ? 'via portal sekolah' : 'oleh marketing');
 
             return $order;
         });

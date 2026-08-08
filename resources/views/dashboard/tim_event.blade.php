@@ -14,8 +14,12 @@
         @include('dashboard.partials.stats', ['stats' => $data['stats']])
 
         <x-card title="Event ditugaskan" padding="p-0">
+            <x-slot name="actions">
+                <a href="{{ route('app.event.index') }}" wire:navigate class="text-sm font-medium text-brand hover:text-brand-hover">Lihat semua →</a>
+            </x-slot>
             @forelse ($data['assignedEvents'] as $order)
-                <div class="flex items-center justify-between gap-3 border-b border-line px-5 py-3 last:border-b-0">
+                <a href="{{ route('app.event.show', $order->id) }}" wire:navigate
+                   class="flex items-center justify-between gap-3 border-b border-line px-5 py-3 last:border-b-0 hover:bg-page">
                     <div class="min-w-0">
                         <div class="truncate text-sm text-ink">{{ $order->sekolah?->nama ?? 'Tanpa sekolah' }}</div>
                         <div class="truncate text-xs text-ink-muted">
@@ -33,15 +37,13 @@
                         <x-badge :variant="\App\Support\OrderStatus::badge($order->event_status)">
                             {{ \App\Support\OrderStatus::label($order->event_status) }}
                         </x-badge>
-
-                        @if ($order->event_status !== \App\Support\OrderStatus::EVENT_SELESAI)
-                            <form method="POST" action="{{ route('events.complete', $order) }}">
-                                @csrf
-                                <x-button type="submit" variant="secondary" size="sm">Tandai selesai</x-button>
-                            </form>
+                        @php $cd = $order->eventCountdown(); @endphp
+                        @if ($cd && $order->event_status !== \App\Support\OrderStatus::EVENT_SELESAI)
+                            <x-badge :variant="$cd['state'] === 'past' ? 'danger' : ($cd['state'] === 'today' ? 'pending' : 'info')">{{ $cd['label'] }}</x-badge>
                         @endif
+                        <svg class="h-4 w-4 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                     </div>
-                </div>
+                </a>
             @empty
                 <div class="px-5 py-10 text-center">
                     <p class="text-sm text-ink-muted">Belum ada event yang ditugaskan.</p>

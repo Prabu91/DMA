@@ -31,7 +31,7 @@ class AturanFreeCrudTest extends TestCase
         $m = User::factory()->create();
         $m->assignRole('marketing');
 
-        $this->actingAs($m)->get(route('aturan-free.index'))->assertForbidden();
+        $this->actingAs($m)->get(route('app.aturan-free.index'))->assertForbidden();
     }
 
     public function test_super_admin_membuat_aturan(): void

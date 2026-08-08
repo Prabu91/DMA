@@ -48,7 +48,7 @@ class DesainFase4Test extends TestCase
         $m = User::factory()->create();
         $m->assignRole('marketing');
 
-        $this->actingAs($m)->get(route('desain.index'))->assertForbidden();
+        $this->actingAs($m)->get(route('app.desain.index'))->assertForbidden();
     }
 
     public function test_membuat_desain_dengan_foto(): void

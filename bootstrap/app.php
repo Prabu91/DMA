@@ -17,12 +17,13 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
+            'verified.sekolah' => \App\Http\Middleware\EnsureSekolahEmailVerified::class,
         ]);
 
-        // Portal sekolah ada di /sekolah/* (bukan /sekolah yang milik staf).
-        // Tamu di portal sekolah diarahkan ke login sekolah; selain itu ke login staf.
-        $middleware->redirectGuestsTo(fn (Request $request) => $request->is('sekolah/*')
-            ? route('sekolah.login')
+        // Tamu di area sekolah (portal /sekolah/*, verifikasi /email/*, /keluar)
+        // diarahkan ke login sekolah; selain itu (mis. /app/*) ke login staf.
+        $middleware->redirectGuestsTo(fn (Request $request) => $request->is('sekolah/*', 'verifikasi', 'verifikasi/*', 'keluar')
+            ? route('sekolah.masuk')
             : route('login'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -30,69 +30,102 @@ class RoleMenu
         'gift' => 'M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H5.25a1.5 1.5 0 01-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 109.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1114.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z',
         'store' => 'M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349M3.75 21V9.349m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.015a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72M6.75 12.75h3.75a.75.75 0 00.75-.75V9.75a.75.75 0 00-.75-.75H6.75a.75.75 0 00-.75.75V12c0 .414.336.75.75.75z',
         'inbox' => 'M2.25 13.5h3.86a2.25 2.25 0 012.012 1.244l.256.512a2.25 2.25 0 002.013 1.244h3.218a2.25 2.25 0 002.013-1.244l.256-.512a2.25 2.25 0 012.013-1.244h3.859m-19.5.338V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 00-2.15-1.588H6.911a2.25 2.25 0 00-2.15 1.588L2.35 13.177a2.25 2.25 0 00-.1.661z',
+        'clock' => 'M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z',
     ];
 
     /**
-     * Definisi item tambahan (selain Dashboard) per role.
-     * Format tiap entri: [label, icon-key, route?, active-pattern?].
-     * route null = fitur belum ada (placeholder "Segera").
+     * Definisi item tambahan (selain Dashboard) per role, DIKELOMPOKKAN per
+     * fungsi. Format: [role => [grup => [ [label, icon-key, route?, active?] ]]].
+     * route null = fitur belum ada (placeholder "Segera"). Urutan grup =
+     * urutan tampil di sidebar.
      */
     private const MENUS = [
         'super_admin' => [
-            ['Cabang', 'building', 'cabang.index', 'cabang.*'],
-            ['Pengguna', 'users', 'pengguna.index', 'pengguna.*'],
-            ['Sekolah', 'school', 'sekolah.index', 'sekolah.*'],
-            ['Kategori', 'tag', 'kategori.index', 'kategori.*'],
-            ['Produk', 'product', 'produk.index', 'produk.*'],
-            ['Paket', 'cube', 'paket.index', 'paket.*'],
-            ['Desain', 'photo', 'desain.index', 'desain.*'],
-            ['Free sekolah', 'gift', 'aturan-free.index', 'aturan-free.*'],
-            ['Katalog', 'store', 'etalase.index', 'etalase.*'],
-            ['Kotak masuk', 'inbox', 'kotak-masuk', 'kotak-masuk'],
-            ['Order', 'order'],
+            'Operasional' => [
+                ['Kotak masuk', 'inbox', 'kotak-masuk', 'kotak-masuk'],
+                ['Order', 'order', 'order.index', 'order.*'],
+                ['Aktivitas', 'clock', 'aktivitas', 'aktivitas'],
+            ],
+            'Katalog' => [
+                ['Kategori', 'tag', 'kategori.index', 'kategori.*'],
+                ['Produk', 'product', 'produk.index', 'produk.*'],
+                ['Paket', 'cube', 'paket.index', 'paket.*'],
+                ['Desain', 'photo', 'desain.index', 'desain.*'],
+                ['Free sekolah', 'gift', 'aturan-free.index', 'aturan-free.*'],
+                ['Katalog', 'store', 'etalase.index', 'etalase.*'],
+            ],
+            'Data master' => [
+                ['Cabang', 'building', 'cabang.index', 'cabang.*'],
+                ['Pengguna', 'users', 'pengguna.index', 'pengguna.*'],
+                ['Sekolah', 'school', 'sekolah.index', 'sekolah.*'],
+            ],
         ],
         'operasional' => [
-            ['Sekolah', 'school', 'sekolah.index', 'sekolah.*'],
-            ['Kategori', 'tag', 'kategori.index', 'kategori.*'],
-            ['Produk', 'product', 'produk.index', 'produk.*'],
-            ['Paket', 'cube', 'paket.index', 'paket.*'],
-            ['Desain', 'photo', 'desain.index', 'desain.*'],
-            ['Free sekolah', 'gift', 'aturan-free.index', 'aturan-free.*'],
-            ['Katalog', 'store', 'etalase.index', 'etalase.*'],
-            ['Kotak masuk', 'inbox', 'kotak-masuk', 'kotak-masuk'],
-            ['Order', 'order'],
+            'Operasional' => [
+                ['Kotak masuk', 'inbox', 'kotak-masuk', 'kotak-masuk'],
+                ['Order', 'order', 'order.index', 'order.*'],
+                ['Aktivitas', 'clock', 'aktivitas', 'aktivitas'],
+            ],
+            'Katalog' => [
+                ['Kategori', 'tag', 'kategori.index', 'kategori.*'],
+                ['Produk', 'product', 'produk.index', 'produk.*'],
+                ['Paket', 'cube', 'paket.index', 'paket.*'],
+                ['Desain', 'photo', 'desain.index', 'desain.*'],
+                ['Free sekolah', 'gift', 'aturan-free.index', 'aturan-free.*'],
+                ['Katalog', 'store', 'etalase.index', 'etalase.*'],
+            ],
+            'Data master' => [
+                ['Sekolah', 'school', 'sekolah.index', 'sekolah.*'],
+            ],
         ],
         'area' => [
-            ['Sekolah', 'school', 'sekolah.index', 'sekolah.*'],
-            ['Katalog', 'store', 'etalase.index', 'etalase.*'],
-            ['Kotak masuk', 'inbox', 'kotak-masuk', 'kotak-masuk'],
-            ['Order', 'order'],
+            'Operasional' => [
+                ['Kotak masuk', 'inbox', 'kotak-masuk', 'kotak-masuk'],
+                ['Order', 'order', 'order.index', 'order.*'],
+                ['Aktivitas', 'clock', 'aktivitas', 'aktivitas'],
+            ],
+            'Katalog' => [
+                ['Katalog', 'store', 'etalase.index', 'etalase.*'],
+            ],
+            'Data master' => [
+                ['Sekolah', 'school', 'sekolah.index', 'sekolah.*'],
+            ],
         ],
         'marketing' => [
-            ['Sekolah', 'school', 'sekolah.index', 'sekolah.*'],
-            ['Katalog', 'store', 'etalase.index', 'etalase.*'],
-            ['Kotak masuk', 'inbox', 'kotak-masuk', 'kotak-masuk'],
-            ['Order', 'order'],
+            'Operasional' => [
+                ['Kotak masuk', 'inbox', 'kotak-masuk', 'kotak-masuk'],
+                ['Order', 'order', 'order.index', 'order.*'],
+            ],
+            'Katalog' => [
+                ['Katalog', 'store', 'etalase.index', 'etalase.*'],
+            ],
+            'Data master' => [
+                ['Sekolah', 'school', 'sekolah.index', 'sekolah.*'],
+            ],
         ],
         'tim_event' => [
-            ['Jadwal Event', 'calendar'],
-            ['Order', 'order'],
+            'Operasional' => [
+                ['Jadwal Event', 'calendar', 'event.index', 'event.*'],
+            ],
         ],
         'editor' => [
-            ['Desain', 'photo'],
+            'Katalog' => [
+                ['Desain', 'photo'],
+            ],
         ],
     ];
 
     /**
-     * Bangun daftar item menu untuk user.
+     * Bangun daftar item menu untuk user (FLAT, tiap item punya key `group`).
+     * Dashboard selalu paling atas dengan group null (berdiri sendiri).
      *
-     * @return array<int, array{label:string, icon:string, route:?string, active:string}>
+     * @return array<int, array{label:string, icon:string, route:?string, active:string, group:?string}>
      */
     public static function for(?User $user): array
     {
         $role = $user?->getRoleNames()->first();
 
-        // Item Dashboard selalu ada dan selalu punya route valid.
+        // Semua halaman staf berada di area panel "/app" (nama route ber-prefix "app.").
         $dashboardRoute = ($role && array_key_exists($role, self::MENUS))
             ? 'dashboard.'.$role
             : 'dashboard';
@@ -100,19 +133,25 @@ class RoleMenu
         $items = [[
             'label' => 'Dashboard',
             'icon' => self::ICONS['home'],
-            'route' => $dashboardRoute,
-            'active' => 'dashboard*',
+            'route' => 'app.'.$dashboardRoute,
+            'active' => 'app.dashboard*',
+            'group' => null,
         ]];
 
-        foreach (self::MENUS[$role] ?? [] as $entry) {
-            [$label, $iconKey] = $entry;
+        foreach (self::MENUS[$role] ?? [] as $grup => $entries) {
+            foreach ($entries as $entry) {
+                [$label, $iconKey] = $entry;
+                $route = $entry[2] ?? null;   // null = placeholder "Segera"
+                $active = $entry[3] ?? '';
 
-            $items[] = [
-                'label' => $label,
-                'icon' => self::ICONS[$iconKey],
-                'route' => $entry[2] ?? null,       // null = placeholder "Segera"
-                'active' => $entry[3] ?? '',
-            ];
+                $items[] = [
+                    'label' => $label,
+                    'icon' => self::ICONS[$iconKey],
+                    'route' => $route ? 'app.'.$route : null,
+                    'active' => $active !== '' ? 'app.'.$active : '',
+                    'group' => $grup,
+                ];
+            }
         }
 
         return $items;

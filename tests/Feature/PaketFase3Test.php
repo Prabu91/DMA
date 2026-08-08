@@ -46,7 +46,7 @@ class PaketFase3Test extends TestCase
         $m = User::factory()->create();
         $m->assignRole('marketing');
 
-        $this->actingAs($m)->get(route('paket.index'))->assertForbidden();
+        $this->actingAs($m)->get(route('app.paket.index'))->assertForbidden();
     }
 
     public function test_membuat_paket_dengan_produk(): void

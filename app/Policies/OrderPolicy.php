@@ -48,6 +48,21 @@ class OrderPolicy
     }
 
     /**
+     * Kelola pelaksanaan event (konfirmasi ulang, revisi, OTP, selesai).
+     * Hanya anggota tim event yang di-assign ke order ini — atau admin
+     * lintas cabang (super_admin/operasional) sebagai jalur override.
+     */
+    public function manageEvent(User $user, Order $order): bool
+    {
+        if ($user->seesAllCabang()) {
+            return true;
+        }
+
+        return $user->hasRole('tim_event')
+            && $order->timEvent()->whereKey($user->id)->exists();
+    }
+
+    /**
      * operasional lihat semua cabang; selain itu harus satu cabang.
      */
     protected function sameCabang(User $user, Order $order): bool

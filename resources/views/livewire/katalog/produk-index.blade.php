@@ -4,7 +4,7 @@
             <h1 class="text-lg font-medium text-ink">Produk</h1>
             <p class="text-sm text-ink-muted">Katalog global — berlaku untuk semua cabang.</p>
         </div>
-        <x-button :href="route('produk.create')" size="sm" wire:navigate>Tambah produk</x-button>
+        <x-button :href="route('app.produk.create')" size="sm" wire:navigate>Tambah produk</x-button>
     </div>
 
     @if ($success)
@@ -43,7 +43,7 @@
                     </div>
                 </div>
                 <div class="flex shrink-0 items-center gap-2">
-                    <x-button :href="route('produk.edit', $item)" variant="secondary" size="sm" wire:navigate>Ubah</x-button>
+                    <x-button :href="route('app.produk.edit', $item)" variant="secondary" size="sm" wire:navigate>Ubah</x-button>
                     <x-button wire:click="delete({{ $item->id }})" wire:confirm="Hapus produk {{ $item->nama }}?" variant="ghost" size="sm">Hapus</x-button>
                 </div>
             </div>

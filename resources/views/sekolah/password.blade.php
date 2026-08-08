@@ -1,6 +1,6 @@
 <x-sekolah-layout>
     <div class="mb-6">
-        <h1 class="text-lg font-medium text-ink">Ganti kata sandi</h1>
+        <h1 class="text-2xl font-extrabold tracking-tight text-ink">Ganti kata sandi</h1>
         <p class="text-sm text-ink-muted">Perbarui kata sandi login sekolah Anda.</p>
     </div>
 

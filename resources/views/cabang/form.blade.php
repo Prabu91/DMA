@@ -2,7 +2,7 @@
 @php $cabang = $cabang ?? null; @endphp
 
 <x-card>
-    <form method="POST" action="{{ $cabang ? route('cabang.update', $cabang) : route('cabang.store') }}" class="max-w-lg space-y-4">
+    <form method="POST" action="{{ $cabang ? route('app.cabang.update', $cabang) : route('app.cabang.store') }}" class="max-w-lg space-y-4">
         @csrf
         @if ($cabang)
             @method('PATCH')
@@ -14,7 +14,7 @@
 
         <div class="flex items-center gap-3 pt-2">
             <x-button type="submit">{{ $cabang ? 'Simpan perubahan' : 'Simpan' }}</x-button>
-            <x-button :href="route('cabang.index')" variant="ghost">Batal</x-button>
+            <x-button :href="route('app.cabang.index')" variant="ghost">Batal</x-button>
         </div>
     </form>
 </x-card>

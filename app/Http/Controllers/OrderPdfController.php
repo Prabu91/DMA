@@ -31,4 +31,15 @@ class OrderPdfController extends Controller
 
         return $pdf->stream('booking-'.($order->booking_code ?? $order->id).'.pdf');
     }
+
+    /** Surat Tugas Event (STE) — staf. Detail order + sekolah + tim event. */
+    public function ste(int $id): Response
+    {
+        $order = Order::with(['sekolah', 'cabang', 'marketing', 'timEvent', 'items.produk', 'items.paket'])
+            ->findOrFail($id); // CabangScope membatasi ke cabang staf
+
+        $pdf = Pdf::loadView('pdf.ste', ['order' => $order])->setPaper('a4');
+
+        return $pdf->stream('ste-'.($order->booking_code ?? $order->id).'.pdf');
+    }
 }

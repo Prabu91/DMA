@@ -14,14 +14,27 @@ use Spatie\Permission\Models\Role;
 
 class PenggunaController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
+        $filterCabang = (string) $request->query('cabang', '');
+        $filterRole = (string) $request->query('role', '');
+
         $users = User::with(['cabang', 'roles'])
+            ->when($filterCabang !== '', fn ($q) => $q->where('cabang_id', $filterCabang))
+            ->when($filterRole !== '', fn ($q) => $q->whereHas('roles', fn ($r) => $r->where('name', $filterRole)))
             ->orderBy('nama')
             ->orderBy('name')
             ->get();
 
-        return view('pengguna.index', compact('users'));
+        return view('pengguna.index', [
+            'users' => $users,
+            'cabangOptions' => Cabang::orderBy('nama')->pluck('nama', 'id')->all(),
+            'roleOptions' => Role::orderBy('name')->pluck('name')
+                ->mapWithKeys(fn ($name) => [$name => \Illuminate\Support\Str::headline($name)])
+                ->all(),
+            'filterCabang' => $filterCabang,
+            'filterRole' => $filterRole,
+        ]);
     }
 
     public function create(): View
@@ -40,7 +53,7 @@ class PenggunaController extends Controller
 
         $this->syncRole($user, $data['role'] ?? null);
 
-        return redirect()->route('pengguna.index')->with('success', 'Pengguna ditambahkan.');
+        return redirect()->route('app.pengguna.index')->with('success', 'Pengguna ditambahkan.');
     }
 
     public function edit(User $pengguna): View
@@ -60,7 +73,7 @@ class PenggunaController extends Controller
 
         $this->syncRole($pengguna, $data['role'] ?? null);
 
-        return redirect()->route('pengguna.index')->with('success', 'Pengguna diperbarui.');
+        return redirect()->route('app.pengguna.index')->with('success', 'Pengguna diperbarui.');
     }
 
     public function destroy(Request $request, User $pengguna): RedirectResponse
@@ -71,7 +84,7 @@ class PenggunaController extends Controller
 
         $pengguna->delete();
 
-        return redirect()->route('pengguna.index')->with('success', 'Pengguna dihapus.');
+        return redirect()->route('app.pengguna.index')->with('success', 'Pengguna dihapus.');
     }
 
     /**

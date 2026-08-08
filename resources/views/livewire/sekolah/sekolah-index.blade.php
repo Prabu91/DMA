@@ -21,8 +21,17 @@
         <div class="mb-4 rounded-lg border border-status-danger/20 bg-status-danger/10 px-4 py-3 text-sm text-status-danger">{{ $error }}</div>
     @endif
 
-    <div class="mb-4">
-        <x-input wire:model.live.debounce.300ms="search" type="search" placeholder="Cari nama, ID, atau kota…" />
+    <div class="mb-4 flex flex-wrap items-center gap-2">
+        <div class="min-w-[200px] flex-1">
+            <x-input wire:model.live.debounce.300ms="search" type="search" placeholder="Cari nama, ID, atau kota…" />
+        </div>
+        @if ($this->canChooseCabang)
+            <select wire:model.live="filterCabang"
+                    class="h-11 rounded-lg border border-line bg-card px-2.5 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+                <option value="">Semua cabang</option>
+                @foreach ($this->cabangOptions as $id => $nama)<option value="{{ $id }}" @selected($filterCabang === (string) $id)>{{ $nama }}</option>@endforeach
+            </select>
+        @endif
     </div>
 
     <x-card padding="p-0">

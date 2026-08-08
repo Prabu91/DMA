@@ -1,6 +1,6 @@
 <div>
     <div class="mb-6">
-        <a href="{{ route('produk.index') }}" wire:navigate class="mb-2 inline-flex items-center gap-1 text-sm text-ink-muted hover:text-ink">
+        <a href="{{ route('app.produk.index') }}" wire:navigate class="mb-2 inline-flex items-center gap-1 text-sm text-ink-muted hover:text-ink">
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
             Kembali ke produk
         </a>
@@ -16,6 +16,7 @@
                 <x-select label="Gaya" wire:model="gaya" :options="$this->gayaOptions" :selected="$gaya" placeholder="— Tanpa gaya —" :error="$errors->first('gaya')" hint="Atribut produk, tidak terkait desain." />
                 <x-select label="Status" wire:model="status" :options="$this->statusOptions" :selected="$status" :error="$errors->first('status')" />
                 <x-input label="Harga (Rp)" type="number" min="0" wire:model="harga" :error="$errors->first('harga')" />
+                <x-select label="Satuan hitung" wire:model="satuan" :options="$this->satuanOptions" :selected="$satuan" :error="$errors->first('satuan')" hint="“Per jumlah siswa” → jumlah dipesan = banyak siswa (harga × siswa)." />
                 <x-input label="Deskripsi" wire:model="deskripsi" :error="$errors->first('deskripsi')" class="sm:col-span-2" />
 
                 {{-- Foto --}}
@@ -108,7 +109,7 @@
                 <span wire:loading.remove wire:target="save">{{ $produkId ? 'Simpan perubahan' : 'Simpan produk' }}</span>
                 <span wire:loading wire:target="save">Menyimpan…</span>
             </x-button>
-            <x-button :href="route('produk.index')" variant="ghost" wire:navigate>Batal</x-button>
+            <x-button :href="route('app.produk.index')" variant="ghost" wire:navigate>Batal</x-button>
         </div>
     </form>
 </div>

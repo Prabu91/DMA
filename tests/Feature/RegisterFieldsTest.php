@@ -17,7 +17,7 @@ class RegisterFieldsTest extends TestCase
             'email' => 'budi@dma.test',
             'password' => 'password123',
             'password_confirmation' => 'password123',
-        ])->assertRedirect(route('dashboard', absolute: false));
+        ])->assertRedirect(route('app.dashboard', absolute: false));
 
         $user = User::where('email', 'budi@dma.test')->firstOrFail();
 

@@ -32,7 +32,7 @@
                             Alat kerja internal
                         </span>
                         @auth
-                            <x-button href="{{ route('dashboard') }}" variant="ghost" size="sm">Dashboard</x-button>
+                            <x-button href="{{ route('app.dashboard') }}" variant="ghost" size="sm">Dashboard</x-button>
                         @else
                             <x-button href="{{ route('login') }}" variant="ghost" size="sm">Masuk</x-button>
                         @endauth
@@ -57,7 +57,7 @@
 
                         <div class="mt-8 flex flex-col gap-3 sm:flex-row">
                             @auth
-                                <x-button href="{{ route('dashboard') }}" size="lg" class="w-full sm:w-auto">
+                                <x-button href="{{ route('app.dashboard') }}" size="lg" class="w-full sm:w-auto">
                                     Buka dashboard
                                 </x-button>
                             @else

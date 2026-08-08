@@ -21,6 +21,16 @@ class KotakMasuk extends Component
 
     public array $pilihMarketing = []; // orderId => user_id
 
+    public string $q = '';
+
+    public string $dari = '';   // tanggal masuk dari
+
+    public string $sampai = ''; // tanggal masuk sampai
+
+    public string $cabangId = ''; // filter cabang (admin)
+
+    public ?int $detailId = null; // order yang detailnya dibuka (modal)
+
     public ?string $success = null;
 
     public ?string $error = null;
@@ -28,6 +38,28 @@ class KotakMasuk extends Component
     public function mount(): void
     {
         $this->authorize('viewAny', Order::class);
+    }
+
+    /** Order yang detailnya sedang dilihat (modal preview). */
+    #[Computed]
+    public function detailOrder(): ?Order
+    {
+        if (! $this->detailId) {
+            return null;
+        }
+
+        return Order::with(['sekolah', 'cabang', 'marketing', 'items.produk', 'items.paket', 'items.desain'])
+            ->find($this->detailId); // ter-scope cabang
+    }
+
+    public function lihatDetail(int $orderId): void
+    {
+        $this->detailId = $orderId;
+    }
+
+    public function tutupDetail(): void
+    {
+        $this->detailId = null;
     }
 
     #[Computed]
@@ -45,19 +77,52 @@ class KotakMasuk extends Component
     #[Computed]
     public function orders()
     {
+        return $this->baseQuery()
+            ->when($this->cabangId !== '', fn ($x) => $x->where('cabang_id', $this->cabangId))
+            ->with(['sekolah', 'cabang', 'marketing'])
+            ->withCount('items')
+            ->latest()
+            ->get(); // CabangScope membatasi ke cabang staf
+    }
+
+    /** Query dasar (tanpa filter cabang) — untuk daftar & hitung per-cabang. */
+    private function baseQuery()
+    {
         $q = Order::query()
             ->where('sumber', 'sekolah')
-            ->with(['sekolah', 'cabang'])
-            ->withCount('items')
-            ->latest();
+            ->when($this->dari !== '', fn ($x) => $x->whereDate('tanggal_booking', '>=', $this->dari))
+            ->when($this->sampai !== '', fn ($x) => $x->whereDate('tanggal_booking', '<=', $this->sampai))
+            ->when(trim($this->q) !== '', function ($x) {
+                $term = '%'.trim($this->q).'%';
+                $x->where(fn ($w) => $w->where('booking_code', 'ilike', $term)
+                    ->orWhereHas('sekolah', fn ($s) => $s->where('nama', 'ilike', $term)));
+            });
 
-        if ($this->tampil === 'ditugaskan') {
-            $q->whereNotNull('marketing_id')->with('marketing');
-        } else {
-            $q->whereNull('marketing_id');
-        }
+        $this->tampil === 'ditugaskan'
+            ? $q->whereNotNull('marketing_id')
+            : $q->whereNull('marketing_id');
 
-        return $q->get(); // CabangScope membatasi ke cabang staf
+        return $q;
+    }
+
+    /** Hitung order per cabang (admin) sesuai filter/tab aktif. */
+    #[Computed]
+    public function cabangCounts()
+    {
+        return $this->isAdmin
+            ? $this->baseQuery()->selectRaw('cabang_id, count(*) as c')->groupBy('cabang_id')->pluck('c', 'cabang_id')
+            : collect();
+    }
+
+    #[Computed]
+    public function cabangList()
+    {
+        return $this->isAdmin ? \App\Models\Cabang::orderBy('nama')->get() : collect();
+    }
+
+    public function resetFilter(): void
+    {
+        $this->reset(['q', 'dari', 'sampai', 'cabangId']);
     }
 
     /** Marketing per cabang: [cabang_id => [user_id => nama]]. */
@@ -88,7 +153,9 @@ class KotakMasuk extends Component
         }
 
         $this->buatKode($orderId);
+        Order::find($orderId)?->catat('marketing_diambil');
         $this->success = 'Order berhasil diambil.';
+        $this->detailId = null;
         unset($this->orders);
     }
 
@@ -112,6 +179,8 @@ class KotakMasuk extends Component
 
         if ($affected) {
             $this->buatKode($orderId);
+            $nama = User::find($marketingId)?->nama ?? User::find($marketingId)?->name;
+            Order::find($orderId)?->catat('marketing_ditugaskan', $nama ? 'ke '.$nama : null);
         }
         $this->success = $affected ? 'Order ditugaskan.' : 'Order sudah ditugaskan sebelumnya.';
         unset($this->orders);
@@ -134,6 +203,8 @@ class KotakMasuk extends Component
             ->where('sumber', 'sekolah')
             ->update(['marketing_id' => $marketingId]);
 
+        $nama = User::find($marketingId)?->nama ?? User::find($marketingId)?->name;
+        Order::find($orderId)?->catat('marketing_ditugaskan', $nama ? 'ke '.$nama : null);
         $this->success = 'Penugasan diperbarui.';
         unset($this->orders);
     }

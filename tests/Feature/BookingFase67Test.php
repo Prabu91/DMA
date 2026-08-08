@@ -102,7 +102,7 @@ class BookingFase67Test extends TestCase
         $cart->setSekolahId($sekolah->id);
 
         Livewire::actingAs($mkt);
-        Livewire::test(Review::class, ['konteks' => 'staf'])->call('simpan');
+        Livewire::test(Review::class, ['konteks' => 'staf'])->set('tanggalEvent', now()->addWeek()->toDateString())->call('simpan');
 
         $order = Order::withoutGlobalScopes()->firstOrFail();
         $this->assertNotNull($order->booking_code);
@@ -145,9 +145,10 @@ class BookingFase67Test extends TestCase
             'tanggal_booking' => now(),
         ]);
         $order->items()->create(['tipe_item' => 'produk', 'produk_id' => null, 'qty' => 1, 'harga' => 50000, 'is_free' => false]);
+        $sekolah->markEmailAsVerified();
 
         // Staf (cabang sama).
-        $this->actingAs($mkt)->get(route('order.pdf', $order->id))
+        $this->actingAs($mkt)->get(route('app.order.pdf', $order->id))
             ->assertOk()->assertHeader('content-type', 'application/pdf');
 
         // Sekolah pemilik.
@@ -160,6 +161,7 @@ class BookingFase67Test extends TestCase
         $jkt = Cabang::create(['nama' => 'DMA Jakarta', 'kode_area' => 'JKT']);
         $a = Sekolah::create(['id_sekolah' => 'SKL-JKT-0001', 'nama' => 'SD A', 'cabang_id' => $jkt->id]);
         $b = Sekolah::create(['id_sekolah' => 'SKL-JKT-0002', 'nama' => 'SD B', 'cabang_id' => $jkt->id]);
+        $b->markEmailAsVerified();
         $order = Order::create(['sekolah_id' => $a->id, 'cabang_id' => $jkt->id, 'sumber' => 'sekolah', 'total' => 1, 'jumlah_siswa' => 1, 'tanggal_booking' => now()]);
 
         $this->actingAs($b, 'sekolah')->get(route('sekolah.riwayat.pdf', $order->id))->assertNotFound();

@@ -9,10 +9,14 @@ class CabangSeeder extends Seeder
 {
     public function run(): void
     {
+        // Cabang final DMA (nama bersih, tanpa prefix; Jakarta → Jaksel).
         $cabang = [
-            ['nama' => 'DMA Jakarta', 'kode_area' => 'JKT'],
-            ['nama' => 'DMA Bandung', 'kode_area' => 'BDG'],
-            ['nama' => 'DMA Surabaya', 'kode_area' => 'SBY'],
+            ['nama' => 'Jaksel', 'kode_area' => 'JKS'],
+            ['nama' => 'Bandung', 'kode_area' => 'BDG'],
+            ['nama' => 'Bogor', 'kode_area' => 'BGR'],
+            ['nama' => 'Cianjur', 'kode_area' => 'CJR'],
+            ['nama' => 'Bekasi', 'kode_area' => 'BKS'],
+            ['nama' => 'Surabaya', 'kode_area' => 'SBY'],
         ];
 
         foreach ($cabang as $data) {

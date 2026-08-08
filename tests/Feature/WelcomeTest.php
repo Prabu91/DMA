@@ -10,21 +10,18 @@ class WelcomeTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_welcome_menampilkan_cta_masuk_dan_daftar_untuk_tamu(): void
+    public function test_storefront_tampil_untuk_tamu(): void
     {
         $this->get('/')
             ->assertOk()
-            ->assertSee('Sistem operasional')
-            ->assertSee('Masuk')
-            ->assertSee('Daftar');
+            ->assertSee('Delapan Mata Air')
+            ->assertSee('Daftar sekolah');
     }
 
-    public function test_welcome_menampilkan_buka_dashboard_untuk_user_login(): void
+    public function test_staf_diarahkan_ke_panel(): void
     {
         $this->actingAs(User::factory()->create())
             ->get('/')
-            ->assertOk()
-            ->assertSee('Buka dashboard')
-            ->assertDontSee('Daftar');
+            ->assertRedirect(route('app.dashboard'));
     }
 }

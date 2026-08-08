@@ -2,6 +2,13 @@
 <div class="space-y-6">
     @include('dashboard.partials.stats', ['stats' => $data['stats']])
 
+    @include('dashboard.partials.order-list', [
+        'orders' => $data['recentOrders'],
+        'title' => 'Order terbaru (lintas cabang)',
+        'emptyText' => 'Belum ada order.',
+        'showAll' => true,
+    ])
+
     <div class="grid gap-6 lg:grid-cols-2">
         <x-card title="Order per cabang" padding="p-0">
             @forelse ($data['perCabang'] as $cabang)
@@ -33,7 +40,7 @@
                     ['Free sekolah', 'gift', 'aturan-free.index', ['super_admin', 'operasional']],
                 ] as [$label, $iconKey, $routeName, $roles])
                     @if ($routeName && auth()->user()->hasAnyRole($roles))
-                        <a href="{{ route($routeName) }}"
+                        <a href="{{ route('app.'.$routeName) }}"
                            class="flex items-center gap-2.5 rounded-lg border border-line px-3 py-2.5 text-sm text-ink transition-colors hover:bg-page">
                             <svg class="h-5 w-5 shrink-0 text-navy" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="{{ \App\Support\Icons::path($iconKey) }}" />

@@ -2,13 +2,21 @@
 
 <aside class="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-line bg-card lg:flex">
     <div class="flex h-16 items-center border-b border-line px-5">
-        <a href="{{ route('dashboard') }}">
+        <a href="{{ route('app.dashboard') }}">
             <x-brand-logo size="md" />
         </a>
     </div>
 
-    <nav class="flex-1 space-y-1 overflow-y-auto p-3">
+    <nav class="flex-1 space-y-0.5 overflow-y-auto p-3">
+        @php $grupSekarang = '__none__'; @endphp
         @foreach ($menu as $item)
+            @if (($item['group'] ?? null) !== $grupSekarang)
+                @php $grupSekarang = $item['group'] ?? null; @endphp
+                @if ($grupSekarang)
+                    <div class="px-3 pb-1.5 pt-4 text-[11px] font-semibold uppercase tracking-wider text-ink-muted/60">{{ $grupSekarang }}</div>
+                @endif
+            @endif
+
             @php $active = $item['route'] && request()->routeIs($item['active']); @endphp
             @if ($item['route'])
                 <a href="{{ route($item['route']) }}"

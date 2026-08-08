@@ -17,6 +17,9 @@ class Produk extends Model
     /** Status produk. */
     public const STATUS = ['aktif' => 'Aktif', 'nonaktif' => 'Nonaktif'];
 
+    /** Satuan hitung produk (menentukan label input jumlah, bukan rumus harga). */
+    public const SATUAN = ['qty' => 'Per item (qty)', 'siswa' => 'Per jumlah siswa'];
+
     protected $fillable = [
         'kategori_id',
         'nama',
@@ -24,12 +27,35 @@ class Produk extends Model
         'deskripsi',
         'foto',
         'harga',
+        'satuan',
         'status',
     ];
 
     protected $casts = [
         'harga' => 'integer',
     ];
+
+    protected $attributes = [
+        'satuan' => 'qty',
+    ];
+
+    /** True bila jumlah pesan produk ini = jumlah siswa (harga × jumlah siswa). */
+    public function isPerSiswa(): bool
+    {
+        return $this->satuan === 'siswa';
+    }
+
+    /** Label kolom input jumlah pada halaman pesan. */
+    public function satuanLabel(): string
+    {
+        return $this->isPerSiswa() ? 'Jumlah siswa' : 'Jumlah';
+    }
+
+    /** Kata satuan singkat untuk sufiks harga/qty (mis. /siswa, /item). */
+    public function satuanUnit(): string
+    {
+        return $this->isPerSiswa() ? 'siswa' : 'item';
+    }
 
     public function kategori(): BelongsTo
     {

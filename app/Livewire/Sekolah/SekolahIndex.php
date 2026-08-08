@@ -18,6 +18,8 @@ class SekolahIndex extends Component
 
     public string $search = '';
 
+    public string $filterCabang = ''; // filter cabang (admin lintas cabang)
+
     // Reset password login sekolah (aksi staf terpisah)
     public bool $showPasswordModal = false;
 
@@ -137,9 +139,8 @@ class SekolahIndex extends Component
                 return;
             }
 
-            $cabang = Cabang::findOrFail($cabangId);
             $data['cabang_id'] = $cabangId;
-            $data['id_sekolah'] = Sekolah::generateIdSekolah($cabang);
+            $data['id_sekolah'] = Sekolah::generateIdSekolah();
 
             $sekolah = Sekolah::create($data);
             $this->success = 'Sekolah ditambahkan dengan ID '.$sekolah->id_sekolah.'.';
@@ -211,6 +212,7 @@ class SekolahIndex extends Component
     {
         $sekolah = Sekolah::query()
             ->with('cabang')
+            ->when($this->filterCabang !== '' && $this->canChooseCabang(), fn ($q) => $q->where('cabang_id', $this->filterCabang))
             ->when($this->search !== '', function ($q) {
                 $q->where(function ($sub) {
                     $sub->where('nama', 'ilike', '%'.$this->search.'%')

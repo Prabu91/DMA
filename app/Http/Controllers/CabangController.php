@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Cabang;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class CabangController extends Controller
@@ -27,7 +28,7 @@ class CabangController extends Controller
     {
         Cabang::create($this->validated($request));
 
-        return redirect()->route('cabang.index')->with('success', 'Cabang ditambahkan.');
+        return redirect()->route('app.cabang.index')->with('success', 'Cabang ditambahkan.');
     }
 
     public function edit(Cabang $cabang): View
@@ -39,12 +40,12 @@ class CabangController extends Controller
     {
         $cabang->update($this->validated($request));
 
-        return redirect()->route('cabang.index')->with('success', 'Cabang diperbarui.');
+        return redirect()->route('app.cabang.index')->with('success', 'Cabang diperbarui.');
     }
 
     public function destroy(Cabang $cabang): RedirectResponse
     {
-        // Cegah hapus bila masih dipakai (jaga integritas FK).
+        // Cegah hapus bila masih dipakai data transaksional (jaga integritas FK).
         $dipakai = $cabang->users()->exists()
             || $cabang->sekolah()->exists()
             || $cabang->orders()->exists();
@@ -53,9 +54,17 @@ class CabangController extends Controller
             return back()->with('error', 'Cabang tidak bisa dihapus karena masih memiliki pengguna, sekolah, atau order.');
         }
 
-        $cabang->delete();
+        // Kota hanya pemetaan area (FK nullable) — lepaskan dulu agar tak melanggar FK.
+        $kotaLepas = $cabang->kota()->count();
 
-        return redirect()->route('cabang.index')->with('success', 'Cabang dihapus.');
+        DB::transaction(function () use ($cabang) {
+            $cabang->kota()->update(['cabang_id' => null]);
+            $cabang->delete();
+        });
+
+        $pesan = 'Cabang dihapus.'.($kotaLepas > 0 ? " {$kotaLepas} kota dilepas dari cabang ini." : '');
+
+        return redirect()->route('app.cabang.index')->with('success', $pesan);
     }
 
     private function validated(Request $request): array

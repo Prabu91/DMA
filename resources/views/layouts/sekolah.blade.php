@@ -7,57 +7,61 @@
 
         <title>{{ config('app.name', 'DMA') }} — Sekolah</title>
 
+        @include('partials.favicon')
+
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         @livewireStyles
+        <style>[x-cloak]{display:none!important}</style>
     </head>
-    <body class="font-sans antialiased">
-        @php $sekolah = auth('sekolah')->user(); @endphp
+    <body class="font-display antialiased">
+        @php
+            $sekolah = auth('sekolah')->user();
+            $cartCount = app(\App\Support\Cart::class)->count();
+        @endphp
 
         <div class="min-h-screen bg-page">
-            <header class="sticky top-0 z-30 border-b border-line bg-card">
-                <div class="mx-auto flex h-16 max-w-4xl items-center justify-between gap-3 px-4 sm:px-6">
-                    <a href="{{ route('sekolah.beranda') }}">
-                        <x-brand-logo size="sm" />
+            <header class="sticky top-0 z-30 bg-navy-900 text-white">
+                <div class="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
+                    <a href="{{ route('storefront.home') }}" class="flex items-center gap-2.5">
+                        <span class="inline-flex items-center rounded-lg bg-white px-2 py-1.5">
+                            <img src="{{ asset('images/dma-mark.png') }}" alt="DMA" class="h-5 w-auto">
+                        </span>
+                        <span class="leading-tight">
+                            <span class="block text-sm font-extrabold tracking-tight">Delapan Mata Air</span>
+                            <span class="block text-[8px] font-semibold tracking-[0.16em] text-white/50">PORTAL SEKOLAH</span>
+                        </span>
                     </a>
 
-                    <x-dropdown align="right" width="56">
-                        <x-slot name="trigger">
-                            <button class="flex items-center gap-2 rounded-lg px-1.5 py-1.5 text-sm transition-colors hover:bg-page">
-                                <x-avatar :name="$sekolah?->nama" size="sm" />
-                                <span class="hidden text-start leading-tight sm:block">
-                                    <span class="block max-w-[12rem] truncate font-medium text-ink">{{ $sekolah?->nama }}</span>
-                                    <span class="block text-xs text-ink-muted">{{ $sekolah?->id_sekolah }}</span>
-                                </span>
-                                <svg class="h-4 w-4 text-ink-muted" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
-                            </button>
-                        </x-slot>
+                    <div class="flex items-center gap-4 sm:gap-6">
+                        <nav class="hidden items-center gap-6 text-sm font-semibold md:flex">
+                            <a href="{{ route('storefront.katalog.index') }}" @class(['transition-colors hover:text-white', 'text-white' => request()->routeIs('storefront.katalog.*'), 'text-white/70' => ! request()->routeIs('storefront.katalog.*')])>Katalog</a>
+                            <a href="{{ route('sekolah.riwayat.index') }}" @class(['transition-colors hover:text-white', 'text-white' => request()->routeIs('sekolah.riwayat.*'), 'text-white/70' => ! request()->routeIs('sekolah.riwayat.*')])>Riwayat</a>
+                        </nav>
 
-                        <x-slot name="content">
-                            <div class="border-b border-line px-4 py-3">
-                                <div class="truncate text-sm font-medium text-ink">{{ $sekolah?->nama }}</div>
-                                <div class="text-xs text-ink-muted">{{ $sekolah?->id_sekolah }}</div>
-                            </div>
-                            <x-dropdown-link :href="route('sekolah.beranda')">Beranda</x-dropdown-link>
-                            <x-dropdown-link :href="route('sekolah.katalog.index')">Katalog</x-dropdown-link>
-                            <x-dropdown-link :href="route('sekolah.riwayat.index')">Riwayat booking</x-dropdown-link>
-                            <x-dropdown-link :href="route('sekolah.password.edit')">Ganti kata sandi</x-dropdown-link>
-                            <form method="POST" action="{{ route('sekolah.logout') }}">
-                                @csrf
-                                <x-dropdown-link :href="route('sekolah.logout')"
-                                    onclick="event.preventDefault(); this.closest('form').submit();">
-                                    Keluar
-                                </x-dropdown-link>
-                            </form>
-                        </x-slot>
-                    </x-dropdown>
+                        <div class="flex items-center gap-2">
+                            {{-- Ikon keranjang + badge --}}
+                            <a href="{{ route('sekolah.keranjang') }}"
+                               class="relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+                               aria-label="Keranjang">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="{{ \App\Support\Icons::path('cart') }}" />
+                                </svg>
+                                @if ($cartCount > 0)
+                                    <span class="absolute -right-0.5 -top-0.5 inline-flex min-w-[1.125rem] items-center justify-center rounded-full bg-brand px-1 text-[0.625rem] font-bold leading-tight text-white">{{ $cartCount }}</span>
+                                @endif
+                            </a>
+
+                            @include('partials.account-menu')
+                        </div>
+                    </div>
                 </div>
             </header>
 
-            <main class="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6">
+            <main class="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
                 @include('layouts.flash')
                 {{ $slot }}
             </main>

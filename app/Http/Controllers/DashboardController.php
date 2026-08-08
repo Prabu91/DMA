@@ -29,7 +29,7 @@ class DashboardController extends Controller
         $role = $user->getRoleNames()->first();
 
         if ($role !== null && in_array($role, self::ROLE_DASHBOARDS, true)) {
-            return redirect()->route('dashboard.'.$role);
+            return redirect()->route('app.dashboard.'.$role);
         }
 
         // User tanpa role yang dikenal: tampilkan dashboard generik.

@@ -47,7 +47,7 @@ class ProdukFase2Test extends TestCase
         $m = User::factory()->create();
         $m->assignRole('marketing');
 
-        $this->actingAs($m)->get(route('produk.index'))->assertForbidden();
+        $this->actingAs($m)->get(route('app.produk.index'))->assertForbidden();
     }
 
     public function test_membuat_produk_dengan_opsi_bonus_dan_foto(): void
@@ -74,7 +74,7 @@ class ProdukFase2Test extends TestCase
             ->set('bonus.0.qty', 2)
             ->call('save')
             ->assertHasNoErrors()
-            ->assertRedirect(route('produk.index'));
+            ->assertRedirect(route('app.produk.index'));
 
         $p = Produk::where('nama', 'Foto 10R')->firstOrFail();
         $this->assertSame($kategori->id, $p->kategori_id);

@@ -16,7 +16,7 @@ use Livewire\Component;
  */
 class Keranjang extends Component
 {
-    public string $konteks = 'staf';
+    public string $konteks = 'staf'; // 'staf' | 'sekolah' | 'publik'
 
     public int $jumlahSiswa = 0;
 
@@ -26,7 +26,7 @@ class Keranjang extends Component
 
     public function mount(string $konteks = 'staf'): void
     {
-        $this->konteks = $konteks === 'sekolah' ? 'sekolah' : 'staf';
+        $this->konteks = in_array($konteks, ['sekolah', 'publik'], true) ? $konteks : 'staf';
         $cart = app(Cart::class);
         $this->jumlahSiswa = $cart->jumlahSiswa();
         $this->sekolahId = $cart->sekolahId();
@@ -111,6 +111,13 @@ class Keranjang extends Component
 
             return null;
         }
+
+        // Konteks publik: menuju checkout. CheckoutController menerapkan login-gate
+        // (redirect tamu ke /masuk dgn intended) + wajib verified + blokir cabang null.
+        if ($this->konteks === 'publik') {
+            return $this->redirect(route('storefront.checkout'), navigate: true);
+        }
+
         if (! $this->sekolahTerpilih()) {
             $this->info = 'Pilih sekolah tujuan terlebih dahulu.';
 
@@ -123,16 +130,18 @@ class Keranjang extends Component
         }
 
         return $this->redirect(
-            $this->konteks === 'sekolah' ? route('sekolah.review') : route('review'),
+            $this->konteks === 'sekolah' ? route('sekolah.review') : route('app.review'),
             navigate: true
         );
     }
 
     public function katalogUrl(): string
     {
-        return $this->konteks === 'sekolah'
-            ? route('sekolah.katalog.index')
-            : route('etalase.index');
+        return match ($this->konteks) {
+            'sekolah' => route('sekolah.katalog.index'),
+            'publik' => route('storefront.katalog.index'),
+            default => route('app.etalase.index'),
+        };
     }
 
     public function render()

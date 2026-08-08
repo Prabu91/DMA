@@ -5,7 +5,7 @@
                 <h1 class="text-lg font-medium text-ink">Cabang</h1>
                 <p class="text-sm text-ink-muted">Kelola daftar cabang DMA.</p>
             </div>
-            <x-button :href="route('cabang.create')" size="sm">Tambah cabang</x-button>
+            <x-button :href="route('app.cabang.create')" size="sm">Tambah cabang</x-button>
         </div>
     </x-slot>
 
@@ -26,8 +26,8 @@
                 </div>
 
                 <div class="flex shrink-0 items-center gap-2">
-                    <x-button :href="route('cabang.edit', $item)" variant="secondary" size="sm">Ubah</x-button>
-                    <form method="POST" action="{{ route('cabang.destroy', $item) }}"
+                    <x-button :href="route('app.cabang.edit', $item)" variant="secondary" size="sm">Ubah</x-button>
+                    <form method="POST" action="{{ route('app.cabang.destroy', $item) }}"
                           onsubmit="return confirm('Hapus cabang {{ $item->nama }}?')">
                         @csrf
                         @method('DELETE')

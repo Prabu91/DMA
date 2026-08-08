@@ -1,10 +1,12 @@
 <div>
+    @php $sf = in_array($konteks, ['publik', 'sekolah'], true); @endphp
+
     <div class="mb-6 flex items-center justify-between gap-3">
         <div>
-            <h1 class="text-lg font-medium text-ink">Keranjang</h1>
+            <h1 class="{{ $sf ? 'text-2xl font-extrabold tracking-tight text-ink' : 'text-lg font-medium text-ink' }}">Keranjang</h1>
             <p class="text-sm text-ink-muted">Periksa item, jumlah siswa, lalu lanjut memesan.</p>
         </div>
-        <a href="{{ $this->katalogUrl() }}" wire:navigate class="text-sm font-medium text-brand hover:text-brand-hover">+ Tambah item</a>
+        <a href="{{ $this->katalogUrl() }}" wire:navigate class="text-sm font-bold text-brand hover:text-brand-hover">+ Tambah item</a>
     </div>
 
     @if ($info)
@@ -13,7 +15,8 @@
 
     <div class="grid gap-6 lg:grid-cols-3">
         <div class="space-y-6 lg:col-span-2">
-            {{-- Booking untuk --}}
+            {{-- Booking untuk — konteks publik: sekolah ditentukan saat login/checkout (Fase 4). --}}
+            @if ($konteks !== 'publik')
             <x-card title="Booking untuk">
                 @if ($this->isSekolahFlow)
                     <div class="flex items-center gap-3">
@@ -30,6 +33,7 @@
                     @endif
                 @endif
             </x-card>
+            @endif
 
             {{-- Item --}}
             <x-card title="Item" padding="p-0">
@@ -38,12 +42,13 @@
                         <div class="min-w-0">
                             <div class="flex items-center gap-2">
                                 <x-badge :variant="$line['tipe'] === 'paket' ? 'brand' : 'neutral'">{{ ucfirst($line['tipe']) }}</x-badge>
-                                <span class="truncate text-sm text-ink">{{ $line['nama'] }}</span>
+                                <span class="truncate text-sm {{ $sf ? 'font-bold' : '' }} text-ink">{{ $line['nama'] }}</span>
                             </div>
                             <div class="mt-0.5 text-xs text-ink-muted">
                                 @if ($line['desain']) Desain {{ $line['desain'] }} · @endif
                                 @if ($line['ukuran']) Ukuran {{ $line['ukuran'] }} · @endif
-                                Rp{{ number_format($line['unit'], 0, ',', '.') }}/item
+                                Rp{{ number_format($line['unit'], 0, ',', '.') }}/{{ ($line['satuan'] ?? 'qty') === 'siswa' ? 'siswa' : 'item' }}
+                                @if (($line['satuan'] ?? 'qty') === 'siswa') · <span class="text-brand">per siswa</span> @endif
                             </div>
                         </div>
                         <div class="flex shrink-0 items-center gap-3">
@@ -71,15 +76,23 @@
         <div>
             <x-card title="Ringkasan">
                 <div class="space-y-4">
-                    <x-input label="Jumlah siswa" type="number" min="0" wire:model.live.debounce.400ms="jumlahSiswa" hint="Dipakai untuk aturan free sekolah." />
+                    @if ($konteks !== 'publik')
+                        <x-input label="Jumlah siswa" type="number" min="0" wire:model.live.debounce.400ms="jumlahSiswa" hint="Dipakai untuk aturan free sekolah." />
+                    @endif
 
-                    <div class="flex items-center justify-between border-t border-line pt-4 text-sm">
-                        <span class="text-ink-muted">Subtotal</span>
-                        <span class="font-medium text-ink">Rp{{ number_format($this->subtotal, 0, ',', '.') }}</span>
+                    <div @class(['flex items-baseline justify-between', 'border-t border-line pt-4' => $konteks !== 'publik'])>
+                        <span class="text-sm text-ink-muted">Subtotal</span>
+                        <span class="{{ $sf ? 'text-xl font-extrabold text-navy' : 'text-sm font-medium text-ink' }}">Rp{{ number_format($this->subtotal, 0, ',', '.') }}</span>
                     </div>
                     <p class="text-xs text-ink-muted">Item free &amp; total akhir dihitung pada tahap review.</p>
 
-                    <x-button wire:click="lanjut" class="w-full">Lanjut ke review</x-button>
+                    @if ($konteks === 'publik')
+                        <x-button wire:click="lanjut" class="w-full">Lanjut ke pemesanan</x-button>
+                        <p class="text-center text-xs text-ink-muted">Masuk atau daftar untuk menyelesaikan pesanan.</p>
+                    @else
+                        <x-button wire:click="lanjut" class="w-full">Lanjut ke review</x-button>
+                    @endif
+
                     @if (! app(\App\Support\Cart::class)->isEmpty())
                         <button type="button" wire:click="kosongkan" wire:confirm="Kosongkan keranjang?" class="w-full text-center text-xs text-ink-muted hover:text-status-danger">Kosongkan keranjang</button>
                     @endif

@@ -4,5 +4,5 @@
         <p class="text-sm text-ink-muted">Pemantauan operasional lintas cabang.</p>
     </x-slot>
 
-    @include('dashboard.partials.lintas-cabang', ['data' => $data])
+    <livewire:dashboard.admin-dashboard />
 </x-app-layout>

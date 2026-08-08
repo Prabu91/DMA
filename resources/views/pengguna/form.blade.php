@@ -2,7 +2,7 @@
 @php $pengguna = $pengguna ?? null; @endphp
 
 <x-card>
-    <form method="POST" action="{{ $pengguna ? route('pengguna.update', $pengguna) : route('pengguna.store') }}" class="max-w-lg space-y-4">
+    <form method="POST" action="{{ $pengguna ? route('app.pengguna.update', $pengguna) : route('app.pengguna.store') }}" class="max-w-lg space-y-4">
         @csrf
         @if ($pengguna)
             @method('PATCH')
@@ -58,7 +58,7 @@
 
         <div class="flex items-center gap-3 pt-2">
             <x-button type="submit">{{ $pengguna ? 'Simpan perubahan' : 'Simpan' }}</x-button>
-            <x-button :href="route('pengguna.index')" variant="ghost">Batal</x-button>
+            <x-button :href="route('app.pengguna.index')" variant="ghost">Batal</x-button>
         </div>
     </form>
 </x-card>

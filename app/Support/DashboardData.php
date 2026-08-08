@@ -42,14 +42,15 @@ class DashboardData
                 ['label' => 'Event minggu ini', 'value' => (clone $base())->whereBetween('tanggal_event', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()])->count(), 'icon_key' => 'calendar', 'accent' => 'info'],
                 ['label' => 'Total sekolah', 'value' => Sekolah::count(), 'icon_key' => 'school', 'accent' => 'navy'],
             ],
-            'recentOrders' => $base()->with('sekolah')->latest()->limit(6)->get(),
+            'recentOrders' => $base()->with(['sekolah', 'cabang'])->latest()->limit(6)->get(),
         ];
     }
 
     private static function timEvent(User $user): array
     {
-        // Event yang di-assign ke user ini via pivot order_tim_event.
-        $assigned = $user->ordersAsTimEvent()->with('sekolah');
+        // Event yang di-assign ke user ini via pivot order_tim_event —
+        // hanya yang order-nya sudah di-assign marketing (siap dikerjakan).
+        $assigned = $user->ordersAsTimEvent()->whereNotNull('marketing_id')->with('sekolah');
 
         return [
             'stats' => [
@@ -73,6 +74,7 @@ class DashboardData
             // Rekap order per cabang (withCount tidak terpengaruh CabangScope Order
             // karena super_admin/operasional dikecualikan dari scope).
             'perCabang' => Cabang::withCount('orders')->orderBy('nama')->get(),
+            'recentOrders' => Order::with(['sekolah', 'cabang'])->latest()->limit(6)->get(),
         ];
     }
 
@@ -86,7 +88,7 @@ class DashboardData
                 ['label' => 'Sekolah cabang', 'value' => Sekolah::count(), 'icon_key' => 'school', 'accent' => 'info'],
                 ['label' => 'Event minggu ini', 'value' => Order::whereBetween('tanggal_event', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()])->count(), 'icon_key' => 'calendar', 'accent' => 'navy'],
             ],
-            'recentOrders' => Order::with('sekolah')->latest()->limit(6)->get(),
+            'recentOrders' => Order::with(['sekolah', 'cabang'])->latest()->limit(6)->get(),
         ];
     }
 

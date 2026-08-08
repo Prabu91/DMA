@@ -59,7 +59,7 @@ class BookingFase4Test extends TestCase
         $cart->setSekolahId($sekolah->id);
 
         Livewire::actingAs($marketing);
-        Livewire::test(Review::class, ['konteks' => 'staf'])->call('simpan');
+        Livewire::test(Review::class, ['konteks' => 'staf'])->set('tanggalEvent', now()->addWeek()->toDateString())->call('simpan');
 
         $order = Order::withoutGlobalScopes()->firstOrFail();
         $this->assertSame('marketing', $order->sumber);
@@ -86,7 +86,7 @@ class BookingFase4Test extends TestCase
         $cart->setJumlahSiswa(10);
 
         Livewire::actingAs($sekolah, 'sekolah');
-        Livewire::test(Review::class, ['konteks' => 'sekolah'])->call('simpan');
+        Livewire::test(Review::class, ['konteks' => 'sekolah'])->set('tanggalEvent', now()->addWeek()->toDateString())->call('simpan');
 
         $order = Order::withoutGlobalScopes()->firstOrFail();
         $this->assertSame('sekolah', $order->sumber);
@@ -136,7 +136,7 @@ class BookingFase4Test extends TestCase
         $cart->setSekolahId($sekolah->id);
 
         Livewire::actingAs($marketing);
-        Livewire::test(Review::class, ['konteks' => 'staf'])->call('simpan');
+        Livewire::test(Review::class, ['konteks' => 'staf'])->set('tanggalEvent', now()->addWeek()->toDateString())->call('simpan');
 
         return [Order::withoutGlobalScopes()->with('items')->firstOrFail()];
     }
@@ -160,7 +160,7 @@ class BookingFase4Test extends TestCase
         $cart->setSekolahId($sekolah->id);
 
         Livewire::actingAs($marketing);
-        Livewire::test(Review::class, ['konteks' => 'staf'])->call('simpan');
+        Livewire::test(Review::class, ['konteks' => 'staf'])->set('tanggalEvent', now()->addWeek()->toDateString())->call('simpan');
 
         $order = Order::withoutGlobalScopes()->with('items')->firstOrFail();
         $free = $order->items->where('is_free', true)->first();

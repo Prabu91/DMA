@@ -14,13 +14,13 @@ use Livewire\Component;
  */
 class Etalase extends Component
 {
-    public string $konteks = 'staf'; // 'staf' | 'sekolah'
+    public string $konteks = 'staf'; // 'staf' | 'sekolah' | 'publik'
 
     public string $search = '';
 
     public function mount(string $konteks = 'staf'): void
     {
-        $this->konteks = $konteks === 'sekolah' ? 'sekolah' : 'staf';
+        $this->konteks = in_array($konteks, ['sekolah', 'publik'], true) ? $konteks : 'staf';
     }
 
     #[Computed]
@@ -50,14 +50,20 @@ class Etalase extends Component
 
     public function detailUrl(string $tipe, int $id): string
     {
-        return $this->konteks === 'sekolah'
-            ? route('sekolah.katalog.detail', ['tipe' => $tipe, 'id' => $id])
-            : route('etalase.detail', ['tipe' => $tipe, 'id' => $id]);
+        return match ($this->konteks) {
+            'sekolah' => route('sekolah.katalog.detail', ['tipe' => $tipe, 'id' => $id]),
+            'publik' => route('storefront.katalog.detail', ['tipe' => $tipe, 'id' => $id]),
+            default => route('app.etalase.detail', ['tipe' => $tipe, 'id' => $id]),
+        };
     }
 
     public function keranjangUrl(): string
     {
-        return $this->konteks === 'sekolah' ? route('sekolah.keranjang') : route('keranjang');
+        return match ($this->konteks) {
+            'sekolah' => route('sekolah.keranjang'),
+            'publik' => route('storefront.keranjang'),
+            default => route('app.keranjang'),
+        };
     }
 
     #[Computed]

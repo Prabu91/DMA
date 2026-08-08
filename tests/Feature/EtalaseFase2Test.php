@@ -42,18 +42,19 @@ class EtalaseFase2Test extends TestCase
 
     public function test_marketing_bisa_akses_etalase_staf(): void
     {
-        $this->actingAs($this->user('marketing'))->get(route('etalase.index'))->assertOk();
+        $this->actingAs($this->user('marketing'))->get(route('app.etalase.index'))->assertOk();
     }
 
     public function test_editor_tidak_bisa_akses_etalase(): void
     {
-        $this->actingAs($this->user('editor'))->get(route('etalase.index'))->assertForbidden();
+        $this->actingAs($this->user('editor'))->get(route('app.etalase.index'))->assertForbidden();
     }
 
     public function test_sekolah_bisa_akses_katalog(): void
     {
         $cabang = Cabang::create(['nama' => 'DMA Jakarta', 'kode_area' => 'JKT']);
         $sekolah = Sekolah::create(['id_sekolah' => 'SKL-JKT-0001', 'nama' => 'SD A', 'cabang_id' => $cabang->id]);
+        $sekolah->markEmailAsVerified();
 
         $this->actingAs($sekolah, 'sekolah')->get(route('sekolah.katalog.index'))->assertOk();
     }
@@ -62,7 +63,7 @@ class EtalaseFase2Test extends TestCase
     {
         $this->actingAs($this->user('marketing'))
             ->get(route('sekolah.katalog.index'))
-            ->assertRedirect(route('sekolah.login'));
+            ->assertRedirect(route('sekolah.masuk'));
     }
 
     // ---------- Etalase ----------

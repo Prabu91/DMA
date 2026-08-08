@@ -22,7 +22,9 @@ export default {
     theme: {
         extend: {
             fontFamily: {
+                // Panel staf tetap Plus Jakarta Sans; storefront pakai `font-display` (Archivo).
                 sans: ['Plus Jakarta Sans', ...defaultTheme.fontFamily.sans],
+                display: ['Archivo', ...defaultTheme.fontFamily.sans],
             },
 
             colors: {
@@ -31,10 +33,11 @@ export default {
                     DEFAULT: withVar('--color-brand'),
                     hover: withVar('--color-brand-hover'),
                 },
-                // Aksen kedalaman (navy) — dipakai hemat.
+                // Aksen kedalaman (navy) — struktur storefront (hero/header/footer).
                 navy: {
                     DEFAULT: withVar('--color-navy'),
                     hover: withVar('--color-navy-hover'),
+                    900: withVar('--color-navy-900'),
                 },
                 // Teks.
                 ink: {

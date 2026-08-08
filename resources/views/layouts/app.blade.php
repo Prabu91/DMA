@@ -5,15 +5,15 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ config('app.name', 'DMA') }}</title>
+        <title>{{ config('app.name', 'DMA') }} · Studio Foto</title>
 
         <!-- PWA -->
         <link rel="manifest" href="{{ asset('manifest.json') }}">
-        <meta name="theme-color" content="#E08020">
+        <meta name="theme-color" content="#191B52">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="default">
         <meta name="apple-mobile-web-app-title" content="{{ config('app.name') }}">
-        <link rel="apple-touch-icon" href="{{ asset('icons/icon.svg') }}">
+        @include('partials.favicon')
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.googleapis.com">

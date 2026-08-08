@@ -39,7 +39,7 @@ class EtalaseDetail extends Component
     {
         abort_unless(in_array($tipe, ['produk', 'paket'], true), 404);
 
-        $this->konteks = $konteks === 'sekolah' ? 'sekolah' : 'staf';
+        $this->konteks = in_array($konteks, ['sekolah', 'publik'], true) ? $konteks : 'staf';
         $this->tipe = $tipe;
         $this->id = $id;
 
@@ -106,16 +106,20 @@ class EtalaseDetail extends Component
 
     public function indexUrl(): string
     {
-        return $this->konteks === 'sekolah'
-            ? route('sekolah.katalog.index')
-            : route('etalase.index');
+        return match ($this->konteks) {
+            'sekolah' => route('sekolah.katalog.index'),
+            'publik' => route('storefront.katalog.index'),
+            default => route('app.etalase.index'),
+        };
     }
 
     public function keranjangUrl(): string
     {
-        return $this->konteks === 'sekolah'
-            ? route('sekolah.keranjang')
-            : route('keranjang');
+        return match ($this->konteks) {
+            'sekolah' => route('sekolah.keranjang'),
+            'publik' => route('storefront.keranjang'),
+            default => route('app.keranjang'),
+        };
     }
 
     public function tambah(Cart $cart): void

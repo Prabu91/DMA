@@ -1,13 +1,18 @@
 <div>
+    @php
+        $siapTampil = $konteks === 'publik' ? $this->siapReview : $this->valid;
+        $sf = in_array($konteks, ['publik', 'sekolah'], true);
+    @endphp
+
     <div class="mb-6 flex items-center justify-between gap-3">
         <div>
-            <h1 class="text-lg font-medium text-ink">Review booking</h1>
+            <h1 class="{{ $sf ? 'text-2xl font-extrabold tracking-tight text-ink' : 'text-lg font-medium text-ink' }}">{{ $konteks === 'publik' ? 'Checkout' : 'Review booking' }}</h1>
             <p class="text-sm text-ink-muted">Periksa kembali sebelum menyimpan.</p>
         </div>
-        <a href="{{ $this->keranjangUrl() }}" wire:navigate class="text-sm text-ink-muted hover:text-ink">← Keranjang</a>
+        <a href="{{ $this->keranjangUrl() }}" wire:navigate class="text-sm font-semibold text-ink-muted hover:text-ink">← Keranjang</a>
     </div>
 
-    @if (! $this->valid)
+    @if (! $siapTampil)
         <x-card>
             <div class="py-8 text-center">
                 <p class="text-sm text-ink-muted">Data booking belum lengkap.</p>
@@ -41,12 +46,12 @@
                             <div class="min-w-0">
                                 <div class="flex items-center gap-2">
                                     <x-badge :variant="$line['tipe'] === 'paket' ? 'brand' : 'neutral'">{{ ucfirst($line['tipe']) }}</x-badge>
-                                    <span class="truncate text-sm text-ink">{{ $line['nama'] }}</span>
+                                    <span class="truncate text-sm {{ $sf ? 'font-bold' : '' }} text-ink">{{ $line['nama'] }}</span>
                                 </div>
                                 <div class="mt-0.5 text-xs text-ink-muted">
                                     @if ($line['desain']) Desain {{ $line['desain'] }} · @endif
                                     @if ($line['ukuran']) {{ $line['ukuran'] }} · @endif
-                                    {{ $line['qty'] }} × Rp{{ number_format($line['unit'], 0, ',', '.') }}
+                                    {{ $line['qty'] }}{{ ($line['satuan'] ?? 'qty') === 'siswa' ? ' siswa' : '' }} × Rp{{ number_format($line['unit'], 0, ',', '.') }}
                                 </div>
                             </div>
                             <div class="text-sm font-medium text-ink">Rp{{ number_format($line['total'], 0, ',', '.') }}</div>
@@ -73,10 +78,27 @@
 
             <div>
                 <x-card title="Ringkasan">
+                    @if ($konteks === 'publik')
+                        <div class="mb-4">
+                            <x-input label="Jumlah siswa" type="number" min="1" wire:model.live.debounce.500ms="jumlahSiswaInput" hint="Dipakai untuk aturan free sekolah." />
+                        </div>
+                    @endif
+
+                    {{-- Jadwal pelaksanaan event (wajib tanggal; jam opsional). --}}
+                    <div class="mb-4 space-y-3">
+                        <x-input label="Tanggal event" type="date" wire:model="tanggalEvent"
+                                 min="{{ now()->toDateString() }}" :error="$errors->first('tanggalEvent')"
+                                 hint="Tanggal pelaksanaan foto. Bisa diubah marketing bila perlu." />
+                        <x-input label="Jam event (opsional)" type="time" wire:model="jamEvent" :error="$errors->first('jamEvent')" />
+                    </div>
+
                     <dl class="space-y-2 text-sm">
                         <div class="flex justify-between"><dt class="text-ink-muted">Subtotal</dt><dd class="text-ink">Rp{{ number_format($this->subtotal, 0, ',', '.') }}</dd></div>
-                        <div class="flex justify-between"><dt class="text-ink-muted">Item gratis</dt><dd class="text-status-success">{{ count($this->freeItems) }} item</dd></div>
-                        <div class="flex justify-between border-t border-line pt-2 text-base"><dt class="font-medium text-ink">Total</dt><dd class="font-medium text-ink">Rp{{ number_format($this->total, 0, ',', '.') }}</dd></div>
+                        <div class="flex justify-between"><dt class="text-ink-muted">Item gratis</dt><dd class="font-semibold text-status-success">{{ count($this->freeItems) }} item</dd></div>
+                        <div class="flex items-baseline justify-between border-t border-line pt-3">
+                            <dt class="{{ $sf ? 'text-sm font-bold text-ink' : 'text-base font-medium text-ink' }}">Total</dt>
+                            <dd class="{{ $sf ? 'text-2xl font-extrabold text-navy' : 'text-base font-medium text-ink' }}">Rp{{ number_format($this->total, 0, ',', '.') }}</dd>
+                        </div>
                     </dl>
 
                     <x-button wire:click="simpan" class="mt-5 w-full">
