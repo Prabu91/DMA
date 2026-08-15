@@ -51,7 +51,7 @@
                                 <div class="mt-0.5 text-xs text-ink-muted">
                                     @if ($line['desain']) Desain {{ $line['desain'] }} · @endif
                                     @if ($line['ukuran']) {{ $line['ukuran'] }} · @endif
-                                    {{ $line['qty'] }}{{ ($line['satuan'] ?? 'qty') === 'siswa' ? ' siswa' : '' }} × Rp{{ number_format($line['unit'], 0, ',', '.') }}
+                                    {{ $line['qty'] }} × Rp{{ number_format($line['unit'], 0, ',', '.') }}
                                 </div>
                             </div>
                             <div class="text-sm font-medium text-ink">Rp{{ number_format($line['total'], 0, ',', '.') }}</div>

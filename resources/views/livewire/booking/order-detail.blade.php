@@ -74,6 +74,13 @@
                 @endif
             </x-card>
 
+            {{-- Visual tracking status order — hanya panel staf; disembunyikan dari portal sekolah (client) untuk sementara --}}
+            @unless ($sf)
+                <x-card title="Lacak status pesanan">
+                    <x-order-tracking :order="$order" />
+                </x-card>
+            @endunless
+
             {{-- OTP penyelesaian event — untuk guru (portal sekolah) --}}
             @if ($sf && $order->event_status !== \App\Support\OrderStatus::EVENT_SELESAI && $order->eventOtpActive())
                 <x-card>
@@ -109,38 +116,131 @@
                 </x-card>
             @endunless
 
-            {{-- Status pembayaran — dikelola staf --}}
+            {{-- Pembayaran — dikelola staf --}}
             @unless ($sf)
                 @php $st = $order->status ?: 'baru'; @endphp
-                <x-card title="Status pembayaran">
+                <x-card title="Pembayaran">
                     <div class="flex items-center gap-2">
                         <x-badge :variant="\App\Support\OrderStatus::badge($st)">{{ \App\Support\OrderStatus::label($st) }}</x-badge>
+                        <span class="text-xs text-ink-muted">status mengikuti pembayaran otomatis</span>
                     </div>
 
-                    <div class="mt-4">
-                        <x-input label="Catatan pembayaran (opsional)" wire:model="catatan" placeholder="mis. DP 50% via transfer BCA" />
-                    </div>
+                    {{-- Ringkasan finansial --}}
+                    <dl class="mt-4 space-y-2 text-sm">
+                        <div class="flex justify-between"><dt class="text-ink-muted">Total</dt><dd class="text-ink">Rp{{ number_format($order->total, 0, ',', '.') }}</dd></div>
+                        <div class="flex justify-between"><dt class="text-ink-muted">Diskon</dt><dd class="text-ink">Rp{{ number_format($order->totalDiskon(), 0, ',', '.') }}</dd></div>
+                        <div class="flex justify-between border-t border-line pt-2"><dt class="font-medium text-ink">Total setelah diskon</dt><dd class="font-medium text-ink">Rp{{ number_format($order->totalSetelahDiskon(), 0, ',', '.') }}</dd></div>
+                        <div class="flex justify-between"><dt class="text-ink-muted">Sudah dibayar</dt><dd class="text-status-success">Rp{{ number_format($order->totalDibayar(), 0, ',', '.') }}</dd></div>
+                        <div class="flex justify-between border-t border-line pt-2"><dt class="font-bold text-ink">Outstanding</dt><dd class="font-bold text-brand-hover">Rp{{ number_format($order->outstanding(), 0, ',', '.') }}</dd></div>
+                    </dl>
 
-                    <div class="mt-4 flex flex-wrap items-center gap-2">
-                        @if ($st === 'baru')
-                            <x-button wire:click="ubahStatus('dp')" wire:confirm="Konfirmasi DP sudah diterima?" size="sm">Konfirmasi DP</x-button>
-                            <x-button wire:click="ubahStatus('lunas')" wire:confirm="Tandai order ini LUNAS?" variant="secondary" size="sm">Tandai lunas</x-button>
-                        @elseif ($st === 'dp')
-                            <x-button wire:click="ubahStatus('lunas')" wire:confirm="Tandai order ini LUNAS?" size="sm">Tandai lunas</x-button>
-                        @elseif ($st === 'lunas')
-                            <span class="text-sm font-medium text-status-success">Pembayaran lunas ✓</span>
-                        @endif
+                    {{-- Catat pembayaran --}}
+                    @unless ($st === 'batal')
+                        <div class="mt-5 border-t border-line pt-4">
+                            <h3 class="mb-3 text-sm font-medium text-ink">Catat pembayaran</h3>
+                            <div class="grid gap-3 sm:grid-cols-2">
+                                <x-select label="Jenis" wire:model="bayarJenis" :options="\App\Models\OrderPembayaran::JENIS" :selected="$bayarJenis" />
+                                <x-input type="number" min="1" label="Nominal (Rp)" wire:model="bayarJumlah" :error="$errors->first('bayarJumlah')" placeholder="mis. 500000" />
+                                <x-input type="date" label="Tanggal bayar" wire:model="bayarTanggal" :error="$errors->first('bayarTanggal')" />
+                                <div class="space-y-1.5">
+                                    <span class="block text-sm font-medium text-ink">Bukti (opsional)</span>
+                                    <input type="file" wire:model="bayarBukti" accept="image/*"
+                                           class="block w-full text-sm text-ink file:mr-3 file:rounded-lg file:border-0 file:bg-page file:px-3 file:py-2 file:text-sm file:font-medium file:text-ink hover:file:bg-line">
+                                    @error('bayarBukti')<p class="text-xs text-status-danger">{{ $message }}</p>@enderror
+                                </div>
+                            </div>
+                            <div class="mt-3 flex items-center gap-3">
+                                <x-button wire:click="catatPembayaran" size="sm">
+                                    <span wire:loading.remove wire:target="catatPembayaran,bayarBukti">Catat pembayaran</span>
+                                    <span wire:loading wire:target="catatPembayaran,bayarBukti">Menyimpan…</span>
+                                </x-button>
+                                @if ($bayarMsg)<span class="text-sm font-medium text-status-success">{{ $bayarMsg }}</span>@endif
+                            </div>
+                        </div>
+                    @endunless
 
-                        @if (in_array($st, ['baru', 'dp', 'lunas'], true))
-                            <x-button wire:click="ubahStatus('batal')" wire:confirm="Batalkan order ini?" variant="danger" size="sm">Batalkan</x-button>
-                        @elseif ($st === 'batal')
-                            <x-button wire:click="ubahStatus('baru')" wire:confirm="Aktifkan kembali order ini?" variant="secondary" size="sm">Aktifkan kembali</x-button>
-                        @endif
-                    </div>
-
-                    @if ($statusMsg)
-                        <p class="mt-3 text-sm font-medium text-status-success">{{ $statusMsg }}</p>
+                    {{-- Riwayat pembayaran --}}
+                    @if ($order->pembayaran->isNotEmpty())
+                        <div class="mt-5 border-t border-line pt-4">
+                            <h3 class="mb-2 text-sm font-medium text-ink">Riwayat pembayaran</h3>
+                            <div class="space-y-1.5">
+                                @foreach ($order->pembayaran as $p)
+                                    <div class="flex items-center justify-between gap-3 text-sm">
+                                        <span class="text-ink-muted">{{ $p->tanggal_bayar->translatedFormat('d M Y') }} · {{ \App\Models\OrderPembayaran::JENIS[$p->jenis] ?? $p->jenis }}@if ($p->bukti_path) · <a href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($p->bukti_path) }}" target="_blank" class="text-brand hover:text-brand-hover">bukti</a>@endif</span>
+                                        <span class="font-medium text-ink">Rp{{ number_format($p->jumlah, 0, ',', '.') }}</span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
                     @endif
+
+                    {{-- Batal / aktifkan --}}
+                    <div class="mt-5 flex flex-wrap items-center gap-2 border-t border-line pt-4">
+                        @if ($st === 'batal')
+                            <x-button wire:click="ubahStatus('baru')" wire:confirm="Aktifkan kembali order ini?" variant="secondary" size="sm">Aktifkan kembali</x-button>
+                        @else
+                            <x-button wire:click="ubahStatus('batal')" wire:confirm="Batalkan order ini?" variant="danger" size="sm">Batalkan order</x-button>
+                        @endif
+                        @if ($statusMsg)<span class="text-sm font-medium text-status-success">{{ $statusMsg }}</span>@endif
+                    </div>
+                </x-card>
+
+                {{-- Diskon per item — marketing ajukan, admin sales setujui/ubah --}}
+                <x-card title="Diskon per produk">
+                    @php $ds = $order->diskon_status; @endphp
+                    <div class="mb-3 flex flex-wrap items-center gap-2 text-sm">
+                        @if ($ds === \App\Models\Order::DISKON_DISETUJUI)
+                            <x-badge variant="success">Disetujui</x-badge><span class="text-ink">Total diskon Rp{{ number_format($order->totalDiskon(), 0, ',', '.') }}</span>
+                        @elseif ($ds === \App\Models\Order::DISKON_DIAJUKAN)
+                            <x-badge variant="pending">Diajukan</x-badge><span class="text-ink-muted">menunggu persetujuan admin sales</span>
+                        @elseif ($ds === \App\Models\Order::DISKON_DITOLAK)
+                            <x-badge variant="danger">Ditolak</x-badge>
+                        @else
+                            <span class="text-ink-muted">Belum ada diskon.</span>
+                        @endif
+                    </div>
+
+                    @php
+                        // Admin sales: boleh set/ubah selama belum disetujui. Marketing: hanya saat belum diajukan.
+                        $editable = ! $sf && $st !== 'batal' && (
+                            $this->isAdminSales
+                                ? $ds !== \App\Models\Order::DISKON_DISETUJUI
+                                : ! in_array($ds, [\App\Models\Order::DISKON_DIAJUKAN, \App\Models\Order::DISKON_DISETUJUI], true)
+                        );
+                    @endphp
+
+                    <div class="space-y-2">
+                        @foreach ($order->items->where('is_free', false) as $item)
+                            <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line px-3 py-2">
+                                <div class="min-w-0">
+                                    <div class="text-sm text-ink">{{ $item->produk?->nama ?? $item->paket?->nama }}</div>
+                                    <div class="text-xs text-ink-muted">Harga Rp{{ number_format($item->harga, 0, ',', '.') }} × {{ $item->qty }} · efektif Rp{{ number_format($item->hargaEfektif(), 0, ',', '.') }}</div>
+                                </div>
+                                <div class="w-40">
+                                    @if ($editable)
+                                        <x-input type="number" min="0" :max="$item->harga" label="Diskon/satuan" wire:model="diskonItem.{{ $item->id }}" :error="$errors->first('diskonItem.'.$item->id)" />
+                                    @else
+                                        <div class="text-right text-sm text-ink">Rp{{ number_format($item->diskon, 0, ',', '.') }}<span class="text-xs text-ink-muted">/satuan</span></div>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    @if ($editable)
+                        <div class="mt-4 flex items-center gap-2">
+                            @if ($this->isAdminSales)
+                                <x-button wire:click="setujuiDiskon" wire:confirm="Terapkan diskon per item ini?" size="sm">{{ $ds === \App\Models\Order::DISKON_DIAJUKAN ? 'Setujui' : 'Terapkan diskon' }}</x-button>
+                                @if ($ds === \App\Models\Order::DISKON_DIAJUKAN)
+                                    <x-button wire:click="tolakDiskon" wire:confirm="Tolak pengajuan diskon?" variant="ghost" size="sm">Tolak</x-button>
+                                @endif
+                            @else
+                                <x-button wire:click="ajukanDiskon" size="sm" variant="secondary">Ajukan diskon</x-button>
+                            @endif
+                        </div>
+                    @endif
+
+                    @if ($diskonMsg)<p class="mt-3 text-sm font-medium text-status-success">{{ $diskonMsg }}</p>@endif
                 </x-card>
             @endunless
 
@@ -158,9 +258,12 @@
 
                         <div class="space-y-2">
                             @foreach ($order->milestones() as $m)
+                                @php $isHari = $m['key'] === 'hh'; @endphp
                                 <div class="flex items-center justify-between gap-3 rounded-lg border border-line px-3 py-2.5">
                                     <div>
-                                        <div class="text-sm font-medium text-ink">{{ $m['label'] }}</div>
+                                        <div class="text-sm font-medium text-ink">{{ $m['label'] }}
+                                            @if ($isHari)<span class="text-xs font-normal text-ink-muted">· oleh tim event di lokasi</span>@endif
+                                        </div>
                                         <div class="text-xs text-ink-muted">
                                             {{ $m['due']->translatedFormat('d M Y') }}
                                             @if ($m['state'] === 'confirmed') · dikonfirmasi {{ $m['confirmedAt']->translatedFormat('d M') }}@endif
@@ -169,14 +272,24 @@
                                     <div class="flex shrink-0 items-center gap-2">
                                         @if ($m['state'] === 'confirmed')
                                             <x-badge variant="success">Terkonfirmasi</x-badge>
-                                        @else
+                                        @elseif ($isHari)
+                                            {{-- Hari-H hanya dikonfirmasi tim event → read-only di panel staf --}}
+                                            @if ($m['state'] === 'overdue')<x-badge variant="danger">Terlewat</x-badge>@else<x-badge variant="neutral">Menunggu tim event</x-badge>@endif
+                                        @elseif ($this->isAdminSales && ! $order->isLocked())
                                             @if ($m['state'] === 'overdue')<x-badge variant="danger">Terlewat</x-badge>@endif
                                             <x-button wire:click="konfirmasiMilestone('{{ $m['key'] }}')" wire:confirm="Konfirmasi milestone {{ $m['label'] }} sekarang?" variant="secondary" size="sm">Konfirmasi</x-button>
+                                        @else
+                                            {{-- Marketing / non-admin sales: read-only --}}
+                                            @if ($m['state'] === 'overdue')<x-badge variant="danger">Terlewat</x-badge>@else<x-badge variant="neutral">Menunggu admin</x-badge>@endif
                                         @endif
                                     </div>
                                 </div>
                             @endforeach
                         </div>
+
+                        @unless ($this->isAdminSales)
+                            <p class="mt-3 text-xs text-ink-muted">Konfirmasi H-7 &amp; H-2 dilakukan oleh admin area/sales.</p>
+                        @endunless
 
                         @if ($milestoneMsg)
                             <p class="mt-3 text-sm font-medium text-status-success">{{ $milestoneMsg }}</p>
@@ -189,8 +302,12 @@
             @unless ($sf)
                 <x-card title="Tim event">
                     <x-slot name="actions">
-                        <a href="{{ route('app.order.ste', $order->id) }}" target="_blank"
-                           class="text-sm font-medium text-brand hover:text-brand-hover">Cetak STE →</a>
+                        @if ($order->konfirmasi_h2_at)
+                            <a href="{{ route('app.order.ste', $order->id) }}" target="_blank"
+                               class="text-sm font-medium text-brand hover:text-brand-hover">Cetak STE →</a>
+                        @else
+                            <span class="text-sm text-ink-muted" title="STE terbit setelah konfirmasi H-2">STE tersedia setelah H-2</span>
+                        @endif
                     </x-slot>
 
                     @if ($this->timEventOptions->isEmpty())
@@ -240,7 +357,7 @@
                             <div class="mt-0.5 text-xs text-ink-muted">
                                 @if ($item->desain) Desain {{ $item->desain->kode }} · @endif
                                 @if ($item->opsi_ukuran) {{ $item->opsi_ukuran }} · @endif
-                                {{ $item->qty }}{{ $item->produk?->isPerSiswa() ? ' siswa' : '' }} × Rp{{ number_format($item->harga, 0, ',', '.') }}
+                                {{ $item->qty }} × Rp{{ number_format($item->harga, 0, ',', '.') }}
                             </div>
                         </div>
                         <div class="text-sm font-medium text-ink">Rp{{ number_format($item->harga * $item->qty, 0, ',', '.') }}</div>

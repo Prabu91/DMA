@@ -10,7 +10,7 @@ use Illuminate\View\View;
 /**
  * Login-gate checkout storefront (Fase 4). Menerapkan aturan pemilik:
  *  - Tamu → login sekolah (intended kembali ke /checkout, keranjang utuh).
- *  - Wajib email terverifikasi sebelum checkout.
+ *  - Verifikasi email TIDAK diwajibkan (sementara; nanti verifikasi via WA).
  *  - cabang_id null (sekolah kota "lainnya") → diblokir; admin assign cabang dulu.
  *  - Keranjang kosong → kembali ke keranjang.
  */
@@ -24,11 +24,6 @@ class CheckoutController extends Controller
         }
 
         $sekolah = Auth::guard('sekolah')->user();
-
-        // Wajib verifikasi email.
-        if (! $sekolah->hasVerifiedEmail()) {
-            return redirect()->route('sekolah.verification.notice');
-        }
 
         // Keranjang kosong → tak ada yang di-checkout.
         if (app(Cart::class)->isEmpty()) {

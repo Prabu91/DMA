@@ -32,51 +32,68 @@
                 @foreach ($this->cabangOptions as $id => $nama)<option value="{{ $id }}" @selected($filterCabang === (string) $id)>{{ $nama }}</option>@endforeach
             </select>
         @endif
+        <select wire:model.live="filterKategori"
+                class="h-11 rounded-lg border border-line bg-card px-2.5 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+            <option value="">Semua kategori</option>
+            <option value="NOS">NOS · belum pernah</option>
+            <option value="NRS">NRS · 1–2 order</option>
+            <option value="SR">SR · setia (≥3)</option>
+        </select>
     </div>
 
-    <x-card padding="p-0">
+    <x-table min-width="960px">
+        <x-slot:head>
+            <x-table.th sortable field="nama" :sort="$sortField" :dir="$sortDir">Sekolah</x-table.th>
+            <x-table.th sortable field="kategori" :sort="$sortField" :dir="$sortDir">Kategori</x-table.th>
+            <x-table.th sortable field="kota" :sort="$sortField" :dir="$sortDir">Wilayah</x-table.th>
+            <x-table.th>PIC</x-table.th>
+            <x-table.th>Login</x-table.th>
+            <x-table.th align="right">Aksi</x-table.th>
+        </x-slot:head>
+
         @forelse ($sekolah as $item)
-            <div class="flex items-center justify-between gap-3 border-b border-line px-5 py-3.5 last:border-b-0">
-                <div class="min-w-0">
-                    <div class="flex flex-wrap items-center gap-2">
-                        <span class="truncate text-sm text-ink">{{ $item->nama }}</span>
-                        <x-badge variant="neutral">{{ $item->id_sekolah }}</x-badge>
-                        @if ($item->password)
-                            <x-badge variant="success">Login aktif</x-badge>
-                        @else
-                            <x-badge variant="pending">Login belum diset</x-badge>
+            <x-table.tr>
+                <x-table.td>
+                    <div class="font-medium text-ink">{{ $item->nama }}</div>
+                    <div class="mt-0.5 flex items-center gap-2">
+                        <span class="rounded-md bg-ink/5 px-1.5 py-0.5 text-xs text-ink-muted">{{ $item->id_sekolah }}</span>
+                        @if ($item->maps_link)
+                            <a href="{{ $item->maps_link }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-xs font-medium text-brand hover:text-brand-hover">
+                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
+                                Peta
+                            </a>
                         @endif
                     </div>
-                    <div class="mt-0.5 truncate text-xs text-ink-muted">
-                        {{ $item->kota ?: '—' }}
-                        @if ($this->canChooseCabang)
-                            · {{ $item->cabang?->nama ?? 'Tanpa cabang' }}
-                        @endif
-                        @if ($item->pic_sekolah)
-                            · PIC: {{ $item->pic_sekolah }}
-                        @endif
+                </x-table.td>
+                <x-table.td>
+                    @php $kat = $item->kategoriPelanggan(); @endphp
+                    <x-badge :variant="\App\Models\Sekolah::kategoriBadge($kat)" title="{{ $item->dealCount() }} order selesai">{{ $kat }}</x-badge>
+                </x-table.td>
+                <x-table.td muted>
+                    <div class="text-ink">{{ $item->kota ?: '—' }}</div>
+                    <div class="text-xs text-ink-muted">
+                        @if ($item->kecamatan)Kec. {{ $item->kecamatan->nama }}@endif
+                        @if ($this->canChooseCabang) · {{ $item->cabang?->nama ?? 'Tanpa cabang' }}@endif
                     </div>
-                    @if ($item->maps_link)
-                        <a href="{{ $item->maps_link }}" target="_blank" rel="noopener"
-                           class="mt-1 inline-flex items-center gap-1 text-xs font-medium text-brand hover:text-brand-hover">
-                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
-                            </svg>
-                            Buka peta
-                        </a>
+                </x-table.td>
+                <x-table.td muted>{{ $item->pic_sekolah ?: '—' }}</x-table.td>
+                <x-table.td>
+                    @if ($item->password)
+                        <x-badge variant="success">Aktif</x-badge>
+                    @else
+                        <x-badge variant="pending">Belum diset</x-badge>
                     @endif
-                </div>
-                <div class="flex shrink-0 items-center gap-2">
+                </x-table.td>
+                <x-table.td align="right" nowrap>
                     <x-button wire:click="edit({{ $item->id }})" variant="secondary" size="sm">Ubah</x-button>
                     <x-button wire:click="openResetPassword({{ $item->id }})" variant="ghost" size="sm">Reset sandi</x-button>
                     <x-button wire:click="delete({{ $item->id }})" wire:confirm="Hapus sekolah {{ $item->nama }}?" variant="ghost" size="sm">Hapus</x-button>
-                </div>
-            </div>
+                </x-table.td>
+            </x-table.tr>
         @empty
-            <div class="px-5 py-10 text-center text-sm text-ink-muted">Belum ada sekolah.</div>
+            <x-table.empty :colspan="6">Belum ada sekolah.</x-table.empty>
         @endforelse
-    </x-card>
+    </x-table>
 
     {{-- Modal form --}}
     @if ($showForm)
@@ -108,7 +125,7 @@
                                 </div>
                             </div>
                         @elseif ($this->canChooseCabang)
-                            <x-select label="Cabang" wire:model="cabang_id" :options="$this->cabangOptions" :selected="$cabang_id" placeholder="— Pilih cabang —" :error="$errors->first('cabang_id')" hint="ID sekolah dibuat otomatis." />
+                            <x-select label="Cabang" wire:model.live="cabang_id" :options="$this->cabangOptions" :selected="$cabang_id" placeholder="— Pilih cabang —" :error="$errors->first('cabang_id')" hint="ID sekolah dibuat otomatis." />
                         @else
                             <div class="space-y-1.5">
                                 <span class="block text-sm font-medium text-ink">Cabang</span>
@@ -116,6 +133,16 @@
                                     {{ auth()->user()->cabang?->nama ?? 'Tanpa cabang' }}
                                 </div>
                                 <p class="text-xs text-ink-muted">ID sekolah dibuat otomatis saat disimpan.</p>
+                            </div>
+                        @endif
+
+                        {{-- Kecamatan (untuk auto-assign marketing per wilayah) --}}
+                        @if (! empty($this->kecamatanOptions))
+                            <x-select label="Kecamatan" wire:model="kecamatan_id" :options="$this->kecamatanOptions" :selected="$kecamatan_id" placeholder="— Pilih kecamatan —" :error="$errors->first('kecamatan_id')" hint="Menentukan marketing wilayah." />
+                        @else
+                            <div class="space-y-1.5">
+                                <span class="block text-sm font-medium text-ink">Kecamatan</span>
+                                <div class="flex min-h-[44px] items-center rounded-lg border border-line bg-page px-3 text-sm text-ink-muted">Belum ada kecamatan untuk cabang ini.</div>
                             </div>
                         @endif
                     </div>

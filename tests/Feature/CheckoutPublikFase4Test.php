@@ -60,14 +60,15 @@ class CheckoutPublikFase4Test extends TestCase
         $this->assertSame(route('storefront.checkout'), session('url.intended'));
     }
 
-    public function test_sekolah_belum_verifikasi_diarahkan_ke_verifikasi(): void
+    public function test_sekolah_belum_verifikasi_tetap_bisa_checkout(): void
     {
+        // Verifikasi email tidak lagi diwajibkan (sementara; nanti via WA).
         $cabang = $this->cabang();
         $this->isiKeranjang();
 
         $this->actingAs($this->sekolah($cabang->id, verified: false), 'sekolah')
             ->get(route('storefront.checkout'))
-            ->assertRedirect(route('sekolah.verification.notice'));
+            ->assertOk();
     }
 
     public function test_keranjang_kosong_diarahkan_ke_keranjang(): void

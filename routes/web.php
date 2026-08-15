@@ -69,6 +69,8 @@ Route::prefix('app')->name('app.')->middleware(['auth', 'verified'])->group(func
     Route::middleware('role:super_admin')->group(function () {
         Route::resource('cabang', CabangController::class)->parameters(['cabang' => 'cabang'])->except('show');
         Route::resource('pengguna', PenggunaController::class)->parameters(['pengguna' => 'pengguna'])->except('show');
+        Route::get('/kecamatan', \App\Livewire\Katalog\KecamatanIndex::class)->name('kecamatan.index');
+        Route::get('/report-order', \App\Livewire\ReportOrder::class)->name('report-order');
     });
 
     // Katalog global — super_admin & operasional.
@@ -83,7 +85,7 @@ Route::prefix('app')->name('app.')->middleware(['auth', 'verified'])->group(func
     });
 
     // Etalase + booking staf + kotak masuk + CRUD sekolah — peran booking.
-    Route::middleware('role:super_admin|operasional|area|marketing')->group(function () {
+    Route::middleware('role:super_admin|operasional|admin_sales|marketing')->group(function () {
         Route::view('/etalase', 'etalase.index')->name('etalase.index');
         Route::get('/etalase/{tipe}/{id}', fn (string $tipe, string $id) => view('etalase.detail', ['tipe' => $tipe, 'id' => (int) $id]))
             ->whereIn('tipe', ['produk', 'paket'])
@@ -101,8 +103,15 @@ Route::prefix('app')->name('app.')->middleware(['auth', 'verified'])->group(func
     });
 
     // Aktivitas (audit lintas order) — admin & area (area ter-scope cabang).
-    Route::middleware('role:super_admin|operasional|area')->group(function () {
+    Route::middleware('role:super_admin|operasional|admin_sales')->group(function () {
         Route::get('/aktivitas', \App\Livewire\ActivityIndex::class)->name('aktivitas');
+    });
+
+    // Finance — super_admin + admin_sales (admin area = admin sales = admin finance).
+    Route::middleware('role:super_admin|admin_sales')->prefix('finance')->name('finance.')->group(function () {
+        Route::get('/sales', \App\Livewire\Finance\AllDataSales::class)->name('sales');
+        Route::get('/penagihan', \App\Livewire\Finance\PenagihanHarian::class)->name('penagihan');
+        Route::get('/event-harian', \App\Livewire\Finance\TransaksiEventHarian::class)->name('event-harian');
     });
 
     // Event tim event — jadwal, detail pelaksanaan, STE. Tim event + admin oversight.
@@ -150,20 +159,18 @@ Route::prefix('sekolah')->name('sekolah.')->middleware('auth:sekolah')->group(fu
     Route::get('password', [SekolahPasswordController::class, 'edit'])->name('password.edit');
     Route::put('password', [SekolahPasswordController::class, 'update'])->name('password.update');
 
-    // Konten portal butuh email terverifikasi.
-    Route::middleware('verified.sekolah')->group(function () {
-        Route::view('katalog', 'sekolah.katalog-index')->name('katalog.index');
-        Route::get('katalog/{tipe}/{id}', fn (string $tipe, string $id) => view('sekolah.katalog-detail', ['tipe' => $tipe, 'id' => (int) $id]))
-            ->whereIn('tipe', ['produk', 'paket'])
-            ->whereNumber('id')
-            ->name('katalog.detail');
-        Route::view('keranjang', 'booking.keranjang-sekolah')->name('keranjang');
-        Route::view('review', 'booking.review-sekolah')->name('review');
-        Route::view('riwayat', 'booking.riwayat-sekolah')->name('riwayat.index');
-        Route::get('riwayat/{id}', fn (string $id) => view('booking.order-sekolah', ['orderId' => (int) $id]))
-            ->whereNumber('id')->name('riwayat.show');
-        Route::get('riwayat/{id}/pdf', [OrderPdfController::class, 'sekolah'])->whereNumber('id')->name('riwayat.pdf');
-    });
+    // Konten portal. Verifikasi email TIDAK diwajibkan (sementara; nanti via WA).
+    Route::view('katalog', 'sekolah.katalog-index')->name('katalog.index');
+    Route::get('katalog/{tipe}/{id}', fn (string $tipe, string $id) => view('sekolah.katalog-detail', ['tipe' => $tipe, 'id' => (int) $id]))
+        ->whereIn('tipe', ['produk', 'paket'])
+        ->whereNumber('id')
+        ->name('katalog.detail');
+    Route::view('keranjang', 'booking.keranjang-sekolah')->name('keranjang');
+    Route::view('review', 'booking.review-sekolah')->name('review');
+    Route::view('riwayat', 'booking.riwayat-sekolah')->name('riwayat.index');
+    Route::get('riwayat/{id}', fn (string $id) => view('booking.order-sekolah', ['orderId' => (int) $id]))
+        ->whereNumber('id')->name('riwayat.show');
+    Route::get('riwayat/{id}/pdf', [OrderPdfController::class, 'sekolah'])->whereNumber('id')->name('riwayat.pdf');
 });
 
 // Auth staf bawaan Breeze — tetap di root (login, register, password, verifikasi).

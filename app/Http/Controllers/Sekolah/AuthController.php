@@ -10,8 +10,8 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 /**
- * Login sekolah pakai EMAIL + password (storefront /masuk).
- * id_sekolah = kode akun, BUKAN kredensial.
+ * Login sekolah pakai ID SEKOLAH (mis. SKL-000001) + password (storefront /masuk).
+ * id_sekolah = kredensial login. Email hanya untuk notifikasi/OTP (future WA).
  */
 class AuthController extends Controller
 {
@@ -23,13 +23,16 @@ class AuthController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $credentials = $request->validate([
-            'email' => ['required', 'string', 'email'],
+            'id_sekolah' => ['required', 'string'],
             'password' => ['required', 'string'],
         ]);
 
+        // Normalisasi: ID sekolah disamakan huruf besar (SKL-000001).
+        $credentials['id_sekolah'] = strtoupper(trim($credentials['id_sekolah']));
+
         if (! Auth::guard('sekolah')->attempt($credentials, $request->boolean('remember'))) {
             throw ValidationException::withMessages([
-                'email' => 'Email atau kata sandi salah.',
+                'id_sekolah' => 'ID sekolah atau kata sandi salah.',
             ]);
         }
 

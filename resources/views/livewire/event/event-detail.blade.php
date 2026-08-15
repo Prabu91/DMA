@@ -2,6 +2,7 @@
     @php
         $order = $this->order;
         $selesai = $order->event_status === \App\Support\OrderStatus::EVENT_SELESAI;
+        $terkunci = $order->isLocked();
     @endphp
 
     <div class="mb-6 flex items-start justify-between gap-3">
@@ -17,6 +18,7 @@
                 @if ($cd)
                     <x-badge :variant="$cd['state'] === 'past' ? 'danger' : ($cd['state'] === 'today' ? 'pending' : 'info')">{{ $cd['label'] }}</x-badge>
                 @endif
+                @if ($terkunci)<x-badge variant="neutral">Terkunci (final)</x-badge>@endif
             </div>
         </div>
         <a href="{{ route('app.event.ste', $order->id) }}" target="_blank"
@@ -30,16 +32,24 @@
         <div class="mb-4 rounded-lg border border-status-success/20 bg-status-success/10 px-4 py-3 text-sm text-status-success">{{ session('event-flash') }}</div>
     @endif
 
+    @if ($terkunci && ! $selesai)
+        <div class="mb-4 rounded-lg border-l-4 border-navy bg-navy/5 px-4 py-3 text-sm text-ink">
+            <span class="font-medium">Order terkunci.</span> Hari-H telah dikonfirmasi — data & item tidak bisa diubah lagi. Lanjutkan ke penyelesaian (OTP).
+        </div>
+    @endif
+
     <div class="grid gap-6 lg:grid-cols-3">
         <div class="space-y-6 lg:col-span-2">
             @if ($revisiMode)
-                {{-- ============ FORM REVISI ============ --}}
-                <x-card title="Revisi detail order">
+                {{-- ============ FORM REVISI DATA SEKOLAH & DESAIN ============ --}}
+                <x-card title="Revisi data sekolah & desain">
                     <x-slot name="subtitle">Perbaiki data sekolah &amp; desain/kode item sesuai kondisi di lokasi.</x-slot>
 
-                    <div class="space-y-4">
-                        <x-input label="Nama sekolah" wire:model="namaSekolah" :error="$errors->first('namaSekolah')" />
-                        <x-input label="Alamat sekolah" wire:model="alamatSekolah" :error="$errors->first('alamatSekolah')" />
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <x-input label="Nama sekolah" wire:model="namaSekolah" :error="$errors->first('namaSekolah')" class="sm:col-span-2" />
+                        <x-input label="PIC sekolah" wire:model="picSekolah" :error="$errors->first('picSekolah')" />
+                        <x-input label="No. telepon PIC" wire:model="noTelpSekolah" :error="$errors->first('noTelpSekolah')" />
+                        <x-input label="Alamat sekolah" wire:model="alamatSekolah" :error="$errors->first('alamatSekolah')" class="sm:col-span-2" />
                         <x-input label="Kota" wire:model="kotaSekolah" :error="$errors->first('kotaSekolah')" />
                     </div>
 
@@ -73,29 +83,26 @@
                     </div>
                 </x-card>
             @else
-                {{-- ============ KONFIRMASI DI LOKASI ============ --}}
-                <x-card title="Konfirmasi detail di lokasi">
-                    @if ($selesai)
-                        <p class="text-sm text-ink-muted">Event sudah selesai — detail terkunci.</p>
-                    @elseif ($order->konfirmasi_lokasi_at)
-                        <div class="flex flex-wrap items-center justify-between gap-3">
-                            <div class="flex items-center gap-2 text-sm text-status-success">
-                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                <span>Detail dikonfirmasi sesuai pada {{ $order->konfirmasi_lokasi_at->translatedFormat('d M Y H:i') }}. Siap dilanjutkan ke penyelesaian.</span>
-                            </div>
-                            <x-button wire:click="mulaiRevisi" variant="ghost" size="sm">Masih perlu revisi</x-button>
-                        </div>
-                    @else
-                        <p class="text-sm text-ink-muted">Cek ulang data sekolah &amp; item di lokasi, lalu pilih:</p>
+                {{-- ============ KONFIRMASI & FINALISASI DI LOKASI ============ --}}
+                @unless ($terkunci)
+                    <x-card title="Konfirmasi di lokasi">
+                        <p class="text-sm text-ink-muted">Cek ulang data sekolah &amp; item. Bila perlu, revisi atau tambah/kurangi item di bawah. Setelah semua benar, konfirmasi Hari-H (final).</p>
                         <div class="mt-3 flex flex-wrap items-center gap-3">
-                            <x-button wire:click="konfirmasiLokasi">
-                                <span wire:loading.remove wire:target="konfirmasiLokasi">Detail sudah sesuai</span>
-                                <span wire:loading wire:target="konfirmasiLokasi">Menyimpan…</span>
-                            </x-button>
-                            <x-button wire:click="mulaiRevisi" variant="secondary">Perlu revisi</x-button>
+                            @unless ($order->konfirmasi_lokasi_at)
+                                <x-button wire:click="konfirmasiLokasi" variant="secondary" size="sm">
+                                    <span wire:loading.remove wire:target="konfirmasiLokasi">Tandai detail sudah dicek</span>
+                                    <span wire:loading wire:target="konfirmasiLokasi">Menyimpan…</span>
+                                </x-button>
+                            @else
+                                <span class="inline-flex items-center gap-1.5 text-sm text-status-success">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    Detail sudah dicek {{ $order->konfirmasi_lokasi_at->translatedFormat('d M · H:i') }}
+                                </span>
+                            @endunless
+                            <x-button wire:click="mulaiRevisi" variant="ghost" size="sm">Revisi data sekolah/desain</x-button>
                         </div>
-                    @endif
-                </x-card>
+                    </x-card>
+                @endunless
 
                 {{-- Detail sekolah & jadwal --}}
                 <x-card title="Detail sekolah & jadwal">
@@ -125,8 +132,11 @@
                     </dl>
                 </x-card>
 
-                {{-- Rincian pesanan: desain & kode --}}
-                <x-card title="Rincian pesanan (desain & kode)" padding="p-0">
+                {{-- Rincian pesanan (editor item) --}}
+                <x-card title="Rincian pesanan" padding="p-0">
+                    <x-slot name="actions">
+                        <span class="text-sm font-medium text-ink">Total Rp{{ number_format($order->total, 0, ',', '.') }}</span>
+                    </x-slot>
                     @forelse ($order->items as $item)
                         <div class="flex items-center justify-between gap-3 border-b border-line px-5 py-3 last:border-b-0">
                             <div class="min-w-0">
@@ -138,21 +148,79 @@
                                 <div class="mt-0.5 text-xs text-ink-muted">
                                     @if ($item->desain) Desain <span class="font-medium text-ink">{{ $item->desain->kode }}</span> · @endif
                                     @if ($item->opsi_ukuran) {{ $item->opsi_ukuran }} · @endif
-                                    Qty {{ $item->qty }}
+                                    Rp{{ number_format($item->harga, 0, ',', '.') }} × {{ $item->qty }}
                                 </div>
                             </div>
+                            @if (! $terkunci && ! $item->is_free)
+                                <div class="flex shrink-0 items-center gap-1.5">
+                                    <button type="button" wire:click="ubahQtyItem({{ $item->id }}, {{ $item->qty - 1 }})" @disabled($item->qty <= 1)
+                                            class="grid h-8 w-8 place-items-center rounded-lg border border-line text-ink hover:bg-page disabled:opacity-40">−</button>
+                                    <span class="w-8 text-center text-sm text-ink">{{ $item->qty }}</span>
+                                    <button type="button" wire:click="ubahQtyItem({{ $item->id }}, {{ $item->qty + 1 }})"
+                                            class="grid h-8 w-8 place-items-center rounded-lg border border-line text-ink hover:bg-page">+</button>
+                                    <button type="button" wire:click="hapusItem({{ $item->id }})" wire:confirm="Hapus item {{ $item->produk?->nama ?? $item->paket?->nama }}?"
+                                            class="ml-1 grid h-8 w-8 place-items-center rounded-lg border border-line text-status-danger hover:bg-status-danger/10" title="Hapus item">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                    </button>
+                                </div>
+                            @endif
                         </div>
                     @empty
                         <div class="px-5 py-8 text-center text-sm text-ink-muted">Tak ada item.</div>
                     @endforelse
+
+                    {{-- Tambah item --}}
+                    @unless ($terkunci)
+                        <div class="border-t border-line bg-page/50 px-5 py-4">
+                            <h3 class="mb-3 text-sm font-medium text-ink">Tambah item</h3>
+                            <div class="grid gap-3 sm:grid-cols-2">
+                                <x-select label="Tipe" wire:model.live="tambahTipe" :options="['produk' => 'Produk', 'paket' => 'Paket']" :selected="$tambahTipe" />
+                                <x-input type="number" min="1" label="Jumlah" wire:model="tambahQty" :error="$errors->first('tambahQty')" />
+
+                                @if ($tambahTipe === 'produk')
+                                    <x-select label="Produk" wire:model.live="tambahProdukId" :options="$this->produkOptions->pluck('nama', 'id')->all()" :selected="$tambahProdukId" placeholder="— Pilih produk —" :error="$errors->first('tambahProdukId')" class="sm:col-span-2" />
+                                    @if (! empty($this->opsiTambah))
+                                        <x-select label="Ukuran/opsi" wire:model="tambahOpsi" :options="$this->opsiTambah" :selected="$tambahOpsi" placeholder="— Tanpa opsi —" />
+                                    @endif
+                                    @if (! empty($this->desainTambah))
+                                        <x-select label="Desain" wire:model="tambahDesainId" :options="$this->desainTambah" :selected="$tambahDesainId" placeholder="— Tanpa desain —" />
+                                    @endif
+                                @else
+                                    <x-select label="Paket" wire:model="tambahPaketId" :options="$this->paketOptions->pluck('nama', 'id')->all()" :selected="$tambahPaketId" placeholder="— Pilih paket —" :error="$errors->first('tambahPaketId')" class="sm:col-span-2" />
+                                @endif
+                            </div>
+                            <div class="mt-3">
+                                <x-button wire:click="tambahItem" size="sm">
+                                    <span wire:loading.remove wire:target="tambahItem">Tambah ke order</span>
+                                    <span wire:loading wire:target="tambahItem">Menambah…</span>
+                                </x-button>
+                            </div>
+                        </div>
+                    @endunless
                 </x-card>
+
+                {{-- Konfirmasi Hari-H (final) --}}
+                @unless ($terkunci)
+                    <x-card title="Konfirmasi Hari-H (final)">
+                        <p class="text-sm text-ink-muted">Setelah semua data &amp; item benar, konfirmasi Hari-H. <span class="font-medium text-ink">Order akan dikunci</span> dan tidak bisa diubah lagi, lalu lanjut ke penyelesaian (OTP).</p>
+                        <div class="mt-3">
+                            <x-button wire:click="konfirmasiHariH" wire:confirm="Konfirmasi Hari-H? Order akan FINAL & terkunci — tidak bisa diubah lagi." variant="primary">
+                                <span wire:loading.remove wire:target="konfirmasiHariH">Konfirmasi Hari-H &amp; kunci order</span>
+                                <span wire:loading wire:target="konfirmasiHariH">Memproses…</span>
+                            </x-button>
+                        </div>
+                        @if ($order->tanggal_event === null)
+                            <p class="mt-2 text-xs text-status-danger">Tanggal event belum ditentukan.</p>
+                        @endif
+                    </x-card>
+                @endunless
             @endif
 
             {{-- Riwayat aktivitas + pihak terlibat --}}
             @include('booking.partials.activity-timeline', ['order' => $order, 'activities' => $this->activities])
         </div>
 
-        {{-- Penyelesaian event (OTP) --}}
+        {{-- Penyelesaian event (OTP) + sampai kantor --}}
         <div class="space-y-6">
             <x-card title="Penyelesaian event">
                 @if ($selesai)
@@ -164,18 +232,34 @@
                             <span>Event sudah selesai.</span>
                         @endif
                     </div>
-                @elseif (! $order->konfirmasi_lokasi_at)
-                    <p class="text-sm text-ink-muted">Konfirmasi detail di lokasi dulu, lalu buat OTP untuk menyelesaikan event.</p>
+
+                    {{-- Sampai kantor (setelah event selesai) --}}
+                    <div class="mt-4 border-t border-line pt-4">
+                        @if ($order->sampai_kantor_at)
+                            <div class="flex items-center gap-2 text-sm text-status-success">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 21v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21m0 0h4.5V3.545M12.75 21h7.5V10.75M2.25 21h1.5m18 0h-18M2.25 9l4.5-1.636M18.75 3l-1.5.545m0 6.205l3 1m1.5.5l-1.5-.5M6.75 7.364V3h-3v18m3-13.636l10.5-3.819" /></svg>
+                                <span>Sampai kantor pada <span class="font-medium">{{ $order->sampai_kantor_at->translatedFormat('d M Y · H:i') }}</span>.</span>
+                            </div>
+                        @else
+                            <p class="text-sm text-ink-muted">Sudah kembali ke kantor? Catat waktunya.</p>
+                            <x-button wire:click="sampaiKantor" wire:confirm="Catat waktu sampai kantor sekarang?" class="mt-3 w-full">
+                                <span wire:loading.remove wire:target="sampaiKantor">Sampai kantor</span>
+                                <span wire:loading wire:target="sampaiKantor">Menyimpan…</span>
+                            </x-button>
+                        @endif
+                    </div>
+                @elseif (! $order->konfirmasi_lokasi_at && ! $terkunci)
+                    <p class="text-sm text-ink-muted">Konfirmasi Hari-H (final) dulu, lalu buat OTP untuk menyelesaikan event.</p>
                 @elseif (! $order->eventOtpActive())
-                    <p class="text-sm text-ink-muted">Buat OTP — dikirim ke guru (portal &amp; email). Guru akan membacakan kodenya ke Anda.</p>
+                    <p class="text-sm text-ink-muted">Buat OTP — kode tampil di akun sekolah (guru). Guru akan membacakan kodenya ke Anda.</p>
                     <x-button wire:click="generateOtp" class="mt-3 w-full">
                         <span wire:loading.remove wire:target="generateOtp">Generate OTP untuk guru</span>
-                        <span wire:loading wire:target="generateOtp">Mengirim…</span>
+                        <span wire:loading wire:target="generateOtp">Membuat…</span>
                     </x-button>
                     @error('otpInput')<p class="mt-2 text-sm text-status-danger">{{ $message }}</p>@enderror
                 @else
                     <div class="rounded-lg border border-status-info/20 bg-status-info/10 px-3 py-2 text-xs text-status-info">
-                        OTP sudah dikirim ke guru. Minta kodenya, lalu masukkan di bawah.
+                        OTP tampil di akun sekolah. Minta kodenya ke guru, lalu masukkan di bawah.
                         <span class="block text-status-info/80">Berlaku hingga {{ $order->otp_expires->translatedFormat('H:i') }} ({{ \App\Models\Order::OTP_EXPIRY_MINUTES }} menit).</span>
                     </div>
                     <div class="mt-3 space-y-2">
@@ -205,6 +289,50 @@
                 @endif
             </x-card>
 
+            {{-- Catat pembayaran (tim event di lokasi) --}}
+            <x-card title="Pembayaran">
+                <dl class="space-y-1.5 text-sm">
+                    <div class="flex justify-between"><dt class="text-ink-muted">Total setelah diskon</dt><dd class="text-ink">Rp{{ number_format($order->totalSetelahDiskon(), 0, ',', '.') }}</dd></div>
+                    <div class="flex justify-between"><dt class="text-ink-muted">Sudah dibayar</dt><dd class="text-status-success">Rp{{ number_format($order->totalDibayar(), 0, ',', '.') }}</dd></div>
+                    <div class="flex justify-between border-t border-line pt-1.5"><dt class="font-bold text-ink">Outstanding</dt><dd class="font-bold text-brand-hover">Rp{{ number_format($order->outstanding(), 0, ',', '.') }}</dd></div>
+                </dl>
+
+                @unless ($order->status === \App\Support\OrderStatus::BATAL)
+                    <div class="mt-4 space-y-3 border-t border-line pt-4">
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <x-select label="Jenis" wire:model="bayarJenis" :options="\App\Models\OrderPembayaran::JENIS" :selected="$bayarJenis" />
+                            <x-input type="number" min="1" label="Nominal (Rp)" wire:model="bayarJumlah" :error="$errors->first('bayarJumlah')" />
+                            <x-input type="date" label="Tanggal bayar" wire:model="bayarTanggal" :error="$errors->first('bayarTanggal')" />
+                            <div class="space-y-1.5">
+                                <span class="block text-sm font-medium text-ink">Bukti (opsional)</span>
+                                <input type="file" wire:model="bayarBukti" accept="image/*"
+                                       class="block w-full text-sm text-ink file:mr-3 file:rounded-lg file:border-0 file:bg-page file:px-3 file:py-2 file:text-sm file:font-medium file:text-ink hover:file:bg-line">
+                                @error('bayarBukti')<p class="text-xs text-status-danger">{{ $message }}</p>@enderror
+                            </div>
+                        </div>
+                        <x-button wire:click="catatPembayaran" size="sm">
+                            <span wire:loading.remove wire:target="catatPembayaran,bayarBukti">Catat pembayaran</span>
+                            <span wire:loading wire:target="catatPembayaran,bayarBukti">Menyimpan…</span>
+                        </x-button>
+                    </div>
+                @endunless
+
+                @if ($order->pembayaran->isNotEmpty())
+                    <div class="mt-4 space-y-1.5 border-t border-line pt-4">
+                        @foreach ($order->pembayaran as $p)
+                            <div class="flex items-center justify-between gap-3 text-sm">
+                                <span class="text-ink-muted">{{ $p->tanggal_bayar->translatedFormat('d M Y') }} · {{ \App\Models\OrderPembayaran::JENIS[$p->jenis] ?? $p->jenis }}</span>
+                                <span class="font-medium text-ink">Rp{{ number_format($p->jumlah, 0, ',', '.') }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </x-card>
+
+            <x-card title="Lacak status pesanan">
+                <x-order-tracking :order="$order" />
+            </x-card>
+
             <x-card title="Progres event">
                 @php $ms = $order->milestones(); @endphp
                 @if ($ms === [])
@@ -225,14 +353,6 @@
                         @endforeach
                     </ul>
                 @endif
-                <div class="mt-4 border-t border-line pt-3 text-xs">
-                    <span class="text-ink-muted">Konfirmasi lokasi:</span>
-                    @if ($order->konfirmasi_lokasi_at)
-                        <span class="font-medium text-status-success">Sudah</span>
-                    @else
-                        <span class="text-ink-muted">Belum</span>
-                    @endif
-                </div>
             </x-card>
         </div>
     </div>

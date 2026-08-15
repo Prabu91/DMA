@@ -27,6 +27,17 @@ class User extends Authenticatable
     public const ROLES_LINTAS_CABANG = ['super_admin', 'operasional'];
 
     /**
+     * "Admin sales" — berwenang konfirmasi milestone H-7 & H-2 (bukan marketing).
+     * area = admin sales cabang; operasional & super_admin = admin pusat.
+     */
+    public const ROLES_ADMIN_SALES = ['admin_sales', 'operasional', 'super_admin'];
+
+    public function isAdminSales(): bool
+    {
+        return $this->hasAnyRole(self::ROLES_ADMIN_SALES);
+    }
+
+    /**
      * Apakah user boleh melihat data seluruh cabang.
      * Dipakai bersama oleh CabangScope dan Policy agar konsisten.
      */
@@ -51,6 +62,14 @@ class User extends Authenticatable
     public function cabang(): BelongsTo
     {
         return $this->belongsTo(Cabang::class);
+    }
+
+    /**
+     * Kecamatan yang ditangani user ini (marketing) — acuan auto-assign order.
+     */
+    public function kecamatan(): BelongsToMany
+    {
+        return $this->belongsToMany(Kecamatan::class, 'user_kecamatan');
     }
 
     /**

@@ -25,7 +25,7 @@ class AdminDashboardTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        foreach (['super_admin', 'operasional', 'area'] as $r) {
+        foreach (['super_admin', 'operasional', 'admin_sales'] as $r) {
             Role::findOrCreate($r, 'web');
         }
         app(PermissionRegistrar::class)->forgetCachedPermissions();
@@ -129,7 +129,7 @@ class AdminDashboardTest extends TestCase
         $this->order($this->bdg);
 
         $area = User::factory()->create(['cabang_id' => $this->jkt->id]);
-        $area->assignRole('area');
+        $area->assignRole('admin_sales');
 
         Livewire::actingAs($area)
             ->test(AdminDashboard::class)

@@ -3,6 +3,19 @@
 Sistem operasional & booking studio foto DMA (multi-cabang). "Satu project dua wajah":
 **Storefront** publik/sekolah di `/`, **Panel staf** di `/app`.
 
+> **⚠️ BACA INI DULU — status per Agustus 2026.** Sebagian detail teknis di bawah ditulis **11 Jul 2026** dan **sudah usang**. Sumber status paling akurat:
+> - **`docs/LAPORAN-PROGRES-DMA.md`** — apa yang sudah/belum dibangun (dipetakan ke flow DMA) + Fase 2.
+> - **`docs/HOSTING-VPS-DMA.md`** — kebutuhan server/VPS + pertanyaan untuk DMA.
+> - **Folder memory** (`MEMORY.md` + file per-topik) — keputusan & progres per fase (auto-load di chat baru).
+>
+> Koreksi cepat vs teks lama di bawah:
+> - Test kini **±206 lolos** (bukan 114).
+> - Storefront `/` **sudah jadi** (bukan placeholder): home katalog, katalog+detail, keranjang, checkout, area akun sekolah. Redesign navy/oranye + Archivo tuntas (D1–D5, adopsi Jonas J1–J7).
+> - Palet: brand **oranye `#F7941D`** + **navy `#2E3192`/`#191B52`**; **storefront pakai font Archivo bold**; panel staf tetap Plus Jakarta. (Aturan lama "brand `#E08020` / maksimal `font-medium`" **tidak berlaku** untuk storefront.)
+> - Konsep **"beranda" sekolah DIHAPUS** → area akun sekolah = **Riwayat + Profil**.
+> - Sudah dibangun setelah Jul: **manajemen order** (DP/lunas/milestone H-7/H-2/HH/STE), **workflow tim event + OTP penyelesaian** (portal+email, 30 mnt + cooldown), **satuan produk qty/siswa** + pricelist 2026, **dashboard admin per-cabang interaktif** + **log aktivitas order** + halaman Aktivitas, sidebar bergrup.
+> - Branding: "Reservasi Paket Foto" → **"Studio Foto"**. Belum: folder event/GPS, proofing desain, bayar online, deploy produksi.
+
 ## Stack & lingkungan
 - Laravel 13, **Livewire 4 (class-based components** di `app/Livewire`, BUKAN single-file), Tailwind **v3.4** (via PostCSS; paket `@tailwindcss/vite` v4 ada tapi tidak dipakai), PostgreSQL, Breeze (Blade) + spatie/laravel-permission.
 - OS Windows. Shell: Git Bash + PowerShell. `psql` di `/d/laragon/bin/postgresql/pgsql/bin/psql`, `PGPASSWORD=root`, user `postgres`.

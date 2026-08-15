@@ -20,6 +20,8 @@ class KategoriIndex extends Component
 
     public bool $pakai_desain = false;
 
+    public string $grup = 'reguler';
+
     // Notifikasi inline (Livewire tidak reload penuh, jadi tak pakai session flash)
     public ?string $success = null;
 
@@ -35,6 +37,7 @@ class KategoriIndex extends Component
         return [
             'nama' => ['required', 'string', 'max:255'],
             'pakai_desain' => ['boolean'],
+            'grup' => ['required', 'in:'.implode(',', array_keys(\App\Models\Kategori::GRUP))],
         ];
     }
 
@@ -57,6 +60,7 @@ class KategoriIndex extends Component
         $this->editingId = $kategori->id;
         $this->nama = $kategori->nama;
         $this->pakai_desain = (bool) $kategori->pakai_desain;
+        $this->grup = $kategori->grup ?: 'reguler';
         $this->resetErrorBag();
         $this->showForm = true;
     }
@@ -97,7 +101,7 @@ class KategoriIndex extends Component
 
     public function resetForm(): void
     {
-        $this->reset(['editingId', 'nama', 'pakai_desain']);
+        $this->reset(['editingId', 'nama', 'pakai_desain', 'grup']);
         $this->resetErrorBag();
     }
 

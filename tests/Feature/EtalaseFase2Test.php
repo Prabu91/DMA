@@ -24,7 +24,7 @@ class EtalaseFase2Test extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        foreach (['super_admin', 'operasional', 'area', 'marketing', 'editor'] as $r) {
+        foreach (['super_admin', 'operasional', 'admin_sales', 'marketing', 'editor'] as $r) {
             Role::findOrCreate($r, 'web');
         }
         app(PermissionRegistrar::class)->forgetCachedPermissions();

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Booking;
 
+use App\Livewire\Concerns\WithSorting;
 use App\Models\Cabang;
 use App\Models\Order;
 use App\Support\OrderStatus;
@@ -20,7 +21,17 @@ use Livewire\WithPagination;
 #[Layout('layouts.app')]
 class OrderIndex extends Component
 {
-    use WithPagination;
+    use WithPagination, WithSorting;
+
+    protected function sortableColumns(): array
+    {
+        return [
+            'booking' => 'booking_code',
+            'event' => 'tanggal_event',
+            'total' => 'total',
+            'status' => 'status',
+        ];
+    }
 
     #[Url]
     public string $q = '';
@@ -103,11 +114,13 @@ class OrderIndex extends Component
             ? $this->filtered()->selectRaw('cabang_id, count(*) as c')->groupBy('cabang_id')->pluck('c', 'cabang_id')
             : collect();
 
-        $orders = $this->filtered()
+        $ordersQuery = $this->filtered()
             ->when($this->cabangId !== '', fn ($x) => $x->where('cabang_id', $this->cabangId))
             ->with(['sekolah', 'cabang', 'marketing'])
-            ->withCount('items')
-            ->latest()
+            ->withCount('items');
+
+        $orders = $this->applySort($ordersQuery, 'created_at', 'desc')
+            ->orderBy('id') // tiebreaker → paginasi stabil saat sort kolom non-unik
             ->paginate(15); // CabangScope membatasi ke cabang staf
 
         return view('livewire.booking.order-index', [

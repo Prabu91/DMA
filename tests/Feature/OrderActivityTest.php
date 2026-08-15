@@ -27,7 +27,7 @@ class OrderActivityTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        foreach (['super_admin', 'operasional', 'area', 'marketing', 'tim_event'] as $r) {
+        foreach (['super_admin', 'operasional', 'admin_sales', 'marketing', 'tim_event'] as $r) {
             Role::findOrCreate($r, 'web');
         }
         app(PermissionRegistrar::class)->forgetCachedPermissions();
@@ -52,20 +52,21 @@ class OrderActivityTest extends TestCase
         return $u;
     }
 
-    public function test_ubah_status_mencatat_aktivitas_dengan_pelaku(): void
+    public function test_catat_pembayaran_mencatat_aktivitas_dengan_pelaku(): void
     {
         $order = $this->order();
         $mkt = $this->marketing();
 
         Livewire::actingAs($mkt)
             ->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
-            ->set('catatan', 'DP via BCA')
-            ->call('ubahStatus', 'dp');
+            ->set('bayarJenis', 'dp')
+            ->set('bayarJumlah', 40000)
+            ->set('bayarTanggal', now()->toDateString())
+            ->call('catatPembayaran');
 
-        $act = OrderActivity::where('order_id', $order->id)->where('action', 'status_dp')->first();
+        $act = OrderActivity::where('order_id', $order->id)->where('action', 'pembayaran_dp')->first();
         $this->assertNotNull($act);
         $this->assertSame($mkt->id, $act->user_id);
-        $this->assertSame('DP via BCA', $act->description);
     }
 
     public function test_catat_jalur_sekolah_pelaku_null(): void
@@ -111,7 +112,7 @@ class OrderActivityTest extends TestCase
         $orderJkt->catat('status_lunas');
 
         $area = User::factory()->create(['cabang_id' => $this->jkt->id]);
-        $area->assignRole('area');
+        $area->assignRole('admin_sales');
 
         Livewire::actingAs($area)
             ->test(ActivityIndex::class)

@@ -51,55 +51,63 @@
         @endif
     </div>
 
-    <x-card padding="p-0">
+    <x-table min-width="880px">
+        <x-slot:head>
+            <x-table.th>Order</x-table.th>
+            <x-table.th>Wilayah</x-table.th>
+            <x-table.th>Masuk</x-table.th>
+            <x-table.th>Ringkasan</x-table.th>
+            <x-table.th align="right">Aksi</x-table.th>
+        </x-slot:head>
+
         @forelse ($this->orders as $order)
-            <div wire:key="order-{{ $order->id }}" class="flex flex-col gap-3 border-b border-line px-5 py-3.5 last:border-b-0 sm:flex-row sm:items-center sm:justify-between">
-                <div class="min-w-0">
-                    <div class="flex items-center gap-2">
-                        <span class="text-sm font-medium text-ink">Booking #{{ $order->id }}</span>
-                        <span class="text-sm text-ink">· {{ $order->sekolah?->nama }}</span>
-                    </div>
-                    <div class="mt-0.5 text-xs text-ink-muted">
-                        {{ $order->cabang?->nama }} ·
-                        {{ optional($order->tanggal_booking)->translatedFormat('d M Y') }} ·
-                        {{ $order->items_count }} item · {{ $order->jumlah_siswa }} siswa ·
-                        Rp{{ number_format($order->total, 0, ',', '.') }}
-                        @if ($tampil === 'ditugaskan')
-                            · Marketing: <span class="text-ink">{{ $order->marketing?->nama ?? $order->marketing?->name ?? '—' }}</span>
+            <x-table.tr>
+                <x-table.td>
+                    <div class="font-medium text-ink">Booking #{{ $order->id }}</div>
+                    <div class="text-xs text-ink-muted">{{ $order->sekolah?->nama }}</div>
+                    @if ($tampil === 'ditugaskan')
+                        <div class="mt-0.5 text-xs text-ink-muted">Marketing: <span class="text-ink">{{ $order->marketing?->nama ?? $order->marketing?->name ?? '—' }}</span></div>
+                    @endif
+                </x-table.td>
+                <x-table.td muted nowrap>
+                    <div class="text-ink">{{ $order->cabang?->nama }}</div>
+                    @if ($order->sekolah?->kecamatan)<div class="text-xs text-ink-muted">Kec. {{ $order->sekolah->kecamatan->nama }}</div>@endif
+                </x-table.td>
+                <x-table.td muted nowrap>{{ optional($order->tanggal_booking)->translatedFormat('d M Y') }}</x-table.td>
+                <x-table.td muted nowrap>
+                    {{ $order->items_count }} item · {{ $order->jumlah_siswa }} siswa
+                    <div class="text-xs text-ink-muted">Rp{{ number_format($order->total, 0, ',', '.') }}</div>
+                </x-table.td>
+                <x-table.td align="right">
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                        <x-button wire:click="lihatDetail({{ $order->id }})" variant="ghost" size="sm">Detail</x-button>
+
+                        @if ($tampil === 'baru' && $this->isMarketing)
+                            <x-button wire:click="ambil({{ $order->id }})" wire:confirm="Ambil order ini untuk Anda?" size="sm">Ambil</x-button>
+                        @endif
+
+                        @if ($this->isAdmin)
+                            @php $opsi = $this->marketingByCabang[$order->cabang_id] ?? []; @endphp
+                            <select wire:model="pilihMarketing.{{ $order->id }}"
+                                    class="min-h-[36px] rounded-lg border border-line bg-card px-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand/30">
+                                <option value="">— Marketing —</option>
+                                @foreach ($opsi as $uid => $nama)
+                                    <option value="{{ $uid }}">{{ $nama }}</option>
+                                @endforeach
+                            </select>
+                            @if ($tampil === 'baru')
+                                <x-button wire:click="tugaskan({{ $order->id }})" wire:confirm="Tugaskan order ini ke marketing terpilih?" variant="secondary" size="sm">Tugaskan</x-button>
+                            @else
+                                <x-button wire:click="reassign({{ $order->id }})" wire:confirm="Ubah penugasan marketing order ini?" variant="secondary" size="sm">Ubah</x-button>
+                            @endif
                         @endif
                     </div>
-                </div>
-
-                <div class="flex shrink-0 items-center gap-2">
-                    <x-button wire:click="lihatDetail({{ $order->id }})" variant="ghost" size="sm">Detail</x-button>
-
-                    @if ($tampil === 'baru' && $this->isMarketing)
-                        <x-button wire:click="ambil({{ $order->id }})" wire:confirm="Ambil order ini untuk Anda?" size="sm">Ambil</x-button>
-                    @endif
-
-                    @if ($this->isAdmin)
-                        @php $opsi = $this->marketingByCabang[$order->cabang_id] ?? []; @endphp
-                        <select wire:model="pilihMarketing.{{ $order->id }}"
-                                class="min-h-[36px] rounded-lg border border-line bg-card px-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand/30">
-                            <option value="">— Marketing —</option>
-                            @foreach ($opsi as $uid => $nama)
-                                <option value="{{ $uid }}">{{ $nama }}</option>
-                            @endforeach
-                        </select>
-                        @if ($tampil === 'baru')
-                            <x-button wire:click="tugaskan({{ $order->id }})" wire:confirm="Tugaskan order ini ke marketing terpilih?" variant="secondary" size="sm">Tugaskan</x-button>
-                        @else
-                            <x-button wire:click="reassign({{ $order->id }})" wire:confirm="Ubah penugasan marketing order ini?" variant="secondary" size="sm">Ubah</x-button>
-                        @endif
-                    @endif
-                </div>
-            </div>
+                </x-table.td>
+            </x-table.tr>
         @empty
-            <div class="px-5 py-10 text-center text-sm text-ink-muted">
-                {{ $tampil === 'baru' ? 'Tidak ada order yang menunggu penugasan.' : 'Belum ada order yang ditugaskan.' }}
-            </div>
+            <x-table.empty :colspan="5">{{ $tampil === 'baru' ? 'Tidak ada order yang menunggu penugasan.' : 'Belum ada order yang ditugaskan.' }}</x-table.empty>
         @endforelse
-    </x-card>
+    </x-table>
 
     {{-- Modal detail order --}}
     @if ($this->detailOrder)
@@ -127,7 +135,7 @@
                         <x-avatar :name="$d->sekolah?->nama" size="sm" />
                         <div class="min-w-0">
                             <div class="truncate text-sm font-bold text-ink">{{ $d->sekolah?->nama ?? '—' }}</div>
-                            <div class="truncate text-xs text-ink-muted">{{ $d->sekolah?->id_sekolah }} · {{ $d->cabang?->nama }}</div>
+                            <div class="truncate text-xs text-ink-muted">{{ $d->sekolah?->id_sekolah }} · {{ $d->cabang?->nama }}@if ($d->sekolah?->kecamatan) · Kec. {{ $d->sekolah->kecamatan->nama }}@endif</div>
                         </div>
                     </div>
 

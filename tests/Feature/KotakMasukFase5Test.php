@@ -26,7 +26,7 @@ class KotakMasukFase5Test extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        foreach (['super_admin', 'operasional', 'area', 'marketing'] as $r) {
+        foreach (['super_admin', 'operasional', 'admin_sales', 'marketing'] as $r) {
             Role::findOrCreate($r, 'web');
         }
         app(PermissionRegistrar::class)->forgetCachedPermissions();
@@ -123,7 +123,7 @@ class KotakMasukFase5Test extends TestCase
         $order = $this->orderSekolah($this->jkt);
         $m = $this->marketing($this->jkt);
         $area = User::factory()->create(['cabang_id' => $this->jkt->id]);
-        $area->assignRole('area');
+        $area->assignRole('admin_sales');
 
         Livewire::actingAs($area);
         Livewire::test(KotakMasuk::class)
@@ -140,7 +140,7 @@ class KotakMasukFase5Test extends TestCase
         $m2 = $this->marketing($this->jkt);
         $order = $this->orderSekolah($this->jkt, $m1->id);
         $area = User::factory()->create(['cabang_id' => $this->jkt->id]);
-        $area->assignRole('area');
+        $area->assignRole('admin_sales');
 
         Livewire::actingAs($area);
         Livewire::test(KotakMasuk::class)

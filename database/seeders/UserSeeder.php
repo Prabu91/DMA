@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Cabang;
+use App\Models\Kecamatan;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -36,16 +37,20 @@ class UserSeeder extends Seeder
             $slug = strtolower($cabang->kode_area);
 
             $this->makeUser([
-                'name' => "Area {$cabang->kode_area}",
-                'nama' => "Area {$cabang->kode_area}",
-                'email' => "area.{$slug}@dma.test",
+                'name' => "Admin Sales {$cabang->kode_area}",
+                'nama' => "Admin Sales {$cabang->kode_area}",
+                'email' => "area.{$slug}@dma.test", // email demo tetap (kompatibilitas akun contoh)
                 'cabang_id' => $cabang->id,
                 'kode_role' => 'AREA',
                 'no_telp' => '08120000'.$cabang->id.'10',
-            ], role: 'area');
+            ], role: 'admin_sales');
+
+            // Bagi kecamatan cabang ini ke 2 marketing bergiliran (MKT1/MKT2).
+            $kecamatan = Kecamatan::whereHas('kota', fn ($q) => $q->where('cabang_id', $cabang->id))
+                ->orderBy('id')->pluck('id')->values();
 
             foreach ([1, 2] as $n) {
-                $this->makeUser([
+                $marketing = $this->makeUser([
                     'name' => "Marketing {$cabang->kode_area} {$n}",
                     'nama' => "Marketing {$cabang->kode_area} {$n}",
                     'email' => "marketing{$n}.{$slug}@dma.test",
@@ -53,6 +58,10 @@ class UserSeeder extends Seeder
                     'kode_role' => "MKT{$n}",
                     'no_telp' => '08120000'.$cabang->id.'2'.$n,
                 ], role: 'marketing');
+
+                // MKT1 ambil index genap, MKT2 index ganjil → tiap kecamatan tepat 1 marketing.
+                $milik = $kecamatan->filter(fn ($id, $i) => $i % 2 === ($n - 1))->all();
+                $marketing->kecamatan()->syncWithoutDetaching($milik);
             }
 
             $this->makeUser([
@@ -78,7 +87,7 @@ class UserSeeder extends Seeder
     /**
      * Buat/ambil user by email (idempotent), simpan label role, lalu assign role spatie.
      */
-    private function makeUser(array $attributes, string $role): void
+    private function makeUser(array $attributes, string $role): User
     {
         $attributes += [
             'password' => Hash::make(self::DEFAULT_PASSWORD),
@@ -91,5 +100,7 @@ class UserSeeder extends Seeder
         );
 
         $user->syncRoles([$role]);
+
+        return $user;
     }
 }

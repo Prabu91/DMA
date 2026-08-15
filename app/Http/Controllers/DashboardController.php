@@ -14,7 +14,7 @@ class DashboardController extends Controller
     public const ROLE_DASHBOARDS = [
         'super_admin',
         'operasional',
-        'area',
+        'admin_sales',
         'marketing',
         'tim_event',
         'editor',

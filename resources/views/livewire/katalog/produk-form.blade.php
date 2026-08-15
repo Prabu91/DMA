@@ -15,8 +15,7 @@
                 <x-input label="Nama produk" wire:model="nama" :error="$errors->first('nama')" />
                 <x-select label="Gaya" wire:model="gaya" :options="$this->gayaOptions" :selected="$gaya" placeholder="— Tanpa gaya —" :error="$errors->first('gaya')" hint="Atribut produk, tidak terkait desain." />
                 <x-select label="Status" wire:model="status" :options="$this->statusOptions" :selected="$status" :error="$errors->first('status')" />
-                <x-input label="Harga (Rp)" type="number" min="0" wire:model="harga" :error="$errors->first('harga')" />
-                <x-select label="Satuan hitung" wire:model="satuan" :options="$this->satuanOptions" :selected="$satuan" :error="$errors->first('satuan')" hint="“Per jumlah siswa” → jumlah dipesan = banyak siswa (harga × siswa)." />
+                <x-input label="Harga (Rp)" type="number" min="0" wire:model="harga" :error="$errors->first('harga')" hint="Harga per satu produk (dikali jumlah yang dipesan)." />
                 <x-input label="Deskripsi" wire:model="deskripsi" :error="$errors->first('deskripsi')" class="sm:col-span-2" />
 
                 {{-- Foto --}}

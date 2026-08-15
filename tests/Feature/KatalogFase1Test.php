@@ -21,7 +21,7 @@ class KatalogFase1Test extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        foreach (['super_admin', 'operasional', 'marketing', 'area'] as $r) {
+        foreach (['super_admin', 'operasional', 'marketing', 'admin_sales'] as $r) {
             Role::findOrCreate($r, 'web');
         }
         app(PermissionRegistrar::class)->forgetCachedPermissions();

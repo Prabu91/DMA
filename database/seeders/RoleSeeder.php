@@ -13,7 +13,7 @@ class RoleSeeder extends Seeder
     public const ROLES = [
         'super_admin',
         'operasional',
-        'area',
+        'admin_sales',
         'marketing',
         'tim_event',
         'editor',

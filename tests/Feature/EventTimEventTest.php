@@ -28,7 +28,7 @@ class EventTimEventTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        foreach (['super_admin', 'operasional', 'area', 'marketing', 'tim_event'] as $r) {
+        foreach (['super_admin', 'operasional', 'admin_sales', 'marketing', 'tim_event'] as $r) {
             Role::findOrCreate($r, 'web');
         }
         app(PermissionRegistrar::class)->forgetCachedPermissions();
@@ -135,6 +135,7 @@ class EventTimEventTest extends TestCase
     public function test_ste_dapat_diakses_tim_event(): void
     {
         $order = $this->order($this->jkt);
+        $order->update(['konfirmasi_h2_at' => now()]); // STE terbit setelah H-2
         $tim = $this->timEvent($this->jkt);
         $order->timEvent()->attach($tim->id);
 

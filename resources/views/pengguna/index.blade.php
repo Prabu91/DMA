@@ -25,49 +25,55 @@
                 <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>Reset
             </a>
         @endif
-        <span class="ml-auto text-xs text-ink-muted">{{ $users->count() }} pengguna</span>
+        <span class="ml-auto text-xs text-ink-muted">{{ $users->total() }} pengguna</span>
     </form>
 
-    <x-card padding="p-0">
+    <x-table min-width="820px">
+        <x-slot:head>
+            <x-table.th>Nama</x-table.th>
+            <x-table.th>Kontak</x-table.th>
+            <x-table.th>Peran</x-table.th>
+            <x-table.th>Cabang</x-table.th>
+            <x-table.th align="right">Aksi</x-table.th>
+        </x-slot:head>
+
         @forelse ($users as $u)
             @php
                 $role = $u->getRoleNames()->first();
                 $roleLabel = $role ? \Illuminate\Support\Str::headline($role) : null;
                 $cabangLabel = $u->seesAllCabang() ? 'Semua cabang' : ($u->cabang?->nama ?? 'Tanpa cabang');
             @endphp
-            <div class="flex items-center justify-between gap-3 border-b border-line px-5 py-3.5 last:border-b-0">
-                <div class="flex min-w-0 items-center gap-3">
-                    <x-avatar :name="$u->nama ?? $u->name" size="sm" />
-                    <div class="min-w-0">
-                        <div class="truncate text-sm text-ink">{{ $u->nama ?? $u->name }}</div>
-                        <div class="truncate text-xs text-ink-muted">
-                            {{ $u->email }}@if ($u->no_telp) · {{ $u->no_telp }}@endif
-                        </div>
-                        <div class="mt-1 flex flex-wrap items-center gap-1.5">
-                            @if ($roleLabel)
-                                <x-badge variant="brand">{{ $roleLabel }}</x-badge>
-                            @else
-                                <x-badge variant="neutral">Tanpa peran</x-badge>
-                            @endif
-                            <x-badge variant="navy">{{ $cabangLabel }}</x-badge>
-                        </div>
+            <x-table.tr>
+                <x-table.td>
+                    <div class="flex items-center gap-3">
+                        <x-avatar :name="$u->nama ?? $u->name" size="sm" />
+                        <span class="font-medium text-ink">{{ $u->nama ?? $u->name }}</span>
                     </div>
-                </div>
-
-                <div class="flex shrink-0 items-center gap-2">
+                </x-table.td>
+                <x-table.td muted>
+                    <div class="text-ink">{{ $u->email }}</div>
+                    @if ($u->no_telp)<div class="text-xs text-ink-muted">{{ $u->no_telp }}</div>@endif
+                </x-table.td>
+                <x-table.td>
+                    @if ($roleLabel)<x-badge variant="brand">{{ $roleLabel }}</x-badge>@else<x-badge variant="neutral">Tanpa peran</x-badge>@endif
+                </x-table.td>
+                <x-table.td><x-badge variant="navy">{{ $cabangLabel }}</x-badge></x-table.td>
+                <x-table.td align="right" nowrap>
                     <x-button :href="route('app.pengguna.edit', $u)" variant="secondary" size="sm">Ubah</x-button>
                     @unless ($u->is(auth()->user()))
-                        <form method="POST" action="{{ route('app.pengguna.destroy', $u) }}"
+                        <form method="POST" action="{{ route('app.pengguna.destroy', $u) }}" class="inline"
                               onsubmit="return confirm('Hapus pengguna {{ $u->nama ?? $u->name }}?')">
                             @csrf
                             @method('DELETE')
                             <x-button type="submit" variant="ghost" size="sm">Hapus</x-button>
                         </form>
                     @endunless
-                </div>
-            </div>
+                </x-table.td>
+            </x-table.tr>
         @empty
-            <div class="px-5 py-10 text-center text-sm text-ink-muted">Belum ada pengguna.</div>
+            <x-table.empty :colspan="5">Belum ada pengguna.</x-table.empty>
         @endforelse
-    </x-card>
+    </x-table>
+
+    <div class="mt-4">{{ $users->links() }}</div>
 </x-app-layout>

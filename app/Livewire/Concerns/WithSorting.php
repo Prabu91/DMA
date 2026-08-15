@@ -1,0 +1,52 @@
+<?php
+
+namespace App\Livewire\Concerns;
+
+use Livewire\Attributes\Url;
+
+/**
+ * Sorting kolom untuk komponen daftar (dipakai bersama <x-table.th sortable>).
+ * Komponen wajib menyediakan whitelist kolom lewat sortableColumns() =
+ * [field => kolom_sql]. Field di luar whitelist diabaikan (anti-injeksi).
+ */
+trait WithSorting
+{
+    #[Url]
+    public string $sortField = '';
+
+    #[Url]
+    public string $sortDir = 'asc';
+
+    /** @return array<string, string> [field => kolom_sql] */
+    abstract protected function sortableColumns(): array;
+
+    public function sortBy(string $field): void
+    {
+        if (! array_key_exists($field, $this->sortableColumns())) {
+            return;
+        }
+
+        if ($this->sortField === $field) {
+            $this->sortDir = $this->sortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortField = $field;
+            $this->sortDir = 'asc';
+        }
+
+        if (method_exists($this, 'resetPage')) {
+            $this->resetPage();
+        }
+    }
+
+    /** Terapkan sort ke builder (Eloquent/Query). $default = urutan bila belum ada sort. */
+    protected function applySort($query, ?string $defaultColumn = null, string $defaultDir = 'desc')
+    {
+        $cols = $this->sortableColumns();
+
+        if ($this->sortField !== '' && isset($cols[$this->sortField])) {
+            return $query->orderBy($cols[$this->sortField], $this->sortDir === 'asc' ? 'asc' : 'desc');
+        }
+
+        return $defaultColumn ? $query->orderBy($defaultColumn, $defaultDir) : $query;
+    }
+}

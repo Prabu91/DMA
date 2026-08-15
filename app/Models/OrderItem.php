@@ -18,6 +18,8 @@ class OrderItem extends Model
         'opsi_ukuran',
         'qty',
         'harga',
+        'diskon',
+        'diskon_diajukan',
         'is_free',
     ];
 
@@ -25,7 +27,22 @@ class OrderItem extends Model
     {
         return [
             'is_free' => 'boolean',
+            'harga' => 'integer',
+            'qty' => 'integer',
+            'diskon' => 'integer',
         ];
+    }
+
+    /** Harga satuan setelah diskon. */
+    public function hargaEfektif(): int
+    {
+        return max(0, (int) $this->harga - (int) $this->diskon);
+    }
+
+    /** Subtotal baris setelah diskon (harga efektif × qty). */
+    public function subtotalEfektif(): int
+    {
+        return $this->hargaEfektif() * (int) $this->qty;
     }
 
     public function order(): BelongsTo

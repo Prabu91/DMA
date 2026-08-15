@@ -9,13 +9,30 @@ class Kategori extends Model
 {
     protected $table = 'kategori';
 
-    protected $fillable = ['nama', 'pakai_desain'];
+    /** Grup laporan finance. */
+    public const GRUP = [
+        'reguler' => 'Reguler',
+        'ob' => 'Openbooth (OB)',
+        'yb' => 'Yearbook (YB)',
+        'souvenir' => 'Souvenir',
+    ];
+
+    protected $fillable = ['nama', 'pakai_desain', 'grup'];
+
+    protected $attributes = [
+        'grup' => 'reguler',
+    ];
 
     protected function casts(): array
     {
         return [
             'pakai_desain' => 'boolean',
         ];
+    }
+
+    public static function grupLabel(?string $grup): string
+    {
+        return self::GRUP[$grup] ?? 'Reguler';
     }
 
     public function produk(): HasMany

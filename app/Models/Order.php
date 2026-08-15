@@ -32,11 +32,14 @@ class Order extends Model
         'konfirmasi_hh_at',
         'konfirmasi_lokasi_at',
         'event_selesai_at',
+        'sampai_kantor_at',
         'tanggal_event',
         'jam_event',
         'jumlah_siswa',
         'keterangan',
+        'bukti_dp_path',
         'total',
+        'diskon_status',
         'otp_code',
         'otp_expires',
         'tahun_ajaran',
@@ -52,6 +55,7 @@ class Order extends Model
             'konfirmasi_hh_at' => 'datetime',
             'konfirmasi_lokasi_at' => 'datetime',
             'event_selesai_at' => 'datetime',
+            'sampai_kantor_at' => 'datetime',
             'otp_expires' => 'datetime',
             'tanggal_booking' => 'datetime',
         ];
@@ -109,6 +113,19 @@ class Order extends Model
         'h2' => 'konfirmasi_h2_at',
         'hh' => 'konfirmasi_hh_at',
     ];
+
+    /** Milestone H-7 & H-2 = wewenang admin sales; Hari-H = tim event. */
+    public const MILESTONE_ADMIN = ['h7', 'h2'];
+
+    /**
+     * Order TERKUNCI setelah tim event konfirmasi Hari-H (titik final) atau
+     * event sudah selesai. Terkunci = tak boleh diubah siapa pun.
+     */
+    public function isLocked(): bool
+    {
+        return $this->konfirmasi_hh_at !== null
+            || $this->event_status === \App\Support\OrderStatus::EVENT_SELESAI;
+    }
 
     /** Masa berlaku OTP penyelesaian event (menit). */
     public const OTP_EXPIRY_MINUTES = 30;
@@ -191,6 +208,111 @@ class Order extends Model
     public function activities(): HasMany
     {
         return $this->hasMany(OrderActivity::class)->latest('created_at');
+    }
+
+    public function pembayaran(): HasMany
+    {
+        return $this->hasMany(OrderPembayaran::class)->orderBy('tanggal_bayar');
+    }
+
+    // ---------- Finansial ----------
+
+    /** Diskon disetujui (0 bila belum/ditolak). */
+    public const DISKON_DIAJUKAN = 'diajukan';
+
+    public const DISKON_DISETUJUI = 'disetujui';
+
+    public const DISKON_DITOLAK = 'ditolak';
+
+    /** Total diskon (Σ diskon per satuan × qty item non-free). */
+    public function totalDiskon(): int
+    {
+        $items = $this->relationLoaded('items') ? $this->items : $this->items()->get();
+
+        return (int) $items->where('is_free', false)
+            ->sum(fn ($i) => (int) $i->diskon * (int) $i->qty);
+    }
+
+    /** Total setelah diskon per item. */
+    public function totalSetelahDiskon(): int
+    {
+        return max(0, (int) $this->total - $this->totalDiskon());
+    }
+
+    /** Total sudah dibayar (Σ pembayaran). Pakai relasi ter-load bila ada. */
+    public function totalDibayar(): int
+    {
+        return (int) ($this->relationLoaded('pembayaran')
+            ? $this->pembayaran->sum('jumlah')
+            : $this->pembayaran()->sum('jumlah'));
+    }
+
+    /** Sisa tagihan. */
+    public function outstanding(): int
+    {
+        return max(0, $this->totalSetelahDiskon() - $this->totalDibayar());
+    }
+
+    /**
+     * Grup kategori (bucket finance: reguler/ob/yb/souvenir) yang ada di order,
+     * unik. Dihitung dari item→produk→kategori (paket: union produk isinya).
+     * Butuh relasi items.produk.kategori & items.paket.produk.kategori ter-load.
+     */
+    public function grupKategori(): array
+    {
+        $grups = [];
+        foreach ($this->items as $item) {
+            if ($item->tipe_item === 'produk') {
+                $grups[] = $item->produk?->kategori?->grup ?? 'reguler';
+            } elseif ($item->tipe_item === 'paket' && $item->paket) {
+                foreach ($item->paket->produk as $p) {
+                    $grups[] = $p->kategori?->grup ?? 'reguler';
+                }
+            }
+        }
+
+        return array_values(array_unique($grups ?: ['reguler']));
+    }
+
+    /**
+     * Sinkronkan kolom status dari total pembayaran vs tagihan.
+     * Order batal tidak diubah. Dipanggil tiap catat/hapus pembayaran & approve diskon.
+     */
+    public function recalcStatusPembayaran(): void
+    {
+        if ($this->status === \App\Support\OrderStatus::BATAL) {
+            return;
+        }
+
+        $dibayar = $this->totalDibayar();
+        $tagihan = $this->totalSetelahDiskon();
+
+        $status = match (true) {
+            $tagihan > 0 && $dibayar >= $tagihan => \App\Support\OrderStatus::LUNAS,
+            $dibayar > 0 => \App\Support\OrderStatus::DP,
+            default => \App\Support\OrderStatus::BARU,
+        };
+
+        if ($this->status !== $status) {
+            $this->update(['status' => $status]);
+        }
+    }
+
+    /**
+     * Simpan foto bukti DP (1 foto): simpan yang baru, hapus yang lama, catat.
+     * Dipakai bersama OrderDetail (staf) & EventDetail (tim event).
+     */
+    public function gantiBuktiDp(\Illuminate\Http\UploadedFile $file): void
+    {
+        $lama = $this->bukti_dp_path;
+        $path = $file->store('bukti-bayar', 'public');
+        $this->update(['bukti_dp_path' => $path]);
+
+        if ($lama && $lama !== $path) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($lama);
+        }
+
+        $this->catat('bukti_dp', 'unggah bukti DP');
     }
 
     /**

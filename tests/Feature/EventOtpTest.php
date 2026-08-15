@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Livewire\Event\EventDetail;
-use App\Mail\EventOtpMail;
 use App\Models\Cabang;
 use App\Models\Order;
 use App\Models\Sekolah;
@@ -81,8 +80,9 @@ class EventOtpTest extends TestCase
         Mail::assertNothingSent();
     }
 
-    public function test_generate_otp_membuat_kode_dan_kirim_email_guru(): void
+    public function test_generate_otp_membuat_kode_tanpa_kirim_email(): void
     {
+        // Sementara OTP tidak dikirim email — hanya tampil di akun sekolah.
         Mail::fake();
         $order = $this->order();
         $tim = $this->timEvent();
@@ -95,7 +95,7 @@ class EventOtpTest extends TestCase
         $order->refresh();
         $this->assertNotNull($order->otp_code);
         $this->assertTrue($order->eventOtpActive());
-        Mail::assertSent(EventOtpMail::class, fn ($m) => $m->hasTo('guru@sekolah.test'));
+        Mail::assertNothingSent();
     }
 
     public function test_input_otp_benar_menyelesaikan_event(): void
@@ -175,7 +175,7 @@ class EventOtpTest extends TestCase
         // Kirim ulang langsung → kena cooldown 60 detik → ditolak, kode tak berubah.
         $comp->call('generateOtp')->assertHasErrors('otpInput');
         $this->assertSame($kode1, $order->refresh()->otp_code);
-        Mail::assertSentCount(1); // hanya email OTP pertama
+        Mail::assertNothingSent(); // OTP tak lagi lewat email
     }
 
     public function test_kirim_ulang_boleh_setelah_cooldown(): void

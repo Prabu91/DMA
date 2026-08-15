@@ -21,8 +21,15 @@
 
                 <x-input name="alamat" label="Alamat" :value="old('alamat')" hint="Opsional." />
 
-                {{-- Kota → cabang otomatis; "lainnya" = cabang diatur admin --}}
-                <div x-data="{ kota: '{{ old('kota_id') }}' }" class="space-y-3">
+                {{-- Kota → cabang otomatis; "lainnya" = cabang diatur admin. Kecamatan tergantung kota. --}}
+                <div x-data="{
+                        kota: '{{ old('kota_id') }}',
+                        kecamatan: '{{ old('kecamatan_id') }}',
+                        kecById: {{ Illuminate\Support\Js::from($kecamatanByKota) }},
+                        get opsiKecamatan() { return this.kecById[this.kota] || [] },
+                    }"
+                    x-effect="if (kota === 'lainnya' || !opsiKecamatan.length) kecamatan = ''"
+                    class="space-y-3">
                     <div class="space-y-1.5">
                         <label for="kota_id" class="block text-sm font-medium text-ink">Kota</label>
                         <select name="kota_id" id="kota_id" x-model="kota" required
@@ -34,6 +41,20 @@
                             <option value="lainnya" @selected(old('kota_id') === 'lainnya')>Lainnya (kota tidak ada di daftar)</option>
                         </select>
                         @error('kota_id')<p class="text-xs text-status-danger">{{ $message }}</p>@enderror
+                    </div>
+
+                    {{-- Kecamatan (muncul bila kota terpilih punya daftar kecamatan) --}}
+                    <div x-show="kota && kota !== 'lainnya' && opsiKecamatan.length" x-cloak class="space-y-1.5">
+                        <label for="kecamatan_id" class="block text-sm font-medium text-ink">Kecamatan</label>
+                        <select name="kecamatan_id" id="kecamatan_id" x-model="kecamatan"
+                            class="block w-full min-h-[44px] rounded-lg border border-line bg-card px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand">
+                            <option value="">— Pilih kecamatan —</option>
+                            <template x-for="kec in opsiKecamatan" :key="kec.id">
+                                <option :value="kec.id" x-text="kec.nama" :selected="String(kec.id) === kecamatan"></option>
+                            </template>
+                        </select>
+                        <p class="text-xs text-ink-muted">Membantu order Anda langsung diarahkan ke marketing wilayah.</p>
+                        @error('kecamatan_id')<p class="text-xs text-status-danger">{{ $message }}</p>@enderror
                     </div>
 
                     <div x-show="kota === 'lainnya'" x-cloak>

@@ -32,19 +32,19 @@ class OrderPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['operasional', 'area', 'marketing', 'tim_event']);
+        return $user->hasAnyRole(['operasional', 'admin_sales', 'marketing', 'tim_event']);
     }
 
     public function update(User $user, Order $order): bool
     {
         return $this->sameCabang($user, $order)
-            && $user->hasAnyRole(['operasional', 'area', 'marketing', 'tim_event']);
+            && $user->hasAnyRole(['operasional', 'admin_sales', 'marketing', 'tim_event']);
     }
 
     public function delete(User $user, Order $order): bool
     {
         return $this->sameCabang($user, $order)
-            && $user->hasAnyRole(['operasional', 'area']);
+            && $user->hasAnyRole(['operasional', 'admin_sales']);
     }
 
     /**

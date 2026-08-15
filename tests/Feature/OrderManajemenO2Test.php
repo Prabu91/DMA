@@ -28,7 +28,7 @@ class OrderManajemenO2Test extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        foreach (['super_admin', 'operasional', 'area', 'marketing', 'tim_event'] as $r) {
+        foreach (['super_admin', 'operasional', 'admin_sales', 'marketing', 'tim_event'] as $r) {
             Role::findOrCreate($r, 'web');
         }
         app(PermissionRegistrar::class)->forgetCachedPermissions();
@@ -49,7 +49,7 @@ class OrderManajemenO2Test extends TestCase
     private function area(Cabang $cabang): User
     {
         $u = User::factory()->create(['cabang_id' => $cabang->id]);
-        $u->assignRole('area');
+        $u->assignRole('admin_sales');
 
         return $u;
     }
@@ -134,29 +134,33 @@ class OrderManajemenO2Test extends TestCase
             ->assertHasErrors('tanggalEvent');
     }
 
-    // ---------- O3: status pembayaran ----------
+    // ---------- O3: pembayaran (nominal → status otomatis) ----------
 
-    public function test_konfirmasi_dp_dan_catatan(): void
+    public function test_catat_dp_status_otomatis_dp(): void
     {
-        $order = $this->order($this->jkt, 'baru');
+        $order = $this->order($this->jkt, 'baru'); // total 100.000
 
         Livewire::actingAs($this->marketing($this->jkt))
             ->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
-            ->set('catatan', 'DP 50% via BCA')
-            ->call('ubahStatus', 'dp');
+            ->set('bayarJenis', 'dp')
+            ->set('bayarJumlah', 40000)
+            ->set('bayarTanggal', now()->toDateString())
+            ->call('catatPembayaran')
+            ->assertHasNoErrors();
 
-        $order->refresh();
+        $order->refresh()->load('pembayaran');
         $this->assertSame('dp', $order->status);
-        $this->assertSame('DP 50% via BCA', $order->keterangan);
+        $this->assertSame(60000, $order->outstanding());
     }
 
-    public function test_dp_ke_lunas_lalu_batal(): void
+    public function test_pelunasan_lalu_batal(): void
     {
-        $order = $this->order($this->jkt, 'dp');
+        $order = $this->order($this->jkt, 'baru');
         $mkt = $this->marketing($this->jkt);
 
         Livewire::actingAs($mkt)->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
-            ->call('ubahStatus', 'lunas');
+            ->set('bayarJumlah', 100000)->set('bayarJenis', 'pelunasan')->set('bayarTanggal', now()->toDateString())
+            ->call('catatPembayaran');
         $this->assertSame('lunas', $order->refresh()->status);
 
         Livewire::actingAs($mkt)->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
@@ -164,32 +168,137 @@ class OrderManajemenO2Test extends TestCase
         $this->assertSame('batal', $order->refresh()->status);
     }
 
-    public function test_transisi_tak_valid_ditolak(): void
+    public function test_nominal_non_integer_ditolak(): void
     {
-        $order = $this->order($this->jkt, 'lunas'); // lunas → dp tidak diizinkan
+        $order = $this->order($this->jkt, 'baru');
 
+        Livewire::actingAs($this->marketing($this->jkt))
+            ->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
+            ->set('bayarJumlah', 0) // < 1
+            ->set('bayarTanggal', now()->toDateString())
+            ->call('catatPembayaran')
+            ->assertHasErrors('bayarJumlah');
+
+        $this->assertSame(0, $order->refresh()->totalDibayar());
+    }
+
+    public function test_ubah_status_hanya_batal_aktifkan(): void
+    {
+        $order = $this->order($this->jkt, 'baru');
+
+        // dp/lunas tak bisa lewat ubahStatus (hanya batal/aktifkan).
         Livewire::actingAs($this->marketing($this->jkt))
             ->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
             ->call('ubahStatus', 'dp')
             ->assertStatus(422);
+    }
 
-        $this->assertSame('lunas', $order->refresh()->status);
+    // ---------- Diskon per item: ajukan → setujui/tolak ----------
+
+    private function orderDenganItem(): array
+    {
+        $order = $this->order($this->jkt, 'baru'); // total 100.000
+        $item = $order->items()->create(['tipe_item' => 'produk', 'produk_id' => null, 'qty' => 1, 'harga' => 100000, 'is_free' => false]);
+
+        return [$order, $item];
+    }
+
+    public function test_ajukan_lalu_setujui_diskon_per_item_ubah_nominal(): void
+    {
+        [$order, $item] = $this->orderDenganItem();
+
+        // Marketing ajukan diskon 20.000/satuan pada item.
+        Livewire::actingAs($this->marketing($this->jkt))
+            ->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
+            ->set('diskonItem.'.$item->id, 20000)
+            ->call('ajukanDiskon');
+        $order->refresh();
+        $this->assertSame('diajukan', $order->diskon_status);
+        $this->assertSame(20000, $item->refresh()->diskon_diajukan);
+        $this->assertSame(0, $item->diskon); // belum efektif
+
+        // Admin sales setujui, ubah jadi 15.000.
+        Livewire::actingAs($this->area($this->jkt))
+            ->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
+            ->set('diskonItem.'.$item->id, 15000)
+            ->call('setujuiDiskon');
+        $order->refresh()->load('items');
+        $this->assertSame('disetujui', $order->diskon_status);
+        $this->assertSame(15000, $item->refresh()->diskon);
+        $this->assertSame(85000, $order->outstanding()); // 100.000 - 15.000
+    }
+
+    public function test_marketing_tak_bisa_setujui_diskon(): void
+    {
+        [$order, $item] = $this->orderDenganItem();
+        $order->update(['diskon_status' => 'diajukan']);
+
+        Livewire::actingAs($this->marketing($this->jkt))
+            ->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
+            ->set('diskonItem.'.$item->id, 20000)
+            ->call('setujuiDiskon')
+            ->assertStatus(403);
+
+        $this->assertSame(0, $item->refresh()->diskon);
+    }
+
+    public function test_tolak_diskon(): void
+    {
+        [$order, $item] = $this->orderDenganItem();
+        $item->update(['diskon_diajukan' => 20000]);
+        $order->update(['diskon_status' => 'diajukan']);
+
+        Livewire::actingAs($this->area($this->jkt))
+            ->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
+            ->call('tolakDiskon');
+
+        $order->refresh();
+        $this->assertSame('ditolak', $order->diskon_status);
+        $this->assertSame(0, $item->refresh()->diskon);
     }
 
     // ---------- O4: milestone event ----------
 
-    public function test_konfirmasi_milestone_h7(): void
+    public function test_konfirmasi_milestone_h7_oleh_admin_sales(): void
     {
         $order = $this->order($this->jkt);
         $order->update(['tanggal_event' => now()->addDays(10)->toDateString()]);
 
-        Livewire::actingAs($this->marketing($this->jkt))
+        // H-7 kini wewenang admin sales (area), bukan marketing.
+        Livewire::actingAs($this->area($this->jkt))
             ->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
             ->call('konfirmasiMilestone', 'h7');
 
         $this->assertNotNull($order->refresh()->konfirmasi_h7_at);
         $states = collect($order->milestones())->keyBy('key');
         $this->assertSame('confirmed', $states['h7']['state']);
+    }
+
+    public function test_marketing_tak_bisa_konfirmasi_milestone(): void
+    {
+        $order = $this->order($this->jkt);
+        $order->update(['tanggal_event' => now()->addDays(10)->toDateString()]);
+
+        Livewire::actingAs($this->marketing($this->jkt))
+            ->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
+            ->call('konfirmasiMilestone', 'h7')
+            ->assertStatus(403);
+
+        $this->assertNull($order->refresh()->konfirmasi_h7_at);
+    }
+
+    public function test_hari_h_tak_bisa_dikonfirmasi_di_panel_staf(): void
+    {
+        $order = $this->order($this->jkt);
+        $order->update(['tanggal_event' => now()->addDays(10)->toDateString()]);
+
+        // Hari-H (hh) hanya untuk tim event → panel staf menolak.
+        Livewire::actingAs($this->area($this->jkt))
+            ->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
+            ->call('konfirmasiMilestone', 'hh')
+            ->assertStatus(422);
+
+        $this->assertNull($order->refresh()->konfirmasi_hh_at);
     }
 
     public function test_state_milestone_overdue_upcoming_dan_countdown(): void
@@ -209,7 +318,7 @@ class OrderManajemenO2Test extends TestCase
     {
         $order = $this->order($this->jkt); // tanpa tanggal_event
 
-        Livewire::actingAs($this->marketing($this->jkt))
+        Livewire::actingAs($this->area($this->jkt))
             ->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
             ->call('konfirmasiMilestone', 'h7')
             ->assertStatus(422);
@@ -246,7 +355,9 @@ class OrderManajemenO2Test extends TestCase
 
     public function test_ste_pdf_dapat_diakses_staf(): void
     {
+        // STE terbit setelah konfirmasi H-2.
         $order = $this->order($this->jkt);
+        $order->update(['tanggal_event' => now()->addDays(2)->toDateString(), 'konfirmasi_h2_at' => now()]);
         $order->timEvent()->attach($this->timEvent($this->jkt)->id);
 
         $res = $this->actingAs($this->marketing($this->jkt))
@@ -254,5 +365,15 @@ class OrderManajemenO2Test extends TestCase
 
         $res->assertOk();
         $this->assertStringContainsString('application/pdf', $res->headers->get('content-type'));
+    }
+
+    public function test_ste_diblokir_sebelum_h2(): void
+    {
+        $order = $this->order($this->jkt); // belum H-2
+        $order->timEvent()->attach($this->timEvent($this->jkt)->id);
+
+        $this->actingAs($this->marketing($this->jkt))
+            ->get(route('app.order.ste', $order->id))
+            ->assertStatus(403);
     }
 }

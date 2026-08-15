@@ -17,7 +17,8 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RoleSeeder::class,     // role harus ada sebelum user di-assign role
             CabangSeeder::class,   // cabang sebelum user (FK cabang_id)
-            KotaSeeder::class,     // kota + cabang peta
+            KotaSeeder::class,       // kota + cabang peta
+            KecamatanSeeder::class,  // kecamatan per kota (sebelum UserSeeder assign ke marketing)
             UserSeeder::class,
             KategoriSeeder::class, // kategori sebelum produk (FK kategori_id)
             ProdukSeeder::class,

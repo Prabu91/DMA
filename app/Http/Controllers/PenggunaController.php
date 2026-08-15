@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cabang;
+use App\Models\Kecamatan;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,7 +25,8 @@ class PenggunaController extends Controller
             ->when($filterRole !== '', fn ($q) => $q->whereHas('roles', fn ($r) => $r->where('name', $filterRole)))
             ->orderBy('nama')
             ->orderBy('name')
-            ->get();
+            ->paginate(25)
+            ->withQueryString();
 
         return view('pengguna.index', [
             'users' => $users,
@@ -52,6 +54,7 @@ class PenggunaController extends Controller
         $user->save();
 
         $this->syncRole($user, $data['role'] ?? null);
+        $this->syncKecamatan($user, $data);
 
         return redirect()->route('app.pengguna.index')->with('success', 'Pengguna ditambahkan.');
     }
@@ -72,6 +75,7 @@ class PenggunaController extends Controller
         $pengguna->save();
 
         $this->syncRole($pengguna, $data['role'] ?? null);
+        $this->syncKecamatan($pengguna, $data);
 
         return redirect()->route('app.pengguna.index')->with('success', 'Pengguna diperbarui.');
     }
@@ -88,15 +92,24 @@ class PenggunaController extends Controller
     }
 
     /**
-     * Data pilihan untuk form (cabang & role).
+     * Data pilihan untuk form (cabang, role, kecamatan per cabang, kecamatan terpilih).
      */
     private function formData(array $extra = []): array
     {
+        $pengguna = $extra['pengguna'] ?? null;
+
         return array_merge([
             'cabangOptions' => Cabang::orderBy('nama')->pluck('nama', 'id')->all(),
             'roleOptions' => Role::orderBy('name')->pluck('name')
                 ->mapWithKeys(fn ($name) => [$name => \Illuminate\Support\Str::headline($name)])
                 ->all(),
+            // Kecamatan dikelompokkan per cabang (untuk checkbox dependent di form).
+            'kecamatanByCabang' => Kecamatan::with('kota')->orderBy('nama')->get()
+                ->groupBy(fn ($k) => $k->kota?->cabang_id)
+                ->reject(fn ($g, $cabangId) => $cabangId === null || $cabangId === '')
+                ->map(fn ($g) => $g->map(fn ($k) => ['id' => $k->id, 'label' => $k->nama.' — '.$k->kota?->nama])->values())
+                ->all(),
+            'selectedKecamatan' => old('kecamatan_ids', $pengguna?->kecamatan->pluck('id')->all() ?? []),
         ], $extra);
     }
 
@@ -108,6 +121,8 @@ class PenggunaController extends Controller
             'no_telp' => ['nullable', 'string', 'max:30'],
             'cabang_id' => ['nullable', Rule::exists('cabang', 'id')],
             'role' => ['nullable', Rule::in(Role::pluck('name')->all())],
+            'kecamatan_ids' => ['nullable', 'array'],
+            'kecamatan_ids.*' => ['integer', Rule::exists('kecamatan', 'id')],
             'password' => $pengguna
                 ? ['nullable', 'confirmed', Password::defaults()]
                 : ['required', 'confirmed', Password::defaults()],
@@ -133,5 +148,26 @@ class PenggunaController extends Controller
     private function syncRole(User $user, ?string $role): void
     {
         $user->syncRoles($role ? [$role] : []);
+    }
+
+    /**
+     * Sinkron kecamatan yang ditangani (hanya untuk marketing, dan hanya
+     * kecamatan yang berada dalam cabang user). Role non-marketing → dikosongkan.
+     */
+    private function syncKecamatan(User $user, array $data): void
+    {
+        if (($data['role'] ?? null) !== 'marketing' || ! $user->cabang_id) {
+            $user->kecamatan()->sync([]);
+
+            return;
+        }
+
+        $ids = $data['kecamatan_ids'] ?? [];
+        $valid = Kecamatan::whereIn('id', $ids)
+            ->whereHas('kota', fn ($q) => $q->where('cabang_id', $user->cabang_id))
+            ->pluck('id')
+            ->all();
+
+        $user->kecamatan()->sync($valid);
     }
 }

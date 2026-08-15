@@ -33,6 +33,7 @@
                         @else
                             <x-badge variant="neutral">Tanpa desain</x-badge>
                         @endif
+                        <x-badge variant="navy">{{ \App\Models\Kategori::grupLabel($item->grup) }}</x-badge>
                         <span class="text-xs text-ink-muted">{{ $item->produk_count }} produk · {{ $item->desain_count }} desain</span>
                     </div>
                 </div>
@@ -55,6 +56,8 @@
 
                 <form wire:submit="save" class="mt-4 space-y-4">
                     <x-input id="kategori-nama" label="Nama kategori" wire:model="nama" :error="$errors->first('nama')" placeholder="mis. Wisuda" />
+
+                    <x-select label="Grup laporan (Finance)" wire:model="grup" :options="\App\Models\Kategori::GRUP" :selected="$grup" :error="$errors->first('grup')" hint="Menentukan bucket di laporan sales: Reguler/OB/YB/Souvenir." />
 
                     <label class="flex items-center gap-2">
                         <input type="checkbox" wire:model="pakai_desain" class="h-4 w-4 rounded border-line text-brand focus:ring-2 focus:ring-brand/30">

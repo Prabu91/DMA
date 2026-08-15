@@ -7,12 +7,12 @@
             </div>
 
             <h1 class="text-center text-xl font-extrabold tracking-tight text-ink">Masuk ke akun sekolah</h1>
-            <p class="mb-6 mt-1 text-center text-sm text-ink-muted">Gunakan email &amp; kata sandi yang terdaftar.</p>
+            <p class="mb-6 mt-1 text-center text-sm text-ink-muted">Gunakan ID sekolah &amp; kata sandi yang terdaftar.</p>
 
             <form method="POST" action="{{ route('sekolah.masuk.store') }}" class="space-y-4">
                 @csrf
 
-                <x-input name="email" label="Email" type="email" :value="old('email')" required autofocus placeholder="sekolah@contoh.sch.id" />
+                <x-input name="id_sekolah" label="ID Sekolah" :value="old('id_sekolah')" required autofocus placeholder="SKL-000001" autocomplete="username" />
                 <x-password-input name="password" label="Kata sandi" required autocomplete="current-password" />
 
                 <label class="flex items-center gap-2">

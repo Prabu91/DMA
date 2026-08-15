@@ -27,7 +27,7 @@ class BookingFase67Test extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        foreach (['super_admin', 'operasional', 'area', 'marketing'] as $r) {
+        foreach (['super_admin', 'operasional', 'admin_sales', 'marketing'] as $r) {
             Role::findOrCreate($r, 'web');
         }
         app(PermissionRegistrar::class)->forgetCachedPermissions();

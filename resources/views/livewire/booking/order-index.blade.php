@@ -45,37 +45,41 @@
         @endif
     </div>
 
-    <x-card padding="p-0">
+    <x-table min-width="900px">
+        <x-slot:head>
+            <x-table.th sortable field="booking" :sort="$sortField" :dir="$sortDir">Order</x-table.th>
+            <x-table.th sortable field="status" :sort="$sortField" :dir="$sortDir">Status</x-table.th>
+            <x-table.th>Sekolah</x-table.th>
+            <x-table.th sortable field="event" :sort="$sortField" :dir="$sortDir">Event</x-table.th>
+            <x-table.th>Marketing</x-table.th>
+            <x-table.th sortable field="total" :sort="$sortField" :dir="$sortDir" align="right">Total</x-table.th>
+        </x-slot:head>
+
         @forelse ($orders as $order)
-            <a href="{{ route('app.order.show', $order->id) }}" wire:navigate
-               class="flex items-center justify-between gap-3 border-b border-line px-5 py-3.5 last:border-b-0 hover:bg-page">
-                <div class="min-w-0">
-                    <div class="flex flex-wrap items-center gap-2">
-                        @if ($order->booking_code)
-                            <span class="text-sm font-medium tracking-wide text-ink">{{ $order->booking_code }}</span>
-                        @else
-                            <span class="text-sm text-ink">Order #{{ $order->id }}</span>
-                        @endif
-                        <x-badge :variant="\App\Support\OrderStatus::badge($order->status)">{{ \App\Support\OrderStatus::label($order->status) }}</x-badge>
-                        @unless ($order->marketing)<x-badge variant="neutral">Belum ditugaskan</x-badge>@endunless
-                        @php $cd = $order->eventCountdown(); @endphp
-                        @if ($cd)
-                            <x-badge :variant="$cd['state'] === 'past' ? 'danger' : ($cd['state'] === 'today' ? 'pending' : 'info')">{{ $cd['label'] }}</x-badge>
-                        @endif
-                    </div>
-                    <div class="mt-0.5 truncate text-xs text-ink-muted">
-                        {{ $order->sekolah?->nama }} · {{ $order->cabang?->nama }}
-                        · Event: {{ $order->tanggal_event ? $order->tanggal_event->translatedFormat('d M Y') : '—' }}
-                        · {{ $order->items_count }} item · {{ $order->jumlah_siswa }} siswa
-                        @if ($order->marketing) · {{ $order->marketing->nama ?? $order->marketing->name }} @endif
-                    </div>
-                </div>
-                <div class="shrink-0 text-right text-sm font-medium text-ink">Rp{{ number_format($order->total, 0, ',', '.') }}</div>
-            </a>
+            <x-table.tr>
+                <x-table.td nowrap>
+                    <a href="{{ route('app.order.show', $order->id) }}" wire:navigate class="font-medium text-brand hover:text-brand-hover">
+                        {{ $order->booking_code ?? 'Order #'.$order->id }}
+                    </a>
+                    @php $cd = $order->eventCountdown(); @endphp
+                    @if ($cd)<x-badge :variant="$cd['state'] === 'past' ? 'danger' : ($cd['state'] === 'today' ? 'pending' : 'info')" class="ml-1">{{ $cd['label'] }}</x-badge>@endif
+                </x-table.td>
+                <x-table.td>
+                    <x-badge :variant="\App\Support\OrderStatus::badge($order->status)">{{ \App\Support\OrderStatus::label($order->status) }}</x-badge>
+                    @unless ($order->marketing)<x-badge variant="neutral" class="ml-1">Belum ditugaskan</x-badge>@endunless
+                </x-table.td>
+                <x-table.td>
+                    <div class="text-ink">{{ $order->sekolah?->nama ?? '—' }}</div>
+                    <div class="text-xs text-ink-muted">{{ $order->cabang?->nama }} · {{ $order->items_count }} item · {{ $order->jumlah_siswa }} siswa</div>
+                </x-table.td>
+                <x-table.td nowrap muted>{{ $order->tanggal_event ? $order->tanggal_event->translatedFormat('d M Y') : '—' }}</x-table.td>
+                <x-table.td muted>{{ $order->marketing?->nama ?? $order->marketing?->name ?? '—' }}</x-table.td>
+                <x-table.td align="right" nowrap class="font-medium">Rp{{ number_format($order->total, 0, ',', '.') }}</x-table.td>
+            </x-table.tr>
         @empty
-            <div class="px-5 py-12 text-center text-sm text-ink-muted">Belum ada order yang cocok.</div>
+            <x-table.empty :colspan="6">Belum ada order yang cocok.</x-table.empty>
         @endforelse
-    </x-card>
+    </x-table>
 
     <div class="mt-4">
         {{ $orders->links() }}

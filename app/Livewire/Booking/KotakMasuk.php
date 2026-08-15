@@ -48,7 +48,7 @@ class KotakMasuk extends Component
             return null;
         }
 
-        return Order::with(['sekolah', 'cabang', 'marketing', 'items.produk', 'items.paket', 'items.desain'])
+        return Order::with(['sekolah.kecamatan', 'cabang', 'marketing', 'items.produk', 'items.paket', 'items.desain'])
             ->find($this->detailId); // ter-scope cabang
     }
 
@@ -71,7 +71,7 @@ class KotakMasuk extends Component
     #[Computed]
     public function isAdmin(): bool
     {
-        return auth()->user()->hasAnyRole(['super_admin', 'operasional', 'area']);
+        return auth()->user()->hasAnyRole(['super_admin', 'operasional', 'admin_sales']);
     }
 
     #[Computed]
@@ -79,7 +79,7 @@ class KotakMasuk extends Component
     {
         return $this->baseQuery()
             ->when($this->cabangId !== '', fn ($x) => $x->where('cabang_id', $this->cabangId))
-            ->with(['sekolah', 'cabang', 'marketing'])
+            ->with(['sekolah.kecamatan', 'cabang', 'marketing'])
             ->withCount('items')
             ->latest()
             ->get(); // CabangScope membatasi ke cabang staf

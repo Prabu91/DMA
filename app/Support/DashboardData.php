@@ -24,7 +24,7 @@ class DashboardData
             'marketing' => self::marketing($user),
             'tim_event' => self::timEvent($user),
             'super_admin', 'operasional' => self::lintasCabang(),
-            'area' => self::area(),
+            'admin_sales' => self::adminSales(),
             'editor' => self::editor(),
             default => [],
         };
@@ -78,7 +78,7 @@ class DashboardData
         ];
     }
 
-    private static function area(): array
+    private static function adminSales(): array
     {
         // area ter-scope ke cabangnya sendiri oleh CabangScope.
         return [

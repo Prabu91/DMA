@@ -47,8 +47,7 @@
                             <div class="mt-0.5 text-xs text-ink-muted">
                                 @if ($line['desain']) Desain {{ $line['desain'] }} · @endif
                                 @if ($line['ukuran']) Ukuran {{ $line['ukuran'] }} · @endif
-                                Rp{{ number_format($line['unit'], 0, ',', '.') }}/{{ ($line['satuan'] ?? 'qty') === 'siswa' ? 'siswa' : 'item' }}
-                                @if (($line['satuan'] ?? 'qty') === 'siswa') · <span class="text-brand">per siswa</span> @endif
+                                Rp{{ number_format($line['unit'], 0, ',', '.') }}/item
                             </div>
                         </div>
                         <div class="flex shrink-0 items-center gap-3">

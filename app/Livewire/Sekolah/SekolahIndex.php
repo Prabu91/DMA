@@ -2,7 +2,9 @@
 
 namespace App\Livewire\Sekolah;
 
+use App\Livewire\Concerns\WithSorting;
 use App\Models\Cabang;
+use App\Models\Kecamatan;
 use App\Models\Sekolah;
 use Illuminate\Validation\Rules\Password;
 use Livewire\Attributes\Computed;
@@ -12,6 +14,13 @@ use Livewire\Component;
 #[Layout('layouts.app')]
 class SekolahIndex extends Component
 {
+    use WithSorting;
+
+    protected function sortableColumns(): array
+    {
+        return ['nama' => 'nama', 'kota' => 'kota', 'kategori' => 'deal_count'];
+    }
+
     public bool $showForm = false;
 
     public ?int $editingId = null;
@@ -19,6 +28,8 @@ class SekolahIndex extends Component
     public string $search = '';
 
     public string $filterCabang = ''; // filter cabang (admin lintas cabang)
+
+    public string $filterKategori = ''; // NOS | NRS | SR
 
     // Reset password login sekolah (aksi staf terpisah)
     public bool $showPasswordModal = false;
@@ -52,6 +63,8 @@ class SekolahIndex extends Component
 
     public ?int $cabang_id = null;
 
+    public ?int $kecamatan_id = null;
+
     public ?string $idSekolahPreview = null; // read-only saat edit
 
     public function mount(): void
@@ -72,6 +85,29 @@ class SekolahIndex extends Component
         return Cabang::orderBy('nama')->pluck('nama', 'id')->all();
     }
 
+    /** Cabang efektif form (admin: pilihan; selain itu: cabang user). */
+    private function effectiveCabangId(): ?int
+    {
+        return $this->canChooseCabang() ? $this->cabang_id : auth()->user()->cabang_id;
+    }
+
+    /** Kecamatan dalam cabang form ([id => "Kecamatan — Kota"]). Reaktif thd cabang_id. */
+    #[Computed]
+    public function kecamatanOptions(): array
+    {
+        $cabangId = $this->effectiveCabangId();
+        if (! $cabangId) {
+            return [];
+        }
+
+        return Kecamatan::with('kota')
+            ->whereHas('kota', fn ($q) => $q->where('cabang_id', $cabangId))
+            ->orderBy('nama')
+            ->get()
+            ->mapWithKeys(fn ($k) => [$k->id => $k->nama.' — '.$k->kota?->nama])
+            ->all();
+    }
+
     protected function rules(): array
     {
         return [
@@ -82,6 +118,7 @@ class SekolahIndex extends Component
             'no_telp_pic' => ['nullable', 'string', 'max:30'],
             'email_guru' => ['nullable', 'email', 'max:255'],
             'maps_link' => ['nullable', 'url', 'max:1000'],
+            'kecamatan_id' => ['nullable', 'integer', 'exists:kecamatan,id'],
             'cabang_id' => $this->canChooseCabang()
                 ? ['required', 'exists:cabang,id']
                 : ['nullable'],
@@ -112,7 +149,7 @@ class SekolahIndex extends Component
         $this->editingId = $sekolah->id;
         $this->idSekolahPreview = $sekolah->id_sekolah;
         $this->fill($sekolah->only([
-            'nama', 'alamat', 'kota', 'pic_sekolah', 'no_telp_pic', 'email_guru', 'maps_link', 'cabang_id',
+            'nama', 'alamat', 'kota', 'pic_sekolah', 'no_telp_pic', 'email_guru', 'maps_link', 'cabang_id', 'kecamatan_id',
         ]));
         $this->resetErrorBag();
         $this->showForm = true;
@@ -122,11 +159,25 @@ class SekolahIndex extends Component
     {
         $data = $this->validate();
 
+        // Cegah duplikat: kombinasi nama + PIC + no. telp + alamat harus unik.
+        if (Sekolah::comboExists([
+            'nama' => $this->nama,
+            'pic_sekolah' => $this->pic_sekolah,
+            'no_telp_pic' => $this->no_telp_pic,
+            'alamat' => $this->alamat,
+        ], $this->editingId)) {
+            $this->addError('nama', 'Data sekolah (nama, PIC, no. telp, alamat) sudah terdaftar.');
+
+            return;
+        }
+
         if ($this->editingId) {
             $sekolah = Sekolah::findOrFail($this->editingId);
             $this->authorize('update', $sekolah);
             // cabang_id & id_sekolah tidak diubah saat edit (menjaga konsistensi id).
             unset($data['cabang_id']);
+            // Kecamatan hanya sah bila milik cabang sekolah.
+            $data['kecamatan_id'] = $this->kecamatanSah($data['kecamatan_id'] ?? null, $sekolah->cabang_id);
             $sekolah->update($data);
             $this->success = 'Sekolah diperbarui.';
         } else {
@@ -140,12 +191,14 @@ class SekolahIndex extends Component
             }
 
             $data['cabang_id'] = $cabangId;
+            $data['kecamatan_id'] = $this->kecamatanSah($data['kecamatan_id'] ?? null, $cabangId);
             $data['id_sekolah'] = Sekolah::generateIdSekolah();
 
             $sekolah = Sekolah::create($data);
             $this->success = 'Sekolah ditambahkan dengan ID '.$sekolah->id_sekolah.'.';
         }
 
+        unset($this->kecamatanOptions);
         $this->showForm = false;
         $this->resetForm();
     }
@@ -199,19 +252,36 @@ class SekolahIndex extends Component
         $this->success = 'Kata sandi login '.$sekolah->nama.' berhasil diatur.';
     }
 
+    /** Kembalikan kecamatan_id bila sah untuk $cabangId, selain itu null. */
+    private function kecamatanSah(?int $kecamatanId, ?int $cabangId): ?int
+    {
+        if (! $kecamatanId || ! $cabangId) {
+            return null;
+        }
+
+        $sah = Kecamatan::whereKey($kecamatanId)
+            ->whereHas('kota', fn ($q) => $q->where('cabang_id', $cabangId))
+            ->exists();
+
+        return $sah ? $kecamatanId : null;
+    }
+
     public function resetForm(): void
     {
         $this->reset([
             'editingId', 'nama', 'alamat', 'kota', 'pic_sekolah',
-            'no_telp_pic', 'email_guru', 'maps_link', 'cabang_id', 'idSekolahPreview',
+            'no_telp_pic', 'email_guru', 'maps_link', 'cabang_id', 'kecamatan_id', 'idSekolahPreview',
         ]);
         $this->resetErrorBag();
     }
 
     public function render()
     {
+        $selesai = fn ($q) => $q->where('event_status', \App\Support\OrderStatus::EVENT_SELESAI);
+
         $sekolah = Sekolah::query()
-            ->with('cabang')
+            ->with(['cabang', 'kecamatan'])
+            ->withCount(['orders as deal_count' => $selesai])
             ->when($this->filterCabang !== '' && $this->canChooseCabang(), fn ($q) => $q->where('cabang_id', $this->filterCabang))
             ->when($this->search !== '', function ($q) {
                 $q->where(function ($sub) {
@@ -220,8 +290,12 @@ class SekolahIndex extends Component
                         ->orWhere('kota', 'ilike', '%'.$this->search.'%');
                 });
             })
-            ->orderBy('nama')
-            ->get();
+            // Filter kategori pelanggan lewat jumlah order selesai.
+            ->when($this->filterKategori === Sekolah::KATEGORI_NOS, fn ($q) => $q->whereDoesntHave('orders', $selesai))
+            ->when($this->filterKategori === Sekolah::KATEGORI_NRS, fn ($q) => $q->whereHas('orders', $selesai, '>=', 1)->whereHas('orders', $selesai, '<=', 2))
+            ->when($this->filterKategori === Sekolah::KATEGORI_SR, fn ($q) => $q->whereHas('orders', $selesai, '>=', Sekolah::KATEGORI_AMBANG_SR));
+
+        $sekolah = $this->applySort($sekolah, 'nama', 'asc')->get();
 
         return view('livewire.sekolah.sekolah-index', compact('sekolah'));
     }

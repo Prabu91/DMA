@@ -31,19 +31,19 @@ class SekolahPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['operasional', 'area', 'marketing']);
+        return $user->hasAnyRole(['operasional', 'admin_sales', 'marketing']);
     }
 
     public function update(User $user, Sekolah $sekolah): bool
     {
         return $this->sameCabang($user, $sekolah)
-            && $user->hasAnyRole(['operasional', 'area', 'marketing']);
+            && $user->hasAnyRole(['operasional', 'admin_sales', 'marketing']);
     }
 
     public function delete(User $user, Sekolah $sekolah): bool
     {
         return $this->sameCabang($user, $sekolah)
-            && $user->hasAnyRole(['operasional', 'area']);
+            && $user->hasAnyRole(['operasional', 'admin_sales']);
     }
 
     protected function sameCabang(User $user, Sekolah $sekolah): bool
