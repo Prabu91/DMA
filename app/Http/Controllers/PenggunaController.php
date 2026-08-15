@@ -110,6 +110,8 @@ class PenggunaController extends Controller
                 ->map(fn ($g) => $g->map(fn ($k) => ['id' => $k->id, 'label' => $k->nama.' — '.$k->kota?->nama])->values())
                 ->all(),
             'selectedKecamatan' => old('kecamatan_ids', $pengguna?->kecamatan->pluck('id')->all() ?? []),
+            // Role terpusat → akses semua cabang (cabang_id null).
+            'pusatRoles' => User::ROLES_LINTAS_CABANG,
         ], $extra);
     }
 

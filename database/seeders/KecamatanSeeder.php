@@ -10,7 +10,11 @@ class KecamatanSeeder extends Seeder
 {
     /**
      * Contoh kecamatan per kota (data awal untuk dev/uji auto-assign).
-     * Data riil kecamatan DMA menyusul; cukup wakil beberapa per kota.
+     *
+     * Untuk DATA RIIL, jalankan impor dari public API wilayah (emsifa):
+     *   php artisan kecamatan:import
+     * Peta kota→regency ada di config/wilayah.php. Seeder ini hanya fallback
+     * offline/testing agar auto-assign punya sampel tanpa akses jaringan.
      */
     private const PETA = [
         'Bandung' => ['Coblong', 'Cibeunying Kaler', 'Sukajadi', 'Andir'],

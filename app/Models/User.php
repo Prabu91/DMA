@@ -22,13 +22,15 @@ class User extends Authenticatable
     use HasFactory, HasRoles, Notifiable;
 
     /**
-     * Role yang melihat SEMUA cabang (dikecualikan dari CabangScope).
+     * Role TERPUSAT — melihat SEMUA cabang (dikecualikan dari CabangScope).
+     * super_admin, operasional, admin_sales & editor bekerja lintas cabang;
+     * hanya marketing & tim_event yang terikat satu cabang.
      */
-    public const ROLES_LINTAS_CABANG = ['super_admin', 'operasional'];
+    public const ROLES_LINTAS_CABANG = ['super_admin', 'operasional', 'admin_sales', 'editor'];
 
     /**
-     * "Admin sales" — berwenang konfirmasi milestone H-7 & H-2 (bukan marketing).
-     * area = admin sales cabang; operasional & super_admin = admin pusat.
+     * "Admin sales" — berwenang konfirmasi milestone H-7 & H-2 (bukan marketing)
+     * dan override penyelesaian event tanpa OTP. operasional & super_admin = admin pusat.
      */
     public const ROLES_ADMIN_SALES = ['admin_sales', 'operasional', 'super_admin'];
 

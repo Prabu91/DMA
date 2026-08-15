@@ -185,6 +185,24 @@ class Order extends Model
         return $this->belongsTo(Sekolah::class);
     }
 
+    /**
+     * Nomor WhatsApp tujuan notifikasi/OTP = no. telp PIC sekolah.
+     */
+    public function nomorWa(): ?string
+    {
+        return $this->sekolah?->no_telp_pic;
+    }
+
+    /**
+     * Kirim pesan WhatsApp ke PIC sekolah via Fonnte (non-fatal).
+     * Return true bila WA terkirim; false bila dilewati/gagal (mis. token/nomor kosong).
+     */
+    public function kirimWa(string $message): bool
+    {
+        return app(\App\Services\Notifications\FonnteService::class)
+            ->send($this->nomorWa(), $message);
+    }
+
     public function marketing(): BelongsTo
     {
         return $this->belongsTo(User::class, 'marketing_id');

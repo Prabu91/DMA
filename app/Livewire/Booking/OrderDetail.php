@@ -263,6 +263,16 @@ class OrderDetail extends Component
         $this->order->update([$col => now()]);
         $this->order->catat('milestone_'.$key);
 
+        // Notifikasi WA (Fonnte) ke PIC sekolah — pengingat menuju hari-H.
+        $labelHari = $key === 'h7' ? 'H-7' : 'H-2';
+        $tgl = optional($this->order->tanggal_event)->translatedFormat('l, d F Y');
+        $this->order->kirimWa(
+            "*DMA — Pengingat {$labelHari} Event Foto*\n\n"
+            ."Halo {$this->order->sekolah?->pic_sekolah}, event foto {$this->order->sekolah?->nama} "
+            ."dijadwalkan pada *{$tgl}*.\n\nTim DMA telah mengonfirmasi persiapan {$labelHari}. "
+            .'Mohon konfirmasi kesiapan sekolah. Terima kasih.'
+        );
+
         unset($this->order);
         $this->milestoneMsg = 'Milestone '.strtoupper($key).' dikonfirmasi.';
     }

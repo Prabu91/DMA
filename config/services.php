@@ -35,4 +35,15 @@ return [
         ],
     ],
 
+    /*
+     | Fonnte — WhatsApp gateway (unofficial) untuk OTP & notifikasi konfirmasi.
+     | Set FONNTE_TOKEN di .env (device token dari dashboard Fonnte). Bila kosong,
+     | pengiriman WA dilewati diam-diam (fallback: OTP tetap tampil di portal sekolah).
+     */
+    'fonnte' => [
+        'token' => env('FONNTE_TOKEN'),
+        'endpoint' => env('FONNTE_ENDPOINT', 'https://api.fonnte.com/send'),
+        'timeout' => (int) env('FONNTE_TIMEOUT', 10),
+    ],
+
 ];

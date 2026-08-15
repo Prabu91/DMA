@@ -123,17 +123,18 @@ class AdminDashboardTest extends TestCase
             ->assertDontSee('Marketing Alfa');
     }
 
-    public function test_area_hanya_cabang_sendiri(): void
+    public function test_admin_sales_terpusat_lihat_semua_cabang(): void
     {
+        // admin_sales kini TERPUSAT → dashboard menampilkan semua cabang.
         $this->order($this->jkt);
         $this->order($this->bdg);
 
-        $area = User::factory()->create(['cabang_id' => $this->jkt->id]);
-        $area->assignRole('admin_sales');
+        $adminSales = User::factory()->create(); // terpusat → cabang_id null
+        $adminSales->assignRole('admin_sales');
 
-        Livewire::actingAs($area)
+        Livewire::actingAs($adminSales)
             ->test(AdminDashboard::class)
             ->assertSee('DMA Jakarta')
-            ->assertDontSee('DMA Bandung');
+            ->assertSee('DMA Bandung');
     }
 }

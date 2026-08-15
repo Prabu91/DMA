@@ -11,7 +11,7 @@ class Kecamatan extends Model
 {
     protected $table = 'kecamatan';
 
-    protected $fillable = ['nama', 'kota_id'];
+    protected $fillable = ['nama', 'kode', 'kota_id'];
 
     public function kota(): BelongsTo
     {

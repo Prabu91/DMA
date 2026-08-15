@@ -1,4 +1,4 @@
-{{-- Form pengguna dipakai create & edit. Variabel: $pengguna (opsional), $cabangOptions, $roleOptions, $kecamatanByCabang, $selectedKecamatan --}}
+{{-- Form pengguna dipakai create & edit. Variabel: $pengguna (opsional), $cabangOptions, $roleOptions, $kecamatanByCabang, $selectedKecamatan, $pusatRoles --}}
 @php $pengguna = $pengguna ?? null; @endphp
 
 <x-card>
@@ -9,7 +9,9 @@
             cabang: '{{ old('cabang_id', $pengguna?->cabang_id) }}',
             kecById: {{ Illuminate\Support\Js::from($kecamatanByCabang) }},
             selected: {{ Illuminate\Support\Js::from(array_map('strval', $selectedKecamatan)) }},
+            pusatRoles: {{ Illuminate\Support\Js::from($pusatRoles) }},
             get opsiKecamatan() { return this.kecById[this.cabang] || [] },
+            get terpusat() { return this.pusatRoles.includes(this.role) },
         }">
         @csrf
         @if ($pengguna)
@@ -32,15 +34,27 @@
                 placeholder="— Tanpa peran —"
                 hint="Menentukan akses."
             />
-            <x-select
-                name="cabang_id"
-                label="Cabang"
-                x-model="cabang"
-                :options="$cabangOptions"
-                :selected="old('cabang_id', $pengguna?->cabang_id)"
-                placeholder="— Tanpa cabang —"
-                hint="Diabaikan untuk super admin & operasional."
-            />
+            {{-- Cabang: role terpusat → paksa "Semua cabang"; selain itu pilih satu cabang --}}
+            <div>
+                <div x-show="!terpusat">
+                    <x-select
+                        name="cabang_id"
+                        label="Cabang"
+                        x-model="cabang"
+                        :options="$cabangOptions"
+                        :selected="old('cabang_id', $pengguna?->cabang_id)"
+                        placeholder="— Pilih cabang —"
+                        hint="Wajib untuk marketing & tim event."
+                    />
+                </div>
+                <div x-show="terpusat" x-cloak>
+                    <label class="mb-1 block text-sm font-medium text-ink">Cabang</label>
+                    <div class="flex items-center gap-2 rounded-lg border border-line bg-surface-muted px-3 py-2 text-sm text-ink">
+                        <span class="inline-flex items-center rounded-full bg-brand/10 px-2 py-0.5 text-xs font-medium text-brand">Semua cabang</span>
+                        <span class="text-ink-muted">Akun terpusat — akses lintas cabang.</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
         {{-- Kecamatan yang ditangani (khusus marketing; dari cabang terpilih) --}}

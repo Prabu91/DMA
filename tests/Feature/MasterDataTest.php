@@ -117,6 +117,30 @@ class MasterDataTest extends TestCase
         $this->assertNull($user->cabang_id);
     }
 
+    public function test_admin_sales_dan_editor_terpusat_cabang_null(): void
+    {
+        \Spatie\Permission\Models\Role::findOrCreate('admin_sales', 'web');
+        \Spatie\Permission\Models\Role::findOrCreate('editor', 'web');
+        $cabang = Cabang::create(['nama' => 'DMA A', 'kode_area' => 'A']);
+
+        foreach (['admin_sales', 'editor'] as $i => $role) {
+            $this->actingAs($this->superAdmin())
+                ->post(route('app.pengguna.store'), [
+                    'nama' => 'Pusat '.$role,
+                    'email' => "pusat{$i}@dma.test",
+                    'role' => $role,
+                    'cabang_id' => $cabang->id, // harus diabaikan (terpusat)
+                    'password' => 'password123',
+                    'password_confirmation' => 'password123',
+                ])
+                ->assertRedirect(route('app.pengguna.index'));
+
+            $user = User::where('email', "pusat{$i}@dma.test")->firstOrFail();
+            $this->assertNull($user->cabang_id, "$role harus lintas cabang (cabang_id null)");
+            $this->assertTrue($user->seesAllCabang());
+        }
+    }
+
     public function test_tidak_bisa_menghapus_akun_sendiri(): void
     {
         $admin = $this->superAdmin();

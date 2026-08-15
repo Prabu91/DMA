@@ -26,7 +26,7 @@ class EventOtpTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        foreach (['super_admin', 'operasional', 'tim_event'] as $r) {
+        foreach (['super_admin', 'operasional', 'admin_sales', 'tim_event'] as $r) {
             Role::findOrCreate($r, 'web');
         }
         app(PermissionRegistrar::class)->forgetCachedPermissions();
@@ -203,6 +203,20 @@ class EventOtpTest extends TestCase
         $admin->assignRole('operasional');
 
         Livewire::actingAs($admin)
+            ->test(EventDetail::class, ['orderId' => $order->id])
+            ->call('selesaikanOverride');
+
+        $this->assertSame(OrderStatus::EVENT_SELESAI, $order->refresh()->event_status);
+    }
+
+    public function test_admin_sales_bisa_override_selesai_tanpa_otp(): void
+    {
+        // Request pemilik: bypass OTP selesai event kini juga milik admin sales.
+        $order = $this->order();
+        $adminSales = User::factory()->create(); // terpusat → cabang_id null
+        $adminSales->assignRole('admin_sales');
+
+        Livewire::actingAs($adminSales)
             ->test(EventDetail::class, ['orderId' => $order->id])
             ->call('selesaikanOverride');
 

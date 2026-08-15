@@ -413,6 +413,13 @@ class EventDetail extends Component
         ]);
         $order->catat('milestone_hh', 'oleh tim event (final, order dikunci)');
 
+        // Notifikasi WA (Fonnte) ke PIC sekolah — tim event tiba / hari-H mulai.
+        $order->kirimWa(
+            "*DMA — Konfirmasi Hari-H*\n\n"
+            ."Halo {$order->sekolah?->pic_sekolah}, tim DMA telah mengonfirmasi Hari-H untuk event foto "
+            ."{$order->sekolah?->nama}. Sesi pemotretan akan segera dimulai. Terima kasih."
+        );
+
         $this->revisiMode = false;
         unset($this->order);
         session()->flash('event-flash', 'Hari-H dikonfirmasi. Order final & terkunci. Lanjut ke penyelesaian (OTP).');
@@ -445,9 +452,19 @@ class EventDetail extends Component
         $code = $order->generateEventOtp();
         $order->catat('otp_dibuat');
 
-        // Sementara: OTP TIDAK dikirim email — cukup tampil di akun sekolah (portal).
-        // Guru membacakan kode ke tim event. (Rencana lanjut: kirim via WA.)
-        session()->flash('event-flash', 'OTP dibuat & tampil di akun sekolah. Minta guru membacakan kodenya.');
+        // Kirim OTP via WhatsApp (Fonnte) ke PIC sekolah. Bila WA belum
+        // dikonfigurasi/gagal, OTP tetap tampil di portal sekolah sebagai fallback.
+        $pesan = "*DMA — Kode OTP Penyelesaian Event*\n\n"
+            ."Halo {$order->sekolah?->pic_sekolah}, kode OTP untuk menyelesaikan event foto "
+            ."{$order->sekolah?->nama} adalah:\n\n*{$code}*\n\n"
+            .'Berlaku '.Order::OTP_EXPIRY_MINUTES.' menit. Mohon bacakan kode ini kepada tim DMA di lokasi.';
+
+        if ($order->kirimWa($pesan)) {
+            $order->catat('otp_wa_terkirim');
+            session()->flash('event-flash', 'OTP dikirim via WhatsApp ke PIC sekolah & tampil di akun sekolah.');
+        } else {
+            session()->flash('event-flash', 'OTP dibuat & tampil di akun sekolah. Minta guru membacakan kodenya.');
+        }
 
         unset($this->order);
         $this->otpInput = '';
@@ -485,8 +502,8 @@ class EventDetail extends Component
     }
 
     /**
-     * Override admin (super_admin/operasional): selesaikan tanpa OTP —
-     * mis. guru tidak di tempat. Hanya untuk yang melihat lintas cabang.
+     * Override admin sales/pusat: selesaikan tanpa OTP — mis. guru tidak di
+     * tempat. Untuk role terpusat (admin_sales, operasional, super_admin, editor).
      */
     public function selesaikanOverride(): void
     {

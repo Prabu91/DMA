@@ -98,25 +98,49 @@ class OrderActivityTest extends TestCase
             ->assertDontSee('ket-dp-unik');
     }
 
-    public function test_area_hanya_aktivitas_cabangnya(): void
+    public function test_admin_sales_terpusat_lihat_aktivitas_semua_cabang(): void
     {
+        // admin_sales kini TERPUSAT (lintas cabang) → lihat aktivitas semua cabang.
         $bdg = Cabang::create(['nama' => 'DMA Bandung', 'kode_area' => 'BDG']);
         $sekBdg = Sekolah::create(['id_sekolah' => 'SKL-BDG-1', 'nama' => 'SD BDG', 'cabang_id' => $bdg->id]);
         $orderBdg = Order::create([
             'booking_code' => 'BKBDG', 'sekolah_id' => $sekBdg->id, 'cabang_id' => $bdg->id,
             'sumber' => 'sekolah', 'status' => 'baru', 'total' => 1, 'tanggal_booking' => now(),
         ]);
-        $orderBdg->catat('status_dp');
+        $orderBdg->catat('status_dp', 'ket-bdg-unik');
 
         $orderJkt = $this->order();
-        $orderJkt->catat('status_lunas');
+        $orderJkt->catat('status_lunas', 'ket-jkt-unik');
 
-        $area = User::factory()->create(['cabang_id' => $this->jkt->id]);
-        $area->assignRole('admin_sales');
+        $adminSales = User::factory()->create(); // terpusat → cabang_id null
+        $adminSales->assignRole('admin_sales');
 
-        Livewire::actingAs($area)
+        Livewire::actingAs($adminSales)
             ->test(ActivityIndex::class)
-            ->assertSee('BK') // order jkt (booking code prefix)
-            ->assertDontSee('BKBDG');
+            ->assertSee('ket-jkt-unik')
+            ->assertSee('ket-bdg-unik'); // kini melihat cabang lain juga
+    }
+
+    public function test_marketing_hanya_aktivitas_cabangnya(): void
+    {
+        // Marketing tetap terikat satu cabang.
+        $bdg = Cabang::create(['nama' => 'DMA Bandung', 'kode_area' => 'BDG']);
+        $sekBdg = Sekolah::create(['id_sekolah' => 'SKL-BDG-1', 'nama' => 'SD BDG', 'cabang_id' => $bdg->id]);
+        $orderBdg = Order::create([
+            'booking_code' => 'BKBDG', 'sekolah_id' => $sekBdg->id, 'cabang_id' => $bdg->id,
+            'sumber' => 'sekolah', 'status' => 'baru', 'total' => 1, 'tanggal_booking' => now(),
+        ]);
+        $orderBdg->catat('status_dp', 'ket-bdg-unik');
+
+        $orderJkt = $this->order();
+        $orderJkt->catat('status_lunas', 'ket-jkt-unik');
+
+        $mkt = User::factory()->create(['cabang_id' => $this->jkt->id]);
+        $mkt->assignRole('marketing');
+
+        Livewire::actingAs($mkt)
+            ->test(ActivityIndex::class)
+            ->assertSee('ket-jkt-unik')
+            ->assertDontSee('ket-bdg-unik');
     }
 }
