@@ -33,11 +33,11 @@ class BookingService
         $lines = [];
         foreach ($cart->items() as $key => $it) {
             if ($it['tipe_item'] === 'paket') {
-                $paket = Paket::find($it['paket_id']);
+                $paket = Paket::with('items')->find($it['paket_id']);
                 if (! $paket) {
                     continue;
                 }
-                $unit = (int) $paket->harga;
+                $unit = $paket->hargaJual(); // Σ item non-free (harga × qty)
                 $lines[] = [
                     'key' => $key, 'tipe' => 'paket',
                     'produk_id' => null, 'paket_id' => $paket->id,
@@ -197,16 +197,33 @@ class BookingService
             ]);
 
             foreach ($lines as $l) {
-                $order->items()->create([
-                    'tipe_item' => $l['tipe'],
-                    'produk_id' => $l['tipe'] === 'produk' ? $l['produk_id'] : null,
-                    'paket_id' => $l['tipe'] === 'paket' ? $l['paket_id'] : null,
-                    'desain_id' => $l['desain_id'] ?? null,
-                    'opsi_ukuran' => $l['ukuran'] ?? null,
-                    'qty' => $l['qty'],
-                    'harga' => $l['unit'],
-                    'is_free' => false,
-                ]);
+                if ($l['tipe'] === 'paket') {
+                    // Pecah paket → order_items produk (paid + free bawaan dari paket_item).
+                    $paket = Paket::with('items')->find($l['paket_id']);
+                    foreach ($paket?->items ?? [] as $pi) {
+                        $order->items()->create([
+                            'tipe_item' => 'produk',
+                            'produk_id' => $pi->produk_id,
+                            'paket_id' => $paket->id, // jejak asal paket
+                            'desain_id' => $pi->desain_id,
+                            'opsi_ukuran' => $pi->opsi_ukuran,
+                            'qty' => (int) $pi->qty * (int) $l['qty'],
+                            'harga' => $pi->is_free ? 0 : (int) $pi->harga,
+                            'is_free' => (bool) $pi->is_free,
+                        ]);
+                    }
+                } else {
+                    $order->items()->create([
+                        'tipe_item' => 'produk',
+                        'produk_id' => $l['produk_id'],
+                        'paket_id' => null,
+                        'desain_id' => $l['desain_id'] ?? null,
+                        'opsi_ukuran' => $l['ukuran'] ?? null,
+                        'qty' => $l['qty'],
+                        'harga' => $l['unit'],
+                        'is_free' => false,
+                    ]);
+                }
             }
 
             foreach ($freeItems as $f) {

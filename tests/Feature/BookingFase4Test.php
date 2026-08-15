@@ -124,7 +124,9 @@ class BookingFase4Test extends TestCase
         $marketing->assignRole('marketing');
 
         $hadiah = $this->produk('Bingkai', 0);
+        $isi = $this->produk('Cetak Paket', 100000);
         $paket = Paket::create(['nama' => 'Paket', 'harga' => 100000, 'status' => 'aktif']);
+        $paket->items()->create(['produk_id' => $isi->id, 'qty' => 1, 'harga' => 100000, 'is_free' => false]);
         AturanFreeSekolah::create([
             'paket_id' => $paket->id, 'basis' => 'qty', 'operator' => '>=', 'nilai' => $ambang,
             'hasil_produk_id' => $hadiah->id, 'hasil_ukuran' => '10RP',

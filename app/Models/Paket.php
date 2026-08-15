@@ -19,9 +19,24 @@ class Paket extends Model
         'harga' => 'integer',
     ];
 
+    /** Baris isi paket (kaya: produk+varian+qty+harga+free). Sumber utama. */
+    public function items(): HasMany
+    {
+        return $this->hasMany(PaketItem::class);
+    }
+
+    /** Produk distinct dalam paket (derivasi dari paket_item; untuk tampilan/grup). */
     public function produk(): BelongsToMany
     {
-        return $this->belongsToMany(Produk::class, 'paket_produk', 'paket_id', 'produk_id');
+        return $this->belongsToMany(Produk::class, 'paket_item', 'paket_id', 'produk_id')->distinct();
+    }
+
+    /** Harga jual paket = Σ item non-free (harga × qty). */
+    public function hargaJual(): int
+    {
+        $items = $this->relationLoaded('items') ? $this->items : $this->items()->get();
+
+        return (int) $items->where('is_free', false)->sum(fn ($i) => (int) $i->harga * (int) $i->qty);
     }
 
     public function aturanFreeSekolah(): HasMany

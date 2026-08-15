@@ -49,7 +49,7 @@ class PaketFase3Test extends TestCase
         $this->actingAs($m)->get(route('app.paket.index'))->assertForbidden();
     }
 
-    public function test_membuat_paket_dengan_produk(): void
+    public function test_membuat_paket_dengan_item(): void
     {
         $a = $this->produk('Produk A');
         $b = $this->produk('Produk B');
@@ -59,34 +59,38 @@ class PaketFase3Test extends TestCase
         Livewire::test(PaketIndex::class)
             ->call('create')
             ->set('nama', 'Paket Hemat')
-            ->set('harga', 100000)
             ->set('status', 'aktif')
-            ->set('selectedProduk', [$a->id, $b->id])
+            ->set('items', [
+                ['produk_id' => $a->id, 'opsi_ukuran' => null, 'qty' => 1, 'harga' => 60000, 'is_free' => false],
+                ['produk_id' => $b->id, 'opsi_ukuran' => null, 'qty' => 1, 'harga' => 40000, 'is_free' => true], // free
+            ])
             ->call('save')
             ->assertHasNoErrors();
 
         $paket = Paket::where('nama', 'Paket Hemat')->firstOrFail();
-        $this->assertSame(100000, $paket->harga);
-        $this->assertEqualsCanonicalizing([$a->id, $b->id], $paket->produk()->pluck('produk.id')->all());
+        $this->assertSame(60000, $paket->harga); // harga = Σ non-free (40rb item free tak dihitung)
+        $this->assertSame(2, $paket->items()->count());
+        $this->assertEqualsCanonicalizing([$a->id, $b->id], $paket->items()->pluck('produk_id')->all());
     }
 
-    public function test_edit_paket_sinkron_produk(): void
+    public function test_edit_paket_sinkron_item(): void
     {
         $a = $this->produk('Produk A');
         $b = $this->produk('Produk B');
         $paket = Paket::create(['nama' => 'Paket', 'harga' => 5000, 'status' => 'aktif']);
-        $paket->produk()->sync([$a->id, $b->id]);
+        $paket->items()->create(['produk_id' => $a->id, 'qty' => 1, 'harga' => 1000, 'is_free' => false]);
+        $paket->items()->create(['produk_id' => $b->id, 'qty' => 1, 'harga' => 1000, 'is_free' => false]);
 
         Livewire::actingAs($this->admin());
 
         Livewire::test(PaketIndex::class)
             ->call('edit', $paket->id)
             ->assertSet('nama', 'Paket')
-            ->set('selectedProduk', [$b->id]) // sisakan satu
+            ->set('items', [['produk_id' => $b->id, 'opsi_ukuran' => null, 'qty' => 1, 'harga' => 1000, 'is_free' => false]]) // sisakan satu
             ->call('save')
             ->assertHasNoErrors();
 
-        $this->assertSame([$b->id], $paket->fresh()->produk()->pluck('produk.id')->all());
+        $this->assertSame([$b->id], $paket->fresh()->items()->pluck('produk_id')->all());
     }
 
     public function test_paket_dipakai_aturan_free_tidak_bisa_dihapus(): void

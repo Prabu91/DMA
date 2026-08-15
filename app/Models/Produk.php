@@ -43,7 +43,7 @@ class Produk extends Model
 
     public function paket(): BelongsToMany
     {
-        return $this->belongsToMany(Paket::class, 'paket_produk', 'produk_id', 'paket_id');
+        return $this->belongsToMany(Paket::class, 'paket_item', 'produk_id', 'paket_id')->distinct();
     }
 
     public function orderItems(): HasMany

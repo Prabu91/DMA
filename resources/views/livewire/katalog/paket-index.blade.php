@@ -27,7 +27,7 @@
                         <x-badge :variant="$item->status === 'aktif' ? 'success' : 'danger'">{{ \App\Models\Paket::STATUS[$item->status] ?? $item->status }}</x-badge>
                     </div>
                     <div class="mt-0.5 truncate text-xs text-ink-muted">
-                        Rp{{ number_format($item->harga, 0, ',', '.') }} · {{ $item->produk_count }} produk
+                        Rp{{ number_format($item->harga, 0, ',', '.') }} · {{ $item->items_count }} item
                     </div>
                 </div>
                 <div class="flex shrink-0 items-center gap-2">
@@ -50,28 +50,33 @@
                 <form wire:submit="save" class="mt-4 space-y-4">
                     <x-input label="Nama paket" wire:model="nama" :error="$errors->first('nama')" />
                     <x-input label="Deskripsi" wire:model="deskripsi" :error="$errors->first('deskripsi')" />
-                    <div class="grid gap-4 sm:grid-cols-2">
-                        <x-input label="Harga (Rp)" type="number" min="0" wire:model="harga" :error="$errors->first('harga')" />
-                        <x-select label="Status" wire:model="status" :options="$this->statusOptions" :selected="$status" :error="$errors->first('status')" />
-                    </div>
+                    <x-select label="Status" wire:model="status" :options="$this->statusOptions" :selected="$status" :error="$errors->first('status')" />
 
-                    <div class="space-y-1.5">
-                        <span class="block text-sm font-medium text-ink">Produk termasuk</span>
-                        <div class="max-h-56 overflow-y-auto rounded-lg border border-line">
-                            @forelse ($this->produkList as $p)
-                                <label class="flex items-center justify-between gap-3 border-b border-line px-3 py-2 last:border-b-0 hover:bg-page">
-                                    <span class="flex items-center gap-2">
-                                        <input type="checkbox" wire:model="selectedProduk" value="{{ $p->id }}"
-                                               class="h-4 w-4 rounded border-line text-brand focus:ring-2 focus:ring-brand/30">
-                                        <span class="text-sm text-ink">{{ $p->nama }}</span>
-                                    </span>
-                                    <span class="text-xs text-ink-muted">Rp{{ number_format($p->harga, 0, ',', '.') }}</span>
-                                </label>
-                            @empty
-                                <p class="px-3 py-3 text-sm text-ink-muted">Belum ada produk untuk dipilih.</p>
-                            @endforelse
+                    {{-- Isi paket: repeater produk (harga & free per item) --}}
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="block text-sm font-medium text-ink">Isi paket</span>
+                            <x-button type="button" wire:click="addItem" variant="ghost" size="sm">+ Tambah item</x-button>
                         </div>
-                        @error('selectedProduk.*')<p class="text-xs text-status-danger">{{ $message }}</p>@enderror
+                        @error('items')<p class="text-xs text-status-danger">{{ $message }}</p>@enderror
+
+                        @foreach ($items as $i => $row)
+                            <div wire:key="pkitem-{{ $i }}" class="rounded-lg border border-line p-3">
+                                <div class="grid gap-2 sm:grid-cols-2">
+                                    <x-select label="Produk" wire:model="items.{{ $i }}.produk_id" :options="$this->produkOptions" :selected="$row['produk_id']" placeholder="— Pilih produk —" :error="$errors->first('items.'.$i.'.produk_id')" />
+                                    <x-input label="Ukuran/opsi" wire:model="items.{{ $i }}.opsi_ukuran" placeholder="mis. 10RP (opsional)" />
+                                    <x-input type="number" min="1" label="Qty" wire:model="items.{{ $i }}.qty" :error="$errors->first('items.'.$i.'.qty')" />
+                                    <x-input type="number" min="0" label="Harga/satuan" wire:model="items.{{ $i }}.harga" :error="$errors->first('items.'.$i.'.harga')" />
+                                </div>
+                                <div class="mt-2 flex items-center justify-between">
+                                    <label class="flex items-center gap-2 text-sm text-ink">
+                                        <input type="checkbox" wire:model="items.{{ $i }}.is_free" class="h-4 w-4 rounded border-line text-brand focus:ring-2 focus:ring-brand/30">
+                                        Free (bonus, harga 0)
+                                    </label>
+                                    <x-button type="button" wire:click="removeItem({{ $i }})" variant="ghost" size="sm">Hapus</x-button>
+                                </div>
+                            </div>
+                        @endforeach
                     </div>
 
                     <div class="flex items-center gap-3 pt-2">
