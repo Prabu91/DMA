@@ -1,58 +1,87 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# DMA — Delapan Mata Air
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Aplikasi manajemen **studio foto sekolah** (booking, order, pelaksanaan event, dan keuangan) untuk DMA Delapan Mata Air. Dibangun dengan Laravel + Livewire dan berjalan multi-cabang.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Fitur utama
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- **Booking dua jalur** — order bisa dibuat lewat storefront oleh **sekolah** sendiri atau lewat panel oleh **marketing**, keduanya bermuara ke satu order + `booking_code`.
+- **Katalog** — produk, paket (dipecah otomatis jadi produk saat order), desain, kategori, dan aturan bonus/free.
+- **Manajemen order** — alur milestone H-7 / H-2 / Hari-H, penugasan marketing & tim event, kunci order setelah final.
+- **Workflow tim event** — konfirmasi lokasi, revisi detail, penyelesaian via **OTP**, penanda "sampai kantor".
+- **Keuangan** — pencatatan pembayaran (DP/pelunasan), **diskon per-produk** (ajukan → setujui), serta laporan penjualan harian & per-event.
+- **Routing per kecamatan** — order sekolah otomatis diarahkan ke marketing sesuai kecamatan; data kecamatan bisa diimpor dari public API wilayah.
+- **Notifikasi WhatsApp** — OTP & konfirmasi dikirim via WhatsApp (gateway Fonnte), dengan fallback tampil di portal sekolah.
+- **Dashboard & audit** — dashboard per peran/cabang, laporan order per produk (dengan nominal), dan log aktivitas order.
+- **Kontrol akses** — peran terpusat (lintas cabang) maupun terikat cabang, ditegakkan lewat `CabangScope` + policy.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Teknologi
 
-## Learning Laravel
+| Bagian | Teknologi |
+|---|---|
+| Framework | Laravel 13 (PHP 8.3) |
+| UI interaktif | Livewire 4 + Alpine.js |
+| Styling | Tailwind CSS |
+| Database | PostgreSQL |
+| Otorisasi | spatie/laravel-permission |
+| PDF & QR | barryvdh/laravel-dompdf, simplesoftwareio/simple-qrcode |
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Dua wajah aplikasi
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- **Storefront** (`/`) — untuk sekolah: guard `sekolah`, katalog + keranjang + riwayat order.
+- **Panel staf** (`/app`) — untuk internal: guard `web` + peran spatie, dibatasi per cabang via `CabangScope`.
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+## Peran pengguna
 
-## Agentic Development
+| Peran | Cakupan | Ringkas |
+|---|---|---|
+| `super_admin` | Semua cabang | Akses penuh |
+| `operasional` | Semua cabang | Operasional pusat |
+| `admin_sales` | Semua cabang | Milestone H-7/H-2, keuangan, override OTP |
+| `editor` | Semua cabang | Katalog & desain |
+| `marketing` | Per cabang | Booking, kelola order kecamatannya |
+| `tim_event` | Per cabang | Pelaksanaan event & OTP |
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+---
+
+## Menjalankan secara lokal
+
+Prasyarat: PHP 8.3, Composer, Node.js, PostgreSQL.
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+composer install
+npm install
+cp .env.example .env
+php artisan key:generate
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Sesuaikan `.env` (koneksi PostgreSQL: `DB_CONNECTION=pgsql`), lalu:
 
-## Contributing
+```bash
+php artisan migrate --seed
+npm run dev
+php artisan serve
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Konfigurasi penting (`.env`)
 
-## Code of Conduct
+| Variabel | Keterangan |
+|---|---|
+| `DB_CONNECTION=pgsql` | Wajib PostgreSQL |
+| `APP_LOCALE=id` | Format tanggal Bahasa Indonesia |
+| `FONNTE_TOKEN` | Token device Fonnte untuk kirim WhatsApp (kosong = WA dilewati, OTP tetap tampil di portal) |
+| `WILAYAH_API_BASE` | Basis public API wilayah (default emsifa) untuk impor kecamatan |
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Perintah berguna
 
-## Security Vulnerabilities
+```bash
+php artisan test                 # jalankan seluruh test
+php artisan kecamatan:import     # impor kecamatan riil dari public API wilayah
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Peta kota → kode wilayah untuk impor kecamatan diatur di `config/wilayah.php`.
 
-## License
+## Deploy
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Aplikasi dijalankan dengan Docker (PHP-FPM + Nginx + PostgreSQL) di belakang domain ber-HTTPS. Alur rilis: kerja di `develop`, merge ke `main` saat rilis, lalu server menarik `main` dari repositori.
