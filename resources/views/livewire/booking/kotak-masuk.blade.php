@@ -89,7 +89,7 @@
                         @if ($this->isAdmin)
                             @php $opsi = $this->marketingByCabang[$order->cabang_id] ?? []; @endphp
                             <select wire:model="pilihMarketing.{{ $order->id }}"
-                                    class="min-h-[36px] rounded-lg border border-line bg-card px-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand/30">
+                                    class="min-h-[36px] rounded-lg border border-line bg-card pl-2 pr-9 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand/30">
                                 <option value="">— Marketing —</option>
                                 @foreach ($opsi as $uid => $nama)
                                     <option value="{{ $uid }}">{{ $nama }}</option>

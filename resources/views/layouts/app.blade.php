@@ -23,10 +23,12 @@
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         @livewireStyles
+        <style>[x-cloak]{display:none !important;}</style>
     </head>
     <body class="font-sans antialiased">
-        <div class="min-h-screen bg-page">
+        <div class="min-h-screen bg-page" x-data="{ sidebarOpen: false }">
             @include('layouts.sidebar')
+            @include('layouts.mobile-nav')
 
             <div class="lg:pl-64">
                 @include('layouts.topbar')
@@ -40,14 +42,11 @@
                     </div>
                 @endisset
 
-                {{-- Konten; pb-24 agar tak tertutup bottom-nav di mobile --}}
-                <main class="mx-auto w-full max-w-6xl px-4 py-6 pb-24 sm:px-6 lg:pb-8">
+                <main class="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:py-8">
                     @include('layouts.flash')
                     {{ $slot }}
                 </main>
             </div>
-
-            @include('layouts.bottom-nav')
         </div>
 
         @livewireScripts

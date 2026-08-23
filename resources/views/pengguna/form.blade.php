@@ -10,7 +10,12 @@
             kecById: {{ Illuminate\Support\Js::from($kecamatanByCabang) }},
             selected: {{ Illuminate\Support\Js::from(array_map('strval', $selectedKecamatan)) }},
             pusatRoles: {{ Illuminate\Support\Js::from($pusatRoles) }},
+            kecSearch: '',
             get opsiKecamatan() { return this.kecById[this.cabang] || [] },
+            get opsiKecamatanFiltered() {
+                const q = this.kecSearch.trim().toLowerCase();
+                return q ? this.opsiKecamatan.filter(k => k.label.toLowerCase().includes(q)) : this.opsiKecamatan;
+            },
             get terpusat() { return this.pusatRoles.includes(this.role) },
         }">
         @csrf
@@ -66,26 +71,40 @@
                 <p class="text-sm text-ink-muted">Pilih cabang dulu.</p>
             </template>
             <template x-if="cabang && !opsiKecamatan.length">
-                <p class="text-sm text-ink-muted">Belum ada kecamatan untuk cabang ini.</p>
+                <p class="text-sm text-ink-muted">Belum ada kecamatan tersedia untuk cabang ini (mungkin semua sudah punya marketing).</p>
             </template>
 
-            <div x-show="cabang && opsiKecamatan.length" class="grid gap-2 sm:grid-cols-2">
-                <template x-for="kec in opsiKecamatan" :key="kec.id">
-                    <label class="flex items-center gap-2 text-sm text-ink">
-                        <input type="checkbox" name="kecamatan_ids[]" :value="kec.id"
-                            :checked="selected.includes(String(kec.id))"
-                            class="h-4 w-4 rounded border-line text-brand focus:ring-2 focus:ring-brand/30">
-                        <span x-text="kec.label"></span>
-                    </label>
-                </template>
+            <div x-show="cabang && opsiKecamatan.length" class="space-y-2">
+                {{-- Pencarian kecamatan --}}
+                <div class="relative">
+                    <svg class="pointer-events-none absolute inset-y-0 left-3 my-auto h-4 w-4 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                    </svg>
+                    <input type="search" x-model="kecSearch" placeholder="Cari kecamatan…"
+                        class="block w-full rounded-lg border border-line bg-card py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink-muted/60 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+                </div>
+
+                <div class="max-h-64 space-y-1 overflow-y-auto rounded-lg border border-line p-2">
+                    <template x-for="kec in opsiKecamatanFiltered" :key="kec.id">
+                        <label class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-ink hover:bg-page">
+                            <input type="checkbox" name="kecamatan_ids[]" :value="kec.id"
+                                :checked="selected.includes(String(kec.id))"
+                                class="h-4 w-4 rounded border-line text-brand focus:ring-2 focus:ring-brand/30">
+                            <span x-text="kec.label"></span>
+                        </label>
+                    </template>
+                    <template x-if="!opsiKecamatanFiltered.length">
+                        <p class="px-2 py-3 text-center text-sm text-ink-muted">Tidak ada kecamatan cocok.</p>
+                    </template>
+                </div>
             </div>
             @error('kecamatan_ids')<p class="mt-1 text-xs text-status-danger">{{ $message }}</p>@enderror
         </div>
 
         <div class="border-t border-line pt-4">
-            <p class="mb-3 text-sm font-medium text-ink">
-                {{ $pengguna ? 'Ubah kata sandi' : 'Kata sandi' }}
-            </p>
+            @if ($pengguna)
+                <p class="mb-3 text-sm font-medium text-ink">Ubah kata sandi</p>
+            @endif
             <div class="space-y-4">
                 <x-input
                     name="password"

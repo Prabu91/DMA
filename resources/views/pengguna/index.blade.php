@@ -11,7 +11,7 @@
 
     {{-- Filter cabang + role --}}
     <form method="GET" class="mb-4 flex flex-wrap items-center gap-2">
-        @php $ctrl = 'h-9 rounded-lg border border-line bg-card px-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand'; @endphp
+        @php $ctrl = 'h-9 rounded-lg border border-line bg-card pl-2.5 pr-9 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand'; @endphp
         <select name="cabang" onchange="this.form.submit()" class="{{ $ctrl }}">
             <option value="">Semua cabang</option>
             @foreach ($cabangOptions as $id => $nama)<option value="{{ $id }}" @selected($filterCabang === (string) $id)>{{ $nama }}</option>@endforeach

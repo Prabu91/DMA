@@ -98,13 +98,23 @@ class PenggunaController extends Controller
     {
         $pengguna = $extra['pengguna'] ?? null;
 
+        // Kecamatan yang SUDAH dipegang marketing lain → sembunyikan dari pilihan.
+        // Kecamatan milik user yang sedang diedit tetap ditampilkan (agar bisa dilepas).
+        $kecamatanTerpakai = \Illuminate\Support\Facades\DB::table('user_kecamatan')
+            ->when($pengguna, fn ($q) => $q->where('user_id', '!=', $pengguna->id))
+            ->pluck('kecamatan_id')
+            ->all();
+
         return array_merge([
             'cabangOptions' => Cabang::orderBy('nama')->pluck('nama', 'id')->all(),
             'roleOptions' => Role::orderBy('name')->pluck('name')
                 ->mapWithKeys(fn ($name) => [$name => \Illuminate\Support\Str::headline($name)])
                 ->all(),
-            // Kecamatan dikelompokkan per cabang (untuk checkbox dependent di form).
-            'kecamatanByCabang' => Kecamatan::with('kota')->orderBy('nama')->get()
+            // Kecamatan dikelompokkan per cabang (untuk checkbox dependent di form),
+            // tanpa kecamatan yang sudah punya marketing lain.
+            'kecamatanByCabang' => Kecamatan::with('kota')
+                ->whereNotIn('id', $kecamatanTerpakai)
+                ->orderBy('nama')->get()
                 ->groupBy(fn ($k) => $k->kota?->cabang_id)
                 ->reject(fn ($g, $cabangId) => $cabangId === null || $cabangId === '')
                 ->map(fn ($g) => $g->map(fn ($k) => ['id' => $k->id, 'label' => $k->nama.' — '.$k->kota?->nama])->values())
@@ -165,7 +175,15 @@ class PenggunaController extends Controller
         }
 
         $ids = $data['kecamatan_ids'] ?? [];
+
+        // Kecamatan yang sudah dipegang marketing LAIN tak boleh diambil (1 kecamatan 1 PIC).
+        $terpakaiOrang = \Illuminate\Support\Facades\DB::table('user_kecamatan')
+            ->where('user_id', '!=', $user->id)
+            ->pluck('kecamatan_id')
+            ->all();
+
         $valid = Kecamatan::whereIn('id', $ids)
+            ->whereNotIn('id', $terpakaiOrang)
             ->whereHas('kota', fn ($q) => $q->where('cabang_id', $user->cabang_id))
             ->pluck('id')
             ->all();

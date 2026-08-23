@@ -23,7 +23,7 @@
         @if ($name) name="{{ $name }}" @endif
         @if ($id) id="{{ $id }}" @endif
         {{ $attributes->merge([
-            'class' => 'block w-full min-h-[44px] rounded-lg border bg-card px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand '
+            'class' => 'block w-full min-h-[44px] rounded-lg border bg-card py-2 pl-3 pr-9 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand '
                 . ($err ? 'border-status-danger' : 'border-line'),
         ]) }}
     >

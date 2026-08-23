@@ -9,6 +9,15 @@
 @endphp
 
 <header class="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-line bg-card/95 px-4 backdrop-blur sm:px-6">
+    {{-- Hamburger: buka drawer menu di mobile --}}
+    <button type="button" x-on:click="sidebarOpen = true"
+            class="-ml-1 rounded-lg p-2 text-ink-muted transition-colors hover:bg-page hover:text-ink lg:hidden"
+            aria-label="Buka menu">
+        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
+        </svg>
+    </button>
+
     {{-- Logo untuk mobile (sidebar disembunyikan) --}}
     <a href="{{ route('app.dashboard') }}" class="lg:hidden">
         <x-brand-logo size="sm" :wordmark="false" />

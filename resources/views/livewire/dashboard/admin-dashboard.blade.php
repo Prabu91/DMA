@@ -1,6 +1,6 @@
 <div>
     @php
-        $ctrl = 'h-9 rounded-lg border border-line bg-card px-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand';
+        $ctrl = 'h-9 rounded-lg border border-line bg-card pl-2.5 pr-9 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand';
         $today = now()->toDateString();
         $plus7 = now()->addDays(7)->toDateString();
     @endphp

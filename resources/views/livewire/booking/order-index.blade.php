@@ -10,7 +10,7 @@
     @endif
 
     {{-- Filter (ringkas, satu baris membungkus) --}}
-    @php $ctrl = 'h-9 rounded-lg border border-line bg-card px-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand'; @endphp
+    @php $ctrl = 'h-9 rounded-lg border border-line bg-card pl-2.5 pr-9 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand'; @endphp
     <div class="mb-4 flex flex-wrap items-center gap-2">
         <div class="relative min-w-[180px] flex-1">
             <span class="pointer-events-none absolute inset-y-0 left-0 flex w-9 items-center justify-center text-ink-muted">

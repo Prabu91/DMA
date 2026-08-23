@@ -22,7 +22,7 @@
             <x-input wire:model.live.debounce.300ms="search" type="search" placeholder="Cari kecamatan…" />
         </div>
         <select wire:model.live="filterKota"
-                class="h-11 rounded-lg border border-line bg-card px-2.5 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+                class="h-11 rounded-lg border border-line bg-card pl-2.5 pr-9 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
             <option value="">Semua kota</option>
             @foreach ($this->kotaOptions as $id => $nama)<option value="{{ $id }}" @selected($filterKota === (string) $id)>{{ $nama }}</option>@endforeach
         </select>

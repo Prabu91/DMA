@@ -27,13 +27,13 @@
         </div>
         @if ($this->canChooseCabang)
             <select wire:model.live="filterCabang"
-                    class="h-11 rounded-lg border border-line bg-card px-2.5 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+                    class="h-11 rounded-lg border border-line bg-card pl-2.5 pr-9 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
                 <option value="">Semua cabang</option>
                 @foreach ($this->cabangOptions as $id => $nama)<option value="{{ $id }}" @selected($filterCabang === (string) $id)>{{ $nama }}</option>@endforeach
             </select>
         @endif
         <select wire:model.live="filterKategori"
-                class="h-11 rounded-lg border border-line bg-card px-2.5 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+                class="h-11 rounded-lg border border-line bg-card pl-2.5 pr-9 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
             <option value="">Semua kategori</option>
             <option value="NOS">NOS · belum pernah</option>
             <option value="NRS">NRS · 1–2 order</option>
