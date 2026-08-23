@@ -1,4 +1,10 @@
 <div>
+    <x-breadcrumb :items="[
+        ['label' => 'Dashboard', 'url' => route('app.dashboard')],
+        ['label' => 'Finance'],
+        ['label' => 'All Data Sales'],
+    ]" />
+
     <div class="mb-6">
         <h1 class="text-lg font-medium text-ink">All Data Sales</h1>
         <p class="text-sm text-ink-muted">Semua order ter-assign (non-batal) + rincian finansial. Klik kategori untuk lihat produk.</p>

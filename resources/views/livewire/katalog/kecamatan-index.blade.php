@@ -1,4 +1,9 @@
 <div>
+    <x-breadcrumb :items="[
+        ['label' => 'Dashboard', 'url' => route('app.dashboard')],
+        ['label' => 'Kecamatan'],
+    ]" />
+
     {{-- Header --}}
     <div class="mb-6 flex items-center justify-between gap-3">
         <div>
@@ -53,6 +58,8 @@
             <x-table.empty :colspan="5">Belum ada kecamatan.</x-table.empty>
         @endforelse
     </x-table>
+
+    <div class="mt-4">{{ $kecamatan->links() }}</div>
 
     {{-- Modal form --}}
     @if ($showForm)

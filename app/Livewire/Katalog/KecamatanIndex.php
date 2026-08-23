@@ -8,6 +8,7 @@ use App\Models\Kota;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 /**
  * Master kecamatan (di bawah kota) — dikelola super_admin.
@@ -16,11 +17,22 @@ use Livewire\Component;
 #[Layout('layouts.app')]
 class KecamatanIndex extends Component
 {
-    use WithSorting;
+    use WithPagination, WithSorting;
 
     protected function sortableColumns(): array
     {
         return ['nama' => 'nama', 'sekolah' => 'sekolah_count', 'marketing' => 'users_count'];
+    }
+
+    /** Kembali ke halaman 1 saat filter/cari berubah. */
+    public function updatedSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterKota(): void
+    {
+        $this->resetPage();
     }
 
     public bool $showForm = false;
@@ -130,7 +142,7 @@ class KecamatanIndex extends Component
             ->when($this->search !== '', fn ($q) => $q->where('nama', 'ilike', '%'.$this->search.'%'))
             ->withCount(['sekolah', 'users']);
 
-        $kecamatan = $this->applySort($kecamatan, 'nama', 'asc')->get();
+        $kecamatan = $this->applySort($kecamatan, 'nama', 'asc')->paginate(20);
 
         return view('livewire.katalog.kecamatan-index', compact('kecamatan'));
     }

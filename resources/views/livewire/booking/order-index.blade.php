@@ -1,4 +1,9 @@
 <div>
+    <x-breadcrumb :items="[
+        ['label' => 'Dashboard', 'url' => route('app.dashboard')],
+        ['label' => 'Order'],
+    ]" />
+
     <div class="mb-6">
         <h1 class="text-lg font-medium text-ink">Order</h1>
         <p class="text-sm text-ink-muted">Semua pesanan di cabang Anda — pantau status & jadwal.</p>
@@ -45,6 +50,33 @@
         @endif
     </div>
 
+    {{-- Mobile: kartu ringkas (tabel disembunyikan) --}}
+    <div class="space-y-2 md:hidden">
+        @forelse ($orders as $order)
+            @php $cd = $order->eventCountdown(); @endphp
+            <a href="{{ route('app.order.show', $order->id) }}" wire:navigate class="block rounded-xl border border-line bg-card p-3.5 transition-colors hover:border-brand/40">
+                <div class="flex items-center justify-between gap-2">
+                    <span class="font-medium text-brand">{{ $order->booking_code ?? 'Order #'.$order->id }}</span>
+                    <span class="shrink-0 font-medium text-ink">Rp{{ number_format($order->total, 0, ',', '.') }}</span>
+                </div>
+                <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    <x-badge :variant="\App\Support\OrderStatus::badge($order->status)">{{ \App\Support\OrderStatus::label($order->status) }}</x-badge>
+                    @unless ($order->marketing)<x-badge variant="neutral">Belum ditugaskan</x-badge>@endunless
+                    @if ($cd)<x-badge :variant="$cd['state'] === 'past' ? 'danger' : ($cd['state'] === 'today' ? 'pending' : 'info')">{{ $cd['label'] }}</x-badge>@endif
+                </div>
+                <div class="mt-1.5 text-sm text-ink">{{ $order->sekolah?->nama ?? '—' }}</div>
+                <div class="mt-0.5 text-xs text-ink-muted">
+                    {{ $order->cabang?->nama }} · {{ $order->items_count }} item · {{ $order->jumlah_siswa }} siswa
+                    · Event {{ $order->tanggal_event ? $order->tanggal_event->translatedFormat('d M Y') : '—' }}
+                </div>
+            </a>
+        @empty
+            <div class="rounded-xl border border-line bg-card px-4 py-10 text-center text-sm text-ink-muted">Belum ada order yang cocok.</div>
+        @endforelse
+    </div>
+
+    {{-- Desktop: tabel penuh --}}
+    <div class="hidden md:block">
     <x-table min-width="900px">
         <x-slot:head>
             <x-table.th sortable field="booking" :sort="$sortField" :dir="$sortDir">Order</x-table.th>
@@ -80,6 +112,7 @@
             <x-table.empty :colspan="6">Belum ada order yang cocok.</x-table.empty>
         @endforelse
     </x-table>
+    </div>
 
     <div class="mt-4">
         {{ $orders->links() }}

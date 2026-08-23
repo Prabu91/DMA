@@ -155,8 +155,36 @@ class SekolahIndex extends Component
         $this->showForm = true;
     }
 
+    /**
+     * Link Google Maps otomatis dari nama + alamat (query search — tanpa API key).
+     * Bukan pin presisi, tapi membuka Maps mencari sekolah tsb.
+     */
+    private function buildMapsLink(): ?string
+    {
+        $query = trim(($this->nama ?? '').' '.($this->alamat ?? ''));
+
+        return $query === '' ? null : 'https://www.google.com/maps/search/?api=1&query='.urlencode($query);
+    }
+
+    /** Tombol "Buat otomatis" pada form. */
+    public function generateMapsLink(): void
+    {
+        $link = $this->buildMapsLink();
+        if (! $link) {
+            $this->addError('maps_link', 'Isi nama sekolah / alamat dulu.');
+
+            return;
+        }
+        $this->maps_link = $link;
+    }
+
     public function save(): void
     {
+        // Auto-isi link Maps dari nama+alamat bila dikosongkan.
+        if (blank($this->maps_link)) {
+            $this->maps_link = $this->buildMapsLink();
+        }
+
         $data = $this->validate();
 
         // Cegah duplikat: kombinasi nama + PIC + no. telp + alamat harus unik.

@@ -1,4 +1,10 @@
 <div>
+    <x-breadcrumb :items="[
+        ['label' => 'Dashboard', 'url' => route('app.dashboard')],
+        ['label' => 'Katalog'],
+        ['label' => 'Aturan free sekolah'],
+    ]" />
+
     <div class="mb-6 flex items-center justify-between gap-3">
         <div>
             <h1 class="text-lg font-medium text-ink">Aturan free sekolah</h1>

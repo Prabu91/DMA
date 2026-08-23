@@ -1,4 +1,10 @@
 <div>
+    <x-breadcrumb :items="[
+        ['label' => 'Dashboard', 'url' => route('app.dashboard')],
+        ['label' => 'Katalog'],
+        ['label' => 'Paket'],
+    ]" />
+
     <div class="mb-6 flex items-center justify-between gap-3">
         <div>
             <h1 class="text-lg font-medium text-ink">Paket</h1>
@@ -58,12 +64,13 @@
                             <span class="block text-sm font-medium text-ink">Isi paket</span>
                             <x-button type="button" wire:click="addItem" variant="ghost" size="sm">+ Tambah item</x-button>
                         </div>
+                        <p class="text-xs text-ink-muted">Paket tanpa produk otomatis disimpan sebagai <span class="font-medium">Nonaktif</span>.</p>
                         @error('items')<p class="text-xs text-status-danger">{{ $message }}</p>@enderror
 
                         @foreach ($items as $i => $row)
                             <div wire:key="pkitem-{{ $i }}" class="rounded-lg border border-line p-3">
                                 <div class="grid gap-2 sm:grid-cols-2">
-                                    <x-select label="Produk" wire:model="items.{{ $i }}.produk_id" :options="$this->produkOptions" :selected="$row['produk_id']" placeholder="— Pilih produk —" :error="$errors->first('items.'.$i.'.produk_id')" />
+                                    <x-searchable-select label="Produk" model="items.{{ $i }}.produk_id" :options="$this->produkOptions" :selected="$row['produk_id']" placeholder="— Pilih produk —" :error="$errors->first('items.'.$i.'.produk_id')" />
                                     <x-input label="Ukuran/opsi" wire:model="items.{{ $i }}.opsi_ukuran" placeholder="mis. 10RP (opsional)" />
                                     <x-input type="number" min="1" label="Qty" wire:model="items.{{ $i }}.qty" :error="$errors->first('items.'.$i.'.qty')" />
                                     <x-input type="number" min="0" label="Harga/satuan" wire:model="items.{{ $i }}.harga" :error="$errors->first('items.'.$i.'.harga')" />

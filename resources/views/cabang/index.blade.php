@@ -1,5 +1,9 @@
 <x-app-layout>
     <x-slot name="header">
+        <x-breadcrumb :items="[
+            ['label' => 'Dashboard', 'url' => route('app.dashboard')],
+            ['label' => 'Cabang'],
+        ]" />
         <div class="flex items-center justify-between gap-3">
             <div>
                 <h1 class="text-lg font-medium text-ink">Cabang</h1>

@@ -1,4 +1,9 @@
 <div>
+    <x-breadcrumb :items="[
+        ['label' => 'Dashboard', 'url' => route('app.dashboard')],
+        ['label' => 'Kotak masuk'],
+    ]" />
+
     <div class="mb-6">
         <h1 class="text-lg font-medium text-ink">Kotak masuk</h1>
         <p class="text-sm text-ink-muted">Order booking mandiri sekolah yang menunggu penugasan marketing.</p>
@@ -51,6 +56,52 @@
         @endif
     </div>
 
+    {{-- Mobile: kartu ringkas --}}
+    <div class="space-y-2 md:hidden">
+        @forelse ($this->orders as $order)
+            <div class="rounded-xl border border-line bg-card p-3.5">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="min-w-0">
+                        <div class="font-medium text-ink">Booking #{{ $order->id }}</div>
+                        <div class="text-xs text-ink-muted">{{ $order->sekolah?->nama }}</div>
+                    </div>
+                    <span class="shrink-0 text-sm font-medium text-ink">Rp{{ number_format($order->total, 0, ',', '.') }}</span>
+                </div>
+                <div class="mt-1.5 text-xs text-ink-muted">
+                    {{ $order->cabang?->nama }}@if ($order->sekolah?->kecamatan) · Kec. {{ $order->sekolah->kecamatan->nama }}@endif
+                    · {{ $order->items_count }} item · {{ $order->jumlah_siswa }} siswa
+                    · Masuk {{ optional($order->tanggal_booking)->translatedFormat('d M Y') }}
+                </div>
+                @if ($tampil === 'ditugaskan')
+                    <div class="mt-0.5 text-xs text-ink-muted">Marketing: <span class="text-ink">{{ $order->marketing?->nama ?? $order->marketing?->name ?? '—' }}</span></div>
+                @endif
+                <div class="mt-3 flex flex-wrap items-center gap-2">
+                    <x-button wire:click="lihatDetail({{ $order->id }})" variant="ghost" size="sm">Detail</x-button>
+                    @if ($tampil === 'baru' && $this->isMarketing)
+                        <x-button wire:click="ambil({{ $order->id }})" wire:confirm="Ambil order ini untuk Anda?" size="sm">Ambil</x-button>
+                    @endif
+                    @if ($this->isAdmin)
+                        @php $opsi = $this->marketingByCabang[$order->cabang_id] ?? []; @endphp
+                        <select wire:model="pilihMarketing.{{ $order->id }}"
+                                class="min-h-[36px] rounded-lg border border-line bg-card pl-2 pr-9 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand/30">
+                            <option value="">— Marketing —</option>
+                            @foreach ($opsi as $uid => $nama)<option value="{{ $uid }}">{{ $nama }}</option>@endforeach
+                        </select>
+                        @if ($tampil === 'baru')
+                            <x-button wire:click="tugaskan({{ $order->id }})" wire:confirm="Tugaskan order ini ke marketing terpilih?" variant="secondary" size="sm">Tugaskan</x-button>
+                        @else
+                            <x-button wire:click="reassign({{ $order->id }})" wire:confirm="Ubah penugasan marketing order ini?" variant="secondary" size="sm">Ubah</x-button>
+                        @endif
+                    @endif
+                </div>
+            </div>
+        @empty
+            <div class="rounded-xl border border-line bg-card px-4 py-10 text-center text-sm text-ink-muted">{{ $tampil === 'baru' ? 'Tidak ada order yang menunggu penugasan.' : 'Belum ada order yang ditugaskan.' }}</div>
+        @endforelse
+    </div>
+
+    {{-- Desktop: tabel penuh --}}
+    <div class="hidden md:block">
     <x-table min-width="880px">
         <x-slot:head>
             <x-table.th>Order</x-table.th>
@@ -108,6 +159,7 @@
             <x-table.empty :colspan="5">{{ $tampil === 'baru' ? 'Tidak ada order yang menunggu penugasan.' : 'Belum ada order yang ditugaskan.' }}</x-table.empty>
         @endforelse
     </x-table>
+    </div>
 
     {{-- Modal detail order --}}
     @if ($this->detailOrder)

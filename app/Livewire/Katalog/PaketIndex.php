@@ -54,7 +54,7 @@ class PaketIndex extends Component
             'nama' => ['required', 'string', 'max:255'],
             'deskripsi' => ['nullable', 'string', 'max:1000'],
             'status' => ['required', 'in:'.implode(',', array_keys(Paket::STATUS))],
-            'items' => ['array', 'min:1'],
+            'items' => ['array'],
             'items.*.produk_id' => ['required', 'exists:produk,id'],
             'items.*.opsi_ukuran' => ['nullable', 'string', 'max:100'],
             'items.*.qty' => ['required', 'integer', 'min:1'],
@@ -64,7 +64,6 @@ class PaketIndex extends Component
     }
 
     protected array $messages = [
-        'items.min' => 'Minimal satu produk dalam paket.',
         'items.*.produk_id.required' => 'Pilih produk.',
     ];
 
@@ -113,6 +112,9 @@ class PaketIndex extends Component
 
     public function save(): void
     {
+        // Buang baris tanpa produk agar paket boleh kosong (draft).
+        $this->items = array_values(array_filter($this->items, fn ($i) => ! empty($i['produk_id'])));
+
         $data = $this->validate();
 
         if ($this->editingId) {
@@ -128,11 +130,14 @@ class PaketIndex extends Component
             ->reject(fn ($i) => (bool) ($i['is_free'] ?? false))
             ->sum(fn ($i) => (int) $i['harga'] * (int) $i['qty']);
 
+        // Paket tanpa produk tidak bisa dijual → paksa nonaktif.
+        $status = empty($data['items']) ? 'nonaktif' : $data['status'];
+
         $paket->fill([
             'nama' => $data['nama'],
             'deskripsi' => $data['deskripsi'],
             'harga' => $hargaJual,
-            'status' => $data['status'],
+            'status' => $status,
         ])->save();
 
         // Sync paket_item: hapus-lalu-buat-ulang.

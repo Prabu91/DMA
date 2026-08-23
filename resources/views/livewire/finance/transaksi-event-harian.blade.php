@@ -1,4 +1,10 @@
 <div>
+    <x-breadcrumb :items="[
+        ['label' => 'Dashboard', 'url' => route('app.dashboard')],
+        ['label' => 'Finance'],
+        ['label' => 'Transaksi Harian per Event'],
+    ]" />
+
     <div class="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
             <h1 class="text-lg font-medium text-ink">Transaksi Harian per Event</h1>

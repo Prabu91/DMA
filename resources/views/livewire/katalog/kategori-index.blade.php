@@ -1,4 +1,10 @@
 <div>
+    <x-breadcrumb :items="[
+        ['label' => 'Dashboard', 'url' => route('app.dashboard')],
+        ['label' => 'Katalog'],
+        ['label' => 'Kategori'],
+    ]" />
+
     {{-- Header --}}
     <div class="mb-6 flex items-center justify-between gap-3">
         <div>

@@ -1,10 +1,16 @@
 <div>
-    <div class="mb-6 flex items-center justify-between gap-3">
+    <x-breadcrumb :items="[
+        ['label' => 'Dashboard', 'url' => route('app.dashboard')],
+        ['label' => 'Katalog'],
+        ['label' => 'Desain'],
+    ]" />
+
+    <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <h1 class="text-lg font-medium text-ink">Desain</h1>
             <p class="text-sm text-ink-muted">Kode katalog desain — menempel ke kategori.</p>
         </div>
-        <x-button wire:click="create" size="sm">Tambah desain</x-button>
+        <x-button wire:click="create" size="sm" class="shrink-0 self-start whitespace-nowrap sm:self-auto">Tambah desain</x-button>
     </div>
 
     @if ($success)
@@ -23,8 +29,8 @@
 
     <x-card padding="p-0">
         @forelse ($desain as $item)
-            <div class="flex items-center justify-between gap-3 border-b border-line px-5 py-3.5 last:border-b-0">
-                <div class="flex min-w-0 items-center gap-3">
+            <div class="flex flex-col gap-2 border-b border-line px-5 py-3.5 last:border-b-0 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                <div class="flex min-w-0 items-start gap-3">
                     @if ($item->foto_preview)
                         <img src="{{ asset('storage/'.$item->foto_preview) }}" alt="" class="h-12 w-12 shrink-0 rounded-lg border border-line object-cover">
                     @else
@@ -32,20 +38,20 @@
                             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="{{ \App\Support\Icons::path('photo') }}" /></svg>
                         </div>
                     @endif
-                    <div class="min-w-0">
-                        <div class="flex items-center gap-2">
-                            <span class="truncate text-sm text-ink">{{ $item->kode }}</span>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <span class="text-sm font-medium text-ink">{{ $item->kode }}</span>
                             @if ($item->orientasi)<x-badge variant="neutral">{{ \App\Models\Desain::ORIENTASI[$item->orientasi] ?? $item->orientasi }}</x-badge>@endif
                             <x-badge :variant="$item->status === 'aktif' ? 'success' : 'danger'">{{ \App\Models\Desain::STATUS[$item->status] ?? $item->status }}</x-badge>
                         </div>
-                        <div class="mt-0.5 truncate text-xs text-ink-muted">
+                        <div class="mt-0.5 text-xs text-ink-muted">
                             {{ $item->kategori?->nama ?? '—' }}
                             @if ($item->seri) · Seri {{ $item->seri }}@endif
                             · {{ $item->tahun_ajaran ?: '—' }}
                         </div>
                     </div>
                 </div>
-                <div class="flex shrink-0 items-center gap-2">
+                <div class="flex shrink-0 items-center gap-2 pl-[3.75rem] sm:pl-0">
                     <x-button wire:click="edit({{ $item->id }})" variant="secondary" size="sm">Ubah</x-button>
                     <x-button wire:click="delete({{ $item->id }})" wire:confirm="Hapus desain {{ $item->kode }}?" variant="ghost" size="sm">Hapus</x-button>
                 </div>

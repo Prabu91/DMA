@@ -1,4 +1,9 @@
 <div>
+    <x-breadcrumb :items="[
+        ['label' => 'Dashboard', 'url' => route('app.dashboard')],
+        ['label' => 'Aktivitas'],
+    ]" />
+
     <div class="mb-4">
         <h1 class="text-lg font-medium text-ink">Aktivitas</h1>
         <p class="text-sm text-ink-muted">Riwayat aksi lintas order — siapa melakukan apa & kapan.</p>

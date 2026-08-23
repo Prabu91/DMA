@@ -12,19 +12,6 @@
         ]" />
     @endunless
 
-    {{-- Banner sukses (portal sekolah) --}}
-    @if ($sf)
-        <div class="mb-6 flex items-center gap-3 rounded-xl bg-navy-900 px-5 py-4">
-            <span class="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-brand">
-                <svg class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-            </span>
-            <div>
-                <div class="text-[11px] font-extrabold tracking-[0.14em] text-brand">BOOKING BERHASIL</div>
-                <div class="text-lg font-extrabold tracking-tight text-white">Reservasi kamu tersimpan!</div>
-            </div>
-        </div>
-    @endif
-
     <div class="mb-6 flex items-center justify-between gap-3">
         <div>
             <h1 class="{{ $sf ? 'text-2xl font-extrabold tracking-tight text-ink' : 'text-lg font-medium text-ink' }}">{{ $sf ? 'Booking tersimpan' : ($order->booking_code ?? 'Order #'.$order->id) }}</h1>
@@ -35,7 +22,8 @@
 
     <div class="grid gap-6 lg:grid-cols-3">
         <div class="space-y-6 lg:col-span-2">
-            {{-- Status / tiket --}}
+            {{-- Status / tiket — untuk client disembunyikan sampai kode booking/QR terbit --}}
+            @if ($order->booking_code || ! $sf)
             <x-card :padding="$sf ? 'p-0' : 'p-5'">
                 @if ($order->booking_code)
                     @if ($sf)
@@ -72,6 +60,39 @@
                         <p class="mt-2 text-xs text-ink-muted">Kode booking &amp; QR dibuat setelah marketing ditugaskan.</p>
                     </div>
                 @endif
+            </x-card>
+            @endif
+
+            {{-- Item (diletakkan di atas agar rincian pesanan langsung terlihat) --}}
+            <x-card title="Item" padding="p-0">
+                @foreach ($this->paidItems as $item)
+                    <div class="flex items-center justify-between gap-3 border-b border-line px-5 py-3 last:border-b-0">
+                        <div class="min-w-0">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <x-badge :variant="$item->tipe_item === 'paket' ? 'brand' : 'neutral'">{{ ucfirst($item->tipe_item) }}</x-badge>
+                                <span class="text-sm {{ $sf ? 'font-bold' : 'font-medium' }} text-ink">{{ $item->produk?->nama ?? $item->paket?->nama }}</span>
+                            </div>
+                            <div class="mt-0.5 text-xs text-ink-muted">
+                                @if ($item->desain) Desain {{ $item->desain->kode }} · @endif
+                                @if ($item->opsi_ukuran) {{ $item->opsi_ukuran }} · @endif
+                                {{ $item->qty }} × Rp{{ number_format($item->harga, 0, ',', '.') }}
+                            </div>
+                        </div>
+                        <div class="shrink-0 text-sm font-medium text-ink">Rp{{ number_format($item->harga * $item->qty, 0, ',', '.') }}</div>
+                    </div>
+                @endforeach
+
+                @foreach ($this->freeItems as $item)
+                    <div class="flex items-center justify-between gap-3 border-b border-line px-5 py-3 last:border-b-0">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <x-badge variant="success">Free</x-badge>
+                            <span class="text-sm text-ink">{{ $item->produk?->nama ?? 'Produk' }}</span>
+                            @if ($item->opsi_ukuran)<span class="text-xs text-ink-muted">{{ $item->opsi_ukuran }}</span>@endif
+                            <span class="text-xs text-ink-muted">×{{ $item->qty }}</span>
+                        </div>
+                        <div class="shrink-0 text-sm font-medium text-status-success">Rp0</div>
+                    </div>
+                @endforeach
             </x-card>
 
             {{-- Visual tracking status order — hanya panel staf; disembunyikan dari portal sekolah (client) untuk sementara --}}
@@ -313,14 +334,22 @@
                     @if ($this->timEventOptions->isEmpty())
                         <p class="text-sm text-ink-muted">Belum ada anggota tim event di cabang ini.</p>
                     @else
-                        <div class="space-y-2">
-                            @foreach ($this->timEventOptions as $u)
-                                <label class="flex items-center gap-2">
-                                    <input type="checkbox" wire:model="timEventTerpilih" value="{{ $u->id }}"
-                                           class="h-4 w-4 rounded border-line text-brand focus:ring-2 focus:ring-brand/30">
-                                    <span class="text-sm text-ink">{{ $u->nama ?? $u->name }}</span>
-                                </label>
-                            @endforeach
+                        <div x-data="{ q: '' }" class="space-y-2">
+                            <div class="relative">
+                                <svg class="pointer-events-none absolute inset-y-0 left-3 my-auto h-4 w-4 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+                                <input type="search" x-model="q" placeholder="Cari nama tim event…"
+                                       class="block w-full rounded-lg border border-line bg-card py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink-muted/60 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+                            </div>
+                            <div class="max-h-64 space-y-1 overflow-y-auto rounded-lg border border-line p-2">
+                                @foreach ($this->timEventOptions as $u)
+                                    <label x-show="q === '' || {{ \Illuminate\Support\Js::from(mb_strtolower($u->nama ?? $u->name)) }}.includes(q.trim().toLowerCase())"
+                                           class="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-page">
+                                        <input type="checkbox" wire:model="timEventTerpilih" value="{{ $u->id }}"
+                                               class="h-4 w-4 rounded border-line text-brand focus:ring-2 focus:ring-brand/30">
+                                        <span class="text-sm text-ink">{{ $u->nama ?? $u->name }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
                         </div>
                         <div class="mt-4 flex items-center gap-3">
                             <x-button wire:click="simpanTimEvent" wire:confirm="Simpan penugasan tim event?" size="sm">Simpan tim</x-button>
@@ -345,37 +374,6 @@
                 </x-card>
             @endif
 
-            {{-- Item --}}
-            <x-card title="Item" padding="p-0">
-                @foreach ($this->paidItems as $item)
-                    <div class="flex items-center justify-between gap-3 border-b border-line px-5 py-3 last:border-b-0">
-                        <div class="min-w-0">
-                            <div class="flex items-center gap-2">
-                                <x-badge :variant="$item->tipe_item === 'paket' ? 'brand' : 'neutral'">{{ ucfirst($item->tipe_item) }}</x-badge>
-                                <span class="truncate text-sm {{ $sf ? 'font-bold' : '' }} text-ink">{{ $item->produk?->nama ?? $item->paket?->nama }}</span>
-                            </div>
-                            <div class="mt-0.5 text-xs text-ink-muted">
-                                @if ($item->desain) Desain {{ $item->desain->kode }} · @endif
-                                @if ($item->opsi_ukuran) {{ $item->opsi_ukuran }} · @endif
-                                {{ $item->qty }} × Rp{{ number_format($item->harga, 0, ',', '.') }}
-                            </div>
-                        </div>
-                        <div class="text-sm font-medium text-ink">Rp{{ number_format($item->harga * $item->qty, 0, ',', '.') }}</div>
-                    </div>
-                @endforeach
-
-                @foreach ($this->freeItems as $item)
-                    <div class="flex items-center justify-between gap-3 border-b border-line px-5 py-3 last:border-b-0">
-                        <div class="flex items-center gap-2">
-                            <x-badge variant="success">Free</x-badge>
-                            <span class="text-sm text-ink">{{ $item->produk?->nama ?? 'Produk' }}</span>
-                            @if ($item->opsi_ukuran)<span class="text-xs text-ink-muted">{{ $item->opsi_ukuran }}</span>@endif
-                            <span class="text-xs text-ink-muted">×{{ $item->qty }}</span>
-                        </div>
-                        <div class="text-sm font-medium text-status-success">Rp0</div>
-                    </div>
-                @endforeach
-            </x-card>
         </div>
 
         <div>
