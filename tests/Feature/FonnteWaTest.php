@@ -130,6 +130,7 @@ class FonnteWaTest extends TestCase
     public function test_konfirmasi_h7_kirim_wa_ke_sekolah(): void
     {
         config()->set('services.fonnte.token', 'test-token');
+        config()->set('services.fonnte.kirim_konfirmasi', true); // saklar konfirmasi aktif
         Http::fake(['*' => Http::response(['status' => true], 200)]);
 
         $adminSales = User::factory()->create(); // terpusat → cabang_id null

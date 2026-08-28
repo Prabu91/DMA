@@ -44,6 +44,9 @@ return [
         'token' => env('FONNTE_TOKEN'),
         'endpoint' => env('FONNTE_ENDPOINT', 'https://api.fonnte.com/send'),
         'timeout' => (int) env('FONNTE_TIMEOUT', 10),
+        // Saklar pesan KONFIRMASI (H-7/H-2/Hari-H). OTP tidak terpengaruh ini.
+        // Nyalakan nanti dgn FONNTE_KIRIM_KONFIRMASI=true saat siap.
+        'kirim_konfirmasi' => (bool) env('FONNTE_KIRIM_KONFIRMASI', false),
     ],
 
 ];

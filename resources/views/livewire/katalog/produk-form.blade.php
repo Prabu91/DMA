@@ -13,7 +13,7 @@
             <div class="grid gap-4 sm:grid-cols-2">
                 <x-select label="Kategori" wire:model="kategori_id" :options="$this->kategoriOptions" :selected="$kategori_id" placeholder="— Pilih kategori —" :error="$errors->first('kategori_id')" />
                 <x-input label="Nama produk" wire:model="nama" :error="$errors->first('nama')" />
-                <x-select label="Gaya" wire:model="gaya" :options="$this->gayaOptions" :selected="$gaya" placeholder="— Tanpa gaya —" :error="$errors->first('gaya')" hint="Atribut produk, tidak terkait desain." />
+                <x-select label="Frame" wire:model="frame" :options="$this->frameOptions" :selected="$frame" placeholder="— Tanpa frame —" :error="$errors->first('frame')" hint="Atribut produk (dikelola di menu Frame)." />
                 <x-select label="Status" wire:model="status" :options="$this->statusOptions" :selected="$status" :error="$errors->first('status')" />
                 <x-input label="Harga (Rp)" type="number" min="0" wire:model="harga" :error="$errors->first('harga')" hint="Harga per satu produk (dikali jumlah yang dipesan)." />
                 <x-input label="Deskripsi" wire:model="deskripsi" :error="$errors->first('deskripsi')" class="sm:col-span-2" />

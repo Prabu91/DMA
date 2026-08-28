@@ -19,7 +19,7 @@ class KotaSeeder extends Seeder
         'Jakarta' => 'Jaksel',
         'Tangerang' => 'Jaksel',
         'Depok' => 'Jaksel',
-        'Cikarang' => 'Bekasi',
+        'Bekasi' => 'Bekasi',
     ];
 
     /** kode_area untuk cabang yang dibuat dari peta. */

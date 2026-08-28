@@ -22,7 +22,7 @@ class ProdukForm extends Component
 
     public string $nama = '';
 
-    public ?string $gaya = null;
+    public ?string $frame = null;
 
     public ?string $deskripsi = null;
 
@@ -46,7 +46,7 @@ class ProdukForm extends Component
             $this->produkId = $produk->id;
             $this->kategori_id = $produk->kategori_id;
             $this->nama = $produk->nama;
-            $this->gaya = $produk->gaya;
+            $this->frame = $produk->frame;
             $this->deskripsi = $produk->deskripsi;
             $this->harga = (int) $produk->harga;
             $this->status = $produk->status ?: 'aktif';
@@ -75,9 +75,9 @@ class ProdukForm extends Component
     }
 
     #[Computed]
-    public function gayaOptions(): array
+    public function frameOptions(): array
     {
-        return array_combine(Produk::GAYA, Produk::GAYA);
+        return \App\Models\Frame::where('status', 'aktif')->orderBy('nama')->pluck('nama', 'nama')->all();
     }
 
     #[Computed]
@@ -123,7 +123,7 @@ class ProdukForm extends Component
         return [
             'kategori_id' => ['required', 'exists:kategori,id'],
             'nama' => ['required', 'string', 'max:255'],
-            'gaya' => ['nullable', 'in:'.implode(',', Produk::GAYA)],
+            'frame' => ['nullable', 'string', 'exists:frame,nama'],
             'deskripsi' => ['nullable', 'string', 'max:1000'],
             'harga' => ['required', 'integer', 'min:0'],
             'status' => ['required', 'in:'.implode(',', array_keys(Produk::STATUS))],
@@ -148,7 +148,7 @@ class ProdukForm extends Component
         $data = [
             'kategori_id' => $this->kategori_id,
             'nama' => $this->nama,
-            'gaya' => $this->gaya,
+            'frame' => $this->frame,
             'deskripsi' => $this->deskripsi,
             'harga' => $this->harga,
             'status' => $this->status,

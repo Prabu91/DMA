@@ -38,7 +38,7 @@
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
                             <span class="text-sm font-medium text-ink">{{ $item->nama }}</span>
-                            @if ($item->gaya)<x-badge variant="neutral">{{ $item->gaya }}</x-badge>@endif
+                            @if ($item->frame)<x-badge variant="neutral">{{ $item->frame }}</x-badge>@endif
                             <x-badge :variant="$item->status === 'aktif' ? 'success' : 'danger'">{{ \App\Models\Produk::STATUS[$item->status] ?? $item->status }}</x-badge>
                         </div>
                         <div class="mt-0.5 text-xs text-ink-muted">

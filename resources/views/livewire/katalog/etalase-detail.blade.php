@@ -77,7 +77,7 @@
                 <x-card>
                     <div class="flex flex-wrap items-center gap-2">
                         <h1 class="{{ $sf ? 'text-2xl font-extrabold tracking-tight text-ink' : 'text-lg font-medium text-ink' }}">{{ $produk->nama }}</h1>
-                        @if ($produk->gaya)<x-badge variant="neutral">{{ $produk->gaya }}</x-badge>@endif
+                        @if ($produk->frame)<x-badge variant="neutral">{{ $produk->frame }}</x-badge>@endif
                         <x-badge variant="navy">{{ $produk->kategori?->nama }}</x-badge>
                     </div>
                     @if ($produk->deskripsi)

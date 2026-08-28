@@ -1,12 +1,12 @@
 <div>
     @php $sf = in_array($konteks, ['publik', 'sekolah'], true); @endphp
 
-    <div class="mb-6 flex items-center justify-between gap-3">
+    <div class="mb-6 flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
         <div>
             <h1 class="{{ $sf ? 'text-2xl font-extrabold tracking-tight text-ink' : 'text-lg font-medium text-ink' }}">Keranjang</h1>
             <p class="text-sm text-ink-muted">Periksa item, jumlah siswa, lalu lanjut memesan.</p>
         </div>
-        <a href="{{ $this->katalogUrl() }}" wire:navigate class="text-sm font-bold text-brand hover:text-brand-hover">+ Tambah item</a>
+        <a href="{{ $this->katalogUrl() }}" wire:navigate class="shrink-0 whitespace-nowrap pt-1 text-sm font-bold text-brand hover:text-brand-hover">+ Tambah item</a>
     </div>
 
     @if ($info)
@@ -38,11 +38,11 @@
             {{-- Item --}}
             <x-card title="Item" padding="p-0">
                 @forelse ($this->lines as $line)
-                    <div wire:key="line-{{ $line['key'] }}" class="flex items-center justify-between gap-3 border-b border-line px-5 py-3.5 last:border-b-0">
+                    <div wire:key="line-{{ $line['key'] }}" class="flex flex-col gap-3 border-b border-line px-5 py-3.5 last:border-b-0 sm:flex-row sm:items-center sm:justify-between">
                         <div class="min-w-0">
-                            <div class="flex items-center gap-2">
+                            <div class="flex flex-wrap items-center gap-2">
                                 <x-badge :variant="$line['tipe'] === 'paket' ? 'brand' : 'neutral'">{{ ucfirst($line['tipe']) }}</x-badge>
-                                <span class="truncate text-sm {{ $sf ? 'font-bold' : '' }} text-ink">{{ $line['nama'] }}</span>
+                                <span class="text-sm {{ $sf ? 'font-bold' : 'font-medium' }} text-ink">{{ $line['nama'] }}</span>
                             </div>
                             <div class="mt-0.5 text-xs text-ink-muted">
                                 @if ($line['desain']) Desain {{ $line['desain'] }} · @endif
@@ -50,14 +50,14 @@
                                 Rp{{ number_format($line['unit'], 0, ',', '.') }}/item
                             </div>
                         </div>
-                        <div class="flex shrink-0 items-center gap-3">
+                        <div class="flex items-center justify-between gap-3 sm:shrink-0 sm:justify-end">
                             <div class="flex items-center gap-1">
                                 <button type="button" wire:click="ubahQty('{{ $line['key'] }}', {{ $line['qty'] - 1 }})" class="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-ink hover:bg-page">−</button>
                                 <span class="w-8 text-center text-sm text-ink">{{ $line['qty'] }}</span>
                                 <button type="button" wire:click="ubahQty('{{ $line['key'] }}', {{ $line['qty'] + 1 }})" class="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-ink hover:bg-page">+</button>
                             </div>
-                            <div class="w-24 text-right text-sm font-medium text-ink">Rp{{ number_format($line['total'], 0, ',', '.') }}</div>
-                            <button type="button" wire:click="hapus('{{ $line['key'] }}')" class="text-ink-muted hover:text-status-danger" title="Hapus">
+                            <div class="text-right text-sm font-medium text-ink sm:w-24">Rp{{ number_format($line['total'], 0, ',', '.') }}</div>
+                            <button type="button" wire:click="hapus('{{ $line['key'] }}')" class="shrink-0 text-ink-muted hover:text-status-danger" title="Hapus">
                                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>

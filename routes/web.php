@@ -17,6 +17,7 @@ use App\Http\Controllers\Sekolah\VerifyEmailController as SekolahVerifyEmailCont
 use App\Livewire\Booking\KotakMasuk;
 use App\Livewire\Katalog\AturanFreeIndex;
 use App\Livewire\Katalog\DesainIndex;
+use App\Livewire\Katalog\FrameIndex;
 use App\Livewire\Katalog\KategoriIndex;
 use App\Livewire\Katalog\PaketIndex;
 use App\Livewire\Katalog\ProdukForm;
@@ -76,6 +77,7 @@ Route::prefix('app')->name('app.')->middleware(['auth', 'verified'])->group(func
     // Katalog global — super_admin & operasional.
     Route::middleware('role:super_admin|operasional')->group(function () {
         Route::get('/katalog/kategori', KategoriIndex::class)->name('kategori.index');
+        Route::get('/katalog/frame', FrameIndex::class)->name('frame.index');
         Route::get('/katalog/produk', ProdukIndex::class)->name('produk.index');
         Route::get('/katalog/produk/create', ProdukForm::class)->name('produk.create');
         Route::get('/katalog/produk/{produk}/edit', ProdukForm::class)->name('produk.edit');

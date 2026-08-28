@@ -25,13 +25,13 @@ return [
      | administrasi DKI). Sesuaikan bila cakupan cabang berubah.
      */
     'regencies' => [
-        'Bandung' => ['3273'],                                // Kota Bandung
+        'Bandung' => ['3273', '3204', '3217', '3277'],        // Bandung Raya + Cimahi: Kota + Kab. Bandung + Kab. Bandung Barat + Kota Cimahi
         'Cianjur' => ['3203'],                                // Kab. Cianjur
         'Bogor' => ['3271', '3201'],                          // Kota + Kab. Bogor
         'Jakarta' => ['3171', '3172', '3173', '3174', '3175'], // 5 kota administrasi DKI
         'Tangerang' => ['3671', '3603', '3674'],              // Kota, Kab, Tangerang Selatan
         'Depok' => ['3276'],                                  // Kota Depok
-        'Cikarang' => ['3216'],                               // Kab. Bekasi (Cikarang)
+        'Bekasi' => ['3216', '3275'],                         // Kab. Bekasi (Cikarang) + Kota Bekasi
     ],
 
 ];

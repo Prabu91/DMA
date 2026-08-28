@@ -87,7 +87,7 @@
                                 <div class="p-3">
                                     <div class="flex items-center gap-1.5">
                                         <span class="truncate text-sm font-semibold text-ink">{{ $produk->nama }}</span>
-                                        @if ($produk->gaya)<span class="rounded bg-page px-1.5 py-0.5 text-[9px] font-bold text-ink-muted">{{ $produk->gaya }}</span>@endif
+                                        @if ($produk->frame)<span class="rounded bg-page px-1.5 py-0.5 text-[9px] font-bold text-ink-muted">{{ $produk->frame }}</span>@endif
                                     </div>
                                     <div class="mt-1 text-sm font-extrabold text-navy">Rp{{ number_format($produk->harga, 0, ',', '.') }}</div>
                                 </div>

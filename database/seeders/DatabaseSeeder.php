@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             KecamatanSeeder::class,  // kecamatan per kota (sebelum UserSeeder assign ke marketing)
             UserSeeder::class,
             KategoriSeeder::class, // kategori sebelum produk (FK kategori_id)
+            FrameSeeder::class,    // master frame (dulu "gaya")
             ProdukSeeder::class,
             PricelistSeeder::class, // katalog representatif dari PRICE 2026-2027 (+satuan)
             DesainSeeder::class,    // pool desain kategori bertema (butuh kategori dari PricelistSeeder)

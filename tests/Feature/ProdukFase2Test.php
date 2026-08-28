@@ -54,6 +54,7 @@ class ProdukFase2Test extends TestCase
     {
         Storage::fake('public');
         $kategori = $this->kategori();
+        // Frame 'MINIMALIS' sudah tersedia dari seed migrasi frame.
         $bonusProduk = Produk::create(['kategori_id' => $kategori->id, 'nama' => 'Gantungan', 'harga' => 5000, 'status' => 'aktif']);
 
         Livewire::actingAs($this->admin());
@@ -61,7 +62,7 @@ class ProdukFase2Test extends TestCase
         Livewire::test(ProdukForm::class)
             ->set('kategori_id', $kategori->id)
             ->set('nama', 'Foto 10R')
-            ->set('gaya', 'MINIMALIS')
+            ->set('frame', 'MINIMALIS')
             ->set('harga', 35000)
             ->set('status', 'aktif')
             ->set('foto', UploadedFile::fake()->image('f.jpg'))
@@ -78,7 +79,7 @@ class ProdukFase2Test extends TestCase
 
         $p = Produk::where('nama', 'Foto 10R')->firstOrFail();
         $this->assertSame($kategori->id, $p->kategori_id);
-        $this->assertSame('MINIMALIS', $p->gaya);
+        $this->assertSame('MINIMALIS', $p->frame);
         $this->assertSame(35000, $p->harga);
 
         $this->assertNotNull($p->foto);

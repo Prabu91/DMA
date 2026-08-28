@@ -95,7 +95,7 @@ class PricelistSeeder extends Seeder
                     ['nama' => $p['nama'], 'kategori_id' => $kategori->id],
                     [
                         'kategori_id' => $kategori->id,
-                        'gaya' => null,
+                        'frame' => null,
                         'harga' => $harga,
                         'deskripsi' => $p['nama'].' — '.$blok['kategori'],
                         'status' => 'aktif',

@@ -63,6 +63,7 @@ class RoleMenu
             'Katalog' => [
                 ['Kategori', 'tag', 'kategori.index', 'kategori.*'],
                 ['Produk', 'product', 'produk.index', 'produk.*'],
+                ['Frame', 'photo', 'frame.index', 'frame.*'],
                 ['Paket', 'cube', 'paket.index', 'paket.*'],
                 ['Desain', 'photo', 'desain.index', 'desain.*'],
                 ['Free sekolah', 'gift', 'aturan-free.index', 'aturan-free.*'],
@@ -84,6 +85,7 @@ class RoleMenu
             'Katalog' => [
                 ['Kategori', 'tag', 'kategori.index', 'kategori.*'],
                 ['Produk', 'product', 'produk.index', 'produk.*'],
+                ['Frame', 'photo', 'frame.index', 'frame.*'],
                 ['Paket', 'cube', 'paket.index', 'paket.*'],
                 ['Desain', 'photo', 'desain.index', 'desain.*'],
                 ['Free sekolah', 'gift', 'aturan-free.index', 'aturan-free.*'],

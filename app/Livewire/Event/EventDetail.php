@@ -413,12 +413,10 @@ class EventDetail extends Component
         ]);
         $order->catat('milestone_hh', 'oleh tim event (final, order dikunci)');
 
-        // Notifikasi WA (Fonnte) ke PIC sekolah — tim event tiba / hari-H mulai.
-        $order->kirimWa(
-            "*DMA — Konfirmasi Hari-H*\n\n"
-            ."Halo {$order->sekolah?->pic_sekolah}, tim DMA telah mengonfirmasi Hari-H untuk event foto "
-            ."{$order->sekolah?->nama}. Sesi pemotretan akan segera dimulai. Terima kasih."
-        );
+        // Notifikasi WA konfirmasi Hari-H — ditahan via saklar; OTP tetap jalan.
+        if (config('services.fonnte.kirim_konfirmasi')) {
+            $order->kirimWa(\App\Support\WaPesan::hariH($order));
+        }
 
         $this->revisiMode = false;
         unset($this->order);
@@ -454,12 +452,7 @@ class EventDetail extends Component
 
         // Kirim OTP via WhatsApp (Fonnte) ke PIC sekolah. Bila WA belum
         // dikonfigurasi/gagal, OTP tetap tampil di portal sekolah sebagai fallback.
-        $pesan = "*DMA — Kode OTP Penyelesaian Event*\n\n"
-            ."Halo {$order->sekolah?->pic_sekolah}, kode OTP untuk menyelesaikan event foto "
-            ."{$order->sekolah?->nama} adalah:\n\n*{$code}*\n\n"
-            .'Berlaku '.Order::OTP_EXPIRY_MINUTES.' menit. Mohon bacakan kode ini kepada tim DMA di lokasi.';
-
-        if ($order->kirimWa($pesan)) {
+        if ($order->kirimWa(\App\Support\WaPesan::otp($order, $code))) {
             $order->catat('otp_wa_terkirim');
             session()->flash('event-flash', 'OTP dikirim via WhatsApp ke PIC sekolah & tampil di akun sekolah.');
         } else {
