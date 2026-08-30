@@ -184,6 +184,32 @@ class Order extends Model
             || $this->event_status === \App\Support\OrderStatus::EVENT_SELESAI;
     }
 
+    /** Ada pembayaran berstatus pending (menunggu approval admin sales)? */
+    public function adaPembayaranPending(): bool
+    {
+        if (array_key_exists('pembayaran_pending_count', $this->attributes)) {
+            return (int) $this->attributes['pembayaran_pending_count'] > 0;
+        }
+        if ($this->relationLoaded('pembayaran')) {
+            return $this->pembayaran->where('status', OrderPembayaran::STATUS_PENDING)->isNotEmpty();
+        }
+
+        return $this->pembayaran()->where('status', OrderPembayaran::STATUS_PENDING)->exists();
+    }
+
+    /**
+     * Label status untuk tampilan: bila masih "baru" tapi ada DP menunggu
+     * approval, tampilkan "Menunggu approval DP" (bukan "Menunggu DP").
+     */
+    public function statusLabel(): string
+    {
+        if ($this->status === \App\Support\OrderStatus::BARU && $this->adaPembayaranPending()) {
+            return 'Menunggu approval DP';
+        }
+
+        return \App\Support\OrderStatus::label($this->status);
+    }
+
     /** Masa berlaku OTP penyelesaian event (menit). */
     public const OTP_EXPIRY_MINUTES = 30;
 

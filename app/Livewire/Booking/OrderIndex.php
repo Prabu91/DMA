@@ -117,7 +117,8 @@ class OrderIndex extends Component
         $ordersQuery = $this->filtered()
             ->when($this->cabangId !== '', fn ($x) => $x->where('cabang_id', $this->cabangId))
             ->with(['sekolah', 'cabang', 'marketing'])
-            ->withCount('items');
+            ->withCount('items')
+            ->withCount(['pembayaran as pembayaran_pending_count' => fn ($q) => $q->where('status', \App\Models\OrderPembayaran::STATUS_PENDING)]);
 
         $orders = $this->applySort($ordersQuery, 'created_at', 'desc')
             ->orderBy('id') // tiebreaker → paginasi stabil saat sort kolom non-unik

@@ -60,7 +60,8 @@
                     <span class="shrink-0 font-medium text-ink">Rp{{ number_format($order->total, 0, ',', '.') }}</span>
                 </div>
                 <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
-                    <x-badge :variant="\App\Support\OrderStatus::badge($order->status)">{{ \App\Support\OrderStatus::label($order->status) }}</x-badge>
+                    <x-badge :variant="\App\Support\OrderStatus::badge($order->status)">{{ $order->statusLabel() }}</x-badge>
+                    @if ($order->event_status === \App\Support\OrderStatus::EVENT_SELESAI)<x-badge variant="success">✓ Event selesai</x-badge>@endif
                     @unless ($order->marketing)<x-badge variant="neutral">Belum ditugaskan</x-badge>@endunless
                     @if ($cd)<x-badge :variant="$cd['state'] === 'past' ? 'danger' : ($cd['state'] === 'today' ? 'pending' : 'info')">{{ $cd['label'] }}</x-badge>@endif
                 </div>
@@ -97,7 +98,8 @@
                     @if ($cd)<x-badge :variant="$cd['state'] === 'past' ? 'danger' : ($cd['state'] === 'today' ? 'pending' : 'info')" class="ml-1">{{ $cd['label'] }}</x-badge>@endif
                 </x-table.td>
                 <x-table.td>
-                    <x-badge :variant="\App\Support\OrderStatus::badge($order->status)">{{ \App\Support\OrderStatus::label($order->status) }}</x-badge>
+                    <x-badge :variant="\App\Support\OrderStatus::badge($order->status)">{{ $order->statusLabel() }}</x-badge>
+                    @if ($order->event_status === \App\Support\OrderStatus::EVENT_SELESAI)<x-badge variant="success" class="ml-1">✓ Event selesai</x-badge>@endif
                     @unless ($order->marketing)<x-badge variant="neutral" class="ml-1">Belum ditugaskan</x-badge>@endunless
                 </x-table.td>
                 <x-table.td>

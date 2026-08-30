@@ -3,6 +3,7 @@
     $sf = $konteks === 'sekolah';
 @endphp
 <div>
+    @unless ($sf)<x-bukti-viewer />@endunless
     {{-- Breadcrumb (panel staf) --}}
     @unless ($sf)
         <x-breadcrumb :items="[
@@ -15,13 +16,49 @@
     <div class="mb-6 flex items-center justify-between gap-3">
         <div>
             <h1 class="{{ $sf ? 'text-2xl font-extrabold tracking-tight text-ink' : 'text-lg font-medium text-ink' }}">{{ $sf ? 'Booking tersimpan' : ($order->booking_code ?? 'Order #'.$order->id) }}</h1>
-            <p class="text-sm text-ink-muted">{{ $order->sekolah?->nama }} · {{ optional($order->tanggal_booking)->translatedFormat('d M Y H:i') }}</p>
+            <p class="text-sm text-ink-muted">{{ $order->sekolah?->nama }}@unless ($sf) · <span class="font-mono">{{ $order->sekolah?->id_sekolah }}</span>@endunless · {{ optional($order->tanggal_booking)->translatedFormat('d M Y H:i') }}</p>
         </div>
         <a href="{{ $this->kembaliUrl() }}" wire:navigate class="text-sm font-semibold text-ink-muted hover:text-ink">Selesai</a>
     </div>
 
     <div class="grid gap-6 lg:grid-cols-3">
         <div class="space-y-6 lg:col-span-2">
+            {{-- Perlu tindakan (staf): sorot yang belum dilakukan --}}
+            @unless ($sf)
+                @php
+                    $todo = [];
+                    if ($order->status !== \App\Support\OrderStatus::BATAL) {
+                        $pemb = $order->pembayaran;
+                        if ($pemb->isEmpty()) {
+                            $todo[] = 'Belum input DP';
+                        } elseif ($pemb->where('status', \App\Models\OrderPembayaran::STATUS_PENDING)->isNotEmpty()) {
+                            $todo[] = 'Ada pembayaran menunggu approval admin sales';
+                        }
+                        if ($order->tanggal_event && $order->timEvent->isEmpty()) {
+                            $todo[] = 'Belum assign tim event';
+                        }
+                        foreach ($order->milestones() as $m) {
+                            if ($m['state'] === 'overdue') {
+                                $todo[] = 'Milestone '.$m['label'].' terlewat — segera konfirmasi';
+                            }
+                        }
+                    }
+                @endphp
+                @if ($todo !== [])
+                    <div class="rounded-xl border border-status-pending/30 bg-status-pending/10 p-4">
+                        <div class="flex items-center gap-2">
+                            <svg class="h-5 w-5 text-status-pending" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                            <h3 class="text-sm font-bold text-ink">Perlu tindakan</h3>
+                        </div>
+                        <ul class="mt-2 space-y-1 pl-7 text-sm text-ink">
+                            @foreach ($todo as $t)
+                                <li class="list-disc">{{ $t }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+            @endunless
+
             {{-- Status / tiket — untuk client disembunyikan sampai kode booking/QR terbit --}}
             @if ($order->booking_code || ! $sf)
             <x-card :padding="$sf ? 'p-0' : 'p-5'">
@@ -126,10 +163,7 @@
                         <div class="w-28">
                             <x-input label="Jam (opsional)" type="time" wire:model="jamEvent" :error="$errors->first('jamEvent')" />
                         </div>
-                        <x-button wire:click="simpanJadwal" wire:confirm="Simpan perubahan jadwal event?">
-                            <span wire:loading.remove wire:target="simpanJadwal">Simpan jadwal</span>
-                            <span wire:loading wire:target="simpanJadwal">Menyimpan…</span>
-                        </x-button>
+                        <x-confirm action="simpanJadwal" title="Simpan jadwal" message="Simpan perubahan jadwal event?">Simpan jadwal</x-confirm>
                         @if ($jadwalMsg)
                             <span class="pb-2.5 text-sm font-medium text-status-success">{{ $jadwalMsg }}</span>
                         @endif
@@ -223,14 +257,14 @@
                                                         {{ optional($p->tanggal_bayar)->translatedFormat('d M Y') }}
                                                         · dicatat {{ $p->pencatat?->nama ?? $p->pencatat?->name ?? '—' }}
                                                         @if ($p->penyetuju) · {{ $p->status === 'ditolak' ? 'ditolak' : 'disetujui' }} {{ $p->penyetuju->nama ?? $p->penyetuju->name }}@endif
-                                                        @if ($p->bukti_path) · <a href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($p->bukti_path) }}" target="_blank" rel="noopener" class="font-medium text-brand hover:text-brand-hover">lihat bukti</a>@endif
+                                                        @if ($p->bukti_path) · <button type="button" x-on:click="$dispatch('show-bukti', { url: '{{ route('app.bukti-bayar', $p->id) }}' })" class="font-medium text-brand hover:text-brand-hover">lihat bukti</button>@endif
                                                     </div>
                                                 </div>
                                                 @if ($this->isAdminSales)
                                                     <div class="flex shrink-0 items-center gap-1.5">
                                                         @if ($p->status === 'pending')
-                                                            <x-button wire:click="approvePembayaran({{ $p->id }})" wire:confirm="Setujui pembayaran ini? Pastikan dana benar-benar masuk & bukti sah." size="sm">Setujui</x-button>
-                                                            <x-button wire:click="tolakPembayaran({{ $p->id }})" wire:confirm="Tolak pembayaran ini?" variant="ghost" size="sm">Tolak</x-button>
+                                                            <x-confirm action="approvePembayaran" :arg="$p->id" title="Setujui pembayaran" message="Pastikan dana benar-benar masuk & bukti sah. Setujui pembayaran ini?" confirm-label="Ya, setujui" size="sm">Setujui</x-confirm>
+                                                            <x-confirm action="tolakPembayaran" :arg="$p->id" title="Tolak pembayaran" message="Tolak pembayaran ini?" confirm-label="Ya, tolak" variant="ghost" confirm-variant="danger" size="sm">Tolak</x-confirm>
                                                         @endif
                                                         <x-button wire:click="editPembayaran({{ $p->id }})" variant="secondary" size="sm">Edit</x-button>
                                                     </div>
@@ -246,9 +280,9 @@
                     {{-- Batal / aktifkan --}}
                     <div class="mt-5 flex flex-wrap items-center gap-2 border-t border-line pt-4">
                         @if ($st === 'batal')
-                            <x-button wire:click="ubahStatus('baru')" wire:confirm="Aktifkan kembali order ini?" variant="secondary" size="sm">Aktifkan kembali</x-button>
+                            <x-confirm action="ubahStatus" arg="baru" title="Aktifkan kembali" message="Aktifkan kembali order ini?" variant="secondary" confirm-variant="primary" size="sm">Aktifkan kembali</x-confirm>
                         @else
-                            <x-button wire:click="ubahStatus('batal')" wire:confirm="Batalkan order ini?" variant="danger" size="sm">Batalkan order</x-button>
+                            <x-confirm action="ubahStatus" arg="batal" title="Batalkan order" message="Batalkan order ini? Tindakan ini menghentikan proses order." variant="danger" size="sm">Batalkan order</x-confirm>
                         @endif
                         @if ($statusMsg)<span class="text-sm font-medium text-status-success">{{ $statusMsg }}</span>@endif
                     </div>
@@ -299,9 +333,9 @@
                     @if ($editable)
                         <div class="mt-4 flex items-center gap-2">
                             @if ($this->isAdminSales)
-                                <x-button wire:click="setujuiDiskon" wire:confirm="Terapkan diskon per item ini?" size="sm">{{ $ds === \App\Models\Order::DISKON_DIAJUKAN ? 'Setujui' : 'Terapkan diskon' }}</x-button>
+                                <x-confirm action="setujuiDiskon" title="Terapkan diskon" message="Terapkan diskon per item ini?" size="sm">{{ $ds === \App\Models\Order::DISKON_DIAJUKAN ? 'Setujui' : 'Terapkan diskon' }}</x-confirm>
                                 @if ($ds === \App\Models\Order::DISKON_DIAJUKAN)
-                                    <x-button wire:click="tolakDiskon" wire:confirm="Tolak pengajuan diskon?" variant="ghost" size="sm">Tolak</x-button>
+                                    <x-confirm action="tolakDiskon" title="Tolak diskon" message="Tolak pengajuan diskon?" variant="ghost" confirm-variant="danger" size="sm">Tolak</x-confirm>
                                 @endif
                             @else
                                 <x-button wire:click="ajukanDiskon" size="sm" variant="secondary">Ajukan diskon</x-button>
@@ -356,7 +390,7 @@
                                             @if ($m['state'] === 'overdue')<x-badge variant="danger">Terlewat</x-badge>@else<x-badge variant="neutral">Menunggu tim event</x-badge>@endif
                                         @elseif ($this->isAdminSales && ! $order->isLocked())
                                             @if ($m['state'] === 'overdue')<x-badge variant="danger">Terlewat</x-badge>@endif
-                                            <x-button wire:click="konfirmasiMilestone('{{ $m['key'] }}')" wire:confirm="Konfirmasi milestone {{ $m['label'] }} sekarang?" variant="secondary" size="sm">Konfirmasi</x-button>
+                                            <x-confirm action="konfirmasiMilestone" arg="{{ $m['key'] }}" title="Konfirmasi {{ $m['label'] }}" message="Konfirmasi milestone {{ $m['label'] }} sekarang?" variant="secondary" confirm-variant="primary" size="sm">Konfirmasi</x-confirm>
                                         @else
                                             {{-- Marketing / non-admin sales: read-only --}}
                                             @if ($m['state'] === 'overdue')<x-badge variant="danger">Terlewat</x-badge>@else<x-badge variant="neutral">Menunggu admin</x-badge>@endif
@@ -389,30 +423,48 @@
                         @endif
                     </x-slot>
 
-                    @if ($this->timEventOptions->isEmpty())
-                        <p class="text-sm text-ink-muted">Belum ada anggota tim event di cabang ini.</p>
+                    @if ($this->bisaAssignTimEvent)
+                        {{-- Admin: bisa assign --}}
+                        @if ($this->timEventOptions->isEmpty())
+                            <p class="text-sm text-ink-muted">Belum ada anggota tim event di cabang ini.</p>
+                        @else
+                            <div x-data="{ q: '' }" class="space-y-2">
+                                <div class="relative">
+                                    <svg class="pointer-events-none absolute inset-y-0 left-3 my-auto h-4 w-4 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+                                    <input type="search" x-model="q" placeholder="Cari nama tim event…"
+                                           class="block w-full rounded-lg border border-line bg-card py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink-muted/60 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+                                </div>
+                                <div class="max-h-64 space-y-1 overflow-y-auto rounded-lg border border-line p-2">
+                                    @foreach ($this->timEventOptions as $u)
+                                        <label x-show="q === '' || {{ \Illuminate\Support\Js::from(mb_strtolower($u->nama ?? $u->name)) }}.includes(q.trim().toLowerCase())"
+                                               class="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-page">
+                                            <input type="checkbox" wire:model="timEventTerpilih" value="{{ $u->id }}"
+                                                   class="h-4 w-4 rounded border-line text-brand focus:ring-2 focus:ring-brand/30">
+                                            <span class="text-sm text-ink">{{ $u->nama ?? $u->name }}</span>
+                                        </label>
+                                    @endforeach
+                                </div>
+                            </div>
+                            <div class="mt-4 flex items-center gap-3">
+                                <x-confirm action="simpanTimEvent" message="Simpan penugasan tim event ini?" size="sm">Simpan tim</x-confirm>
+                                @if ($timMsg)<span class="text-sm font-medium text-status-success">{{ $timMsg }}</span>@endif
+                            </div>
+                        @endif
                     @else
-                        <div x-data="{ q: '' }" class="space-y-2">
-                            <div class="relative">
-                                <svg class="pointer-events-none absolute inset-y-0 left-3 my-auto h-4 w-4 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
-                                <input type="search" x-model="q" placeholder="Cari nama tim event…"
-                                       class="block w-full rounded-lg border border-line bg-card py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink-muted/60 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
-                            </div>
-                            <div class="max-h-64 space-y-1 overflow-y-auto rounded-lg border border-line p-2">
-                                @foreach ($this->timEventOptions as $u)
-                                    <label x-show="q === '' || {{ \Illuminate\Support\Js::from(mb_strtolower($u->nama ?? $u->name)) }}.includes(q.trim().toLowerCase())"
-                                           class="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-page">
-                                        <input type="checkbox" wire:model="timEventTerpilih" value="{{ $u->id }}"
-                                               class="h-4 w-4 rounded border-line text-brand focus:ring-2 focus:ring-brand/30">
-                                        <span class="text-sm text-ink">{{ $u->nama ?? $u->name }}</span>
-                                    </label>
+                        {{-- Marketing/lainnya: read-only, hanya lihat siapa tim eventnya --}}
+                        @if ($order->timEvent->isEmpty())
+                            <p class="text-sm text-ink-muted">Belum ada tim event yang ditugaskan. <span class="text-ink-muted/70">Penugasan dilakukan oleh admin.</span></p>
+                        @else
+                            <ul class="space-y-1.5">
+                                @foreach ($order->timEvent as $u)
+                                    <li class="flex items-center gap-2 text-sm text-ink">
+                                        <span class="flex h-6 w-6 items-center justify-center rounded-full bg-brand/10 text-xs font-bold text-brand">{{ mb_substr($u->nama ?? $u->name, 0, 1) }}</span>
+                                        {{ $u->nama ?? $u->name }}
+                                    </li>
                                 @endforeach
-                            </div>
-                        </div>
-                        <div class="mt-4 flex items-center gap-3">
-                            <x-button wire:click="simpanTimEvent" wire:confirm="Simpan penugasan tim event?" size="sm">Simpan tim</x-button>
-                            @if ($timMsg)<span class="text-sm font-medium text-status-success">{{ $timMsg }}</span>@endif
-                        </div>
+                            </ul>
+                            <p class="mt-3 text-xs text-ink-muted">Penugasan tim event dikelola oleh admin.</p>
+                        @endif
                     @endif
                 </x-card>
             @endunless

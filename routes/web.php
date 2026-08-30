@@ -65,6 +65,10 @@ Route::prefix('app')->name('app.')->middleware(['auth', 'verified'])->group(func
             ->name('dashboard.'.$role);
     }
 
+    // Bukti bayar (streaming, semua peran staf; akses dicek di controller).
+    Route::get('/bukti-bayar/{pembayaran}', \App\Http\Controllers\BuktiBayarController::class)
+        ->whereNumber('pembayaran')->name('bukti-bayar');
+
     // Profil.
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

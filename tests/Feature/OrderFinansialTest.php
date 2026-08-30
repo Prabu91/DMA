@@ -96,6 +96,25 @@ class OrderFinansialTest extends TestCase
         $this->assertSame(OrderStatus::BATAL, $order->refresh()->status);
     }
 
+    public function test_status_label_menunggu_approval_dp(): void
+    {
+        $order = $this->order(100000);
+        $this->assertSame('Menunggu DP', $order->statusLabel());
+
+        // DP dicatat tapi belum disetujui → "Menunggu approval DP".
+        OrderPembayaran::create([
+            'order_id' => $order->id, 'jenis' => 'dp', 'jumlah' => 40000,
+            'status' => OrderPembayaran::STATUS_PENDING, 'tanggal_bayar' => now()->toDateString(),
+        ]);
+        $order->load('pembayaran');
+        $this->assertSame('Menunggu approval DP', $order->statusLabel());
+
+        // Setelah disetujui → status jadi dp, label "DP dibayar".
+        $order->pembayaran()->update(['status' => OrderPembayaran::STATUS_APPROVED]);
+        $order->load('pembayaran')->recalcStatusPembayaran();
+        $this->assertSame('DP dibayar', $order->refresh()->statusLabel());
+    }
+
     public function test_grup_kategori_label(): void
     {
         $k = Kategori::create(['nama' => 'Yearbook', 'pakai_desain' => true, 'grup' => 'yb']);

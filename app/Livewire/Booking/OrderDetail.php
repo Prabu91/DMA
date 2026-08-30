@@ -103,6 +103,7 @@ class OrderDetail extends Component
     {
         abort_unless($this->konteks === 'staf', 403);
         $this->authorize('update', $this->order);
+        abort_unless($this->bisaAssignTimEvent, 403); // marketing read-only
         abort_if($this->order->isLocked(), 423);
 
         $ids = array_map('intval', $this->timEventTerpilih);
@@ -404,6 +405,13 @@ class OrderDetail extends Component
     public function isAdminSales(): bool
     {
         return auth('web')->user()?->isAdminSales() ?? false;
+    }
+
+    /** Penugasan tim event = wewenang admin (super_admin/operasional/admin_sales). Marketing read-only. */
+    #[Computed]
+    public function bisaAssignTimEvent(): bool
+    {
+        return auth('web')->user()?->hasAnyRole(['super_admin', 'operasional', 'admin_sales']) ?? false;
     }
 
     /** Marketing/area/operasional/super_admin ubah tanggal & jam event. */

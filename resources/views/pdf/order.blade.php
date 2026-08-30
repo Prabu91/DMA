@@ -92,11 +92,34 @@
         </tbody>
     </table>
 
+    @php
+        $diskon = $order->totalDiskon();
+        $tagihan = $order->totalSetelahDiskon();
+        $dibayar = $order->totalDibayar();
+        $sisa = $order->outstanding();
+    @endphp
     <table style="width:100%; margin-top:10px">
         <tr class="totrow"><td class="right muted">Subtotal</td><td class="right" style="width:140px">Rp{{ number_format($order->total, 0, ',', '.') }}</td></tr>
         <tr class="totrow"><td class="right muted">Item gratis</td><td class="right">{{ $order->items->where('is_free', true)->count() }} item</td></tr>
-        <tr class="totrow grand"><td class="right">Total</td><td class="right">Rp{{ number_format($order->total, 0, ',', '.') }}</td></tr>
+        @if ($diskon > 0)
+            <tr class="totrow"><td class="right muted">Diskon</td><td class="right">- Rp{{ number_format($diskon, 0, ',', '.') }}</td></tr>
+        @endif
+        <tr class="totrow grand"><td class="right">Total tagihan</td><td class="right">Rp{{ number_format($tagihan, 0, ',', '.') }}</td></tr>
+        <tr class="totrow"><td class="right muted">Sudah dibayar</td><td class="right">Rp{{ number_format($dibayar, 0, ',', '.') }}</td></tr>
+        <tr class="totrow grand"><td class="right">Sisa tagihan</td><td class="right">Rp{{ number_format($sisa, 0, ',', '.') }}</td></tr>
     </table>
+
+    @if ($order->pembayaran->where('status', \App\Models\OrderPembayaran::STATUS_APPROVED)->isNotEmpty())
+        <table style="width:100%; margin-top:12px; font-size:10px">
+            <tr><td class="muted" style="padding-bottom:4px"><strong>Rincian pembayaran (disetujui)</strong></td></tr>
+            @foreach ($order->pembayaran->where('status', \App\Models\OrderPembayaran::STATUS_APPROVED) as $p)
+                <tr>
+                    <td>{{ optional($p->tanggal_bayar)->format('d/m/Y') }} · {{ \App\Models\OrderPembayaran::JENIS[$p->jenis] ?? $p->jenis }}</td>
+                    <td class="right" style="width:140px">Rp{{ number_format($p->jumlah, 0, ',', '.') }}</td>
+                </tr>
+            @endforeach
+        </table>
+    @endif
 
     <p class="muted" style="margin-top:24px; font-size:10px">
         Dokumen ini adalah nota &amp; bukti booking DMA. Tunjukkan kode/QR saat sesi foto.

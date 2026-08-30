@@ -375,7 +375,8 @@ class OrderManajemenO2Test extends TestCase
         $t1 = $this->timEvent($this->jkt);
         $t2 = $this->timEvent($this->jkt);
 
-        Livewire::actingAs($this->marketing($this->jkt))
+        // Penugasan = wewenang admin (area/admin_sales), bukan marketing.
+        Livewire::actingAs($this->area($this->jkt))
             ->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
             ->set('timEventTerpilih', [(string) $t1->id, (string) $t2->id])
             ->call('simpanTimEvent');
@@ -383,12 +384,26 @@ class OrderManajemenO2Test extends TestCase
         $this->assertEqualsCanonicalizing([$t1->id, $t2->id], $order->timEvent()->pluck('users.id')->all());
     }
 
+    public function test_marketing_tak_bisa_assign_tim_event(): void
+    {
+        $order = $this->order($this->jkt);
+        $t1 = $this->timEvent($this->jkt);
+
+        Livewire::actingAs($this->marketing($this->jkt))
+            ->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
+            ->set('timEventTerpilih', [(string) $t1->id])
+            ->call('simpanTimEvent')
+            ->assertStatus(403);
+
+        $this->assertCount(0, $order->timEvent()->get());
+    }
+
     public function test_tim_event_lintas_cabang_ditolak(): void
     {
         $order = $this->order($this->jkt);
         $timBdg = $this->timEvent($this->bdg); // cabang lain
 
-        Livewire::actingAs($this->marketing($this->jkt))
+        Livewire::actingAs($this->area($this->jkt))
             ->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
             ->set('timEventTerpilih', [(string) $timBdg->id])
             ->call('simpanTimEvent');

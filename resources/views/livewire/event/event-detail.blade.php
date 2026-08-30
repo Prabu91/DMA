@@ -1,4 +1,5 @@
 <div>
+    <x-bukti-viewer />
     @php
         $order = $this->order;
         $selesai = $order->event_status === \App\Support\OrderStatus::EVENT_SELESAI;
@@ -158,10 +159,14 @@
                                     <span class="w-8 text-center text-sm text-ink">{{ $item->qty }}</span>
                                     <button type="button" wire:click="ubahQtyItem({{ $item->id }}, {{ $item->qty + 1 }})"
                                             class="grid h-8 w-8 place-items-center rounded-lg border border-line text-ink hover:bg-page">+</button>
-                                    <button type="button" wire:click="hapusItem({{ $item->id }})" wire:confirm="Hapus item {{ $item->produk?->nama ?? $item->paket?->nama }}?"
-                                            class="ml-1 grid h-8 w-8 place-items-center rounded-lg border border-line text-status-danger hover:bg-status-danger/10" title="Hapus item">
-                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                                    </button>
+                                    <x-confirm action="hapusItem" :arg="$item->id" title="Hapus item" message="Hapus item {{ $item->produk?->nama ?? $item->paket?->nama }} dari order?" confirm-label="Ya, hapus" confirm-variant="danger">
+                                        <x-slot:trigger>
+                                            <button type="button" x-on:click="open = true"
+                                                    class="ml-1 grid h-8 w-8 place-items-center rounded-lg border border-line text-status-danger hover:bg-status-danger/10" title="Hapus item">
+                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                            </button>
+                                        </x-slot:trigger>
+                                    </x-confirm>
                                 </div>
                             @endif
                         </div>
@@ -205,10 +210,7 @@
                     <x-card title="Konfirmasi Hari-H (final)">
                         <p class="text-sm text-ink-muted">Setelah semua data &amp; item benar, konfirmasi Hari-H. <span class="font-medium text-ink">Order akan dikunci</span> dan tidak bisa diubah lagi, lalu lanjut ke penyelesaian (OTP).</p>
                         <div class="mt-3">
-                            <x-button wire:click="konfirmasiHariH" wire:confirm="Konfirmasi Hari-H? Order akan FINAL & terkunci — tidak bisa diubah lagi." variant="primary" :disabled="! $bolehHariH">
-                                <span wire:loading.remove wire:target="konfirmasiHariH">Konfirmasi Hari-H &amp; kunci order</span>
-                                <span wire:loading wire:target="konfirmasiHariH">Memproses…</span>
-                            </x-button>
+                            <x-confirm action="konfirmasiHariH" title="Konfirmasi Hari-H" message="Order akan FINAL & terkunci — tidak bisa diubah lagi. Lanjutkan?" confirm-label="Ya, kunci order" variant="primary" :disabled="! $bolehHariH">Konfirmasi Hari-H &amp; kunci order</x-confirm>
                         </div>
                         @unless ($bolehHariH)
                             <ul class="mt-2 space-y-1 text-xs text-ink-muted">
@@ -247,10 +249,7 @@
                             </div>
                         @else
                             <p class="text-sm text-ink-muted">Sudah kembali ke kantor? Catat waktunya.</p>
-                            <x-button wire:click="sampaiKantor" wire:confirm="Catat waktu sampai kantor sekarang?" class="mt-3 w-full">
-                                <span wire:loading.remove wire:target="sampaiKantor">Sampai kantor</span>
-                                <span wire:loading wire:target="sampaiKantor">Menyimpan…</span>
-                            </x-button>
+                            <x-confirm action="sampaiKantor" title="Sampai kantor" message="Catat waktu sampai kantor sekarang?" block triggerClass="mt-3">Sampai kantor</x-confirm>
                         @endif
                     </div>
                 @elseif (! $terkunci)
@@ -292,8 +291,12 @@
 
                 @if (! $selesai && auth()->user()->seesAllCabang())
                     <div class="mt-4 border-t border-line pt-3">
-                        <button type="button" wire:click="selesaikanOverride" wire:confirm="Selesaikan event tanpa OTP? (override admin)"
-                                class="text-xs font-medium text-ink-muted hover:text-status-danger">Selesaikan tanpa OTP (override admin)</button>
+                        <x-confirm action="selesaikanOverride" title="Selesaikan tanpa OTP" message="Selesaikan event tanpa OTP? (override admin)" confirm-label="Ya, selesaikan" confirm-variant="danger">
+                            <x-slot:trigger>
+                                <button type="button" x-on:click="open = true"
+                                        class="text-xs font-medium text-ink-muted hover:text-status-danger">Selesaikan tanpa OTP (override admin)</button>
+                            </x-slot:trigger>
+                        </x-confirm>
                     </div>
                 @endif
             </x-card>
@@ -346,7 +349,7 @@
                                     <span>{{ $p->tanggal_bayar->translatedFormat('d M Y') }}</span>
                                     @if ($p->pencatat)<span>· dicatat {{ $p->pencatat->name }}</span>@endif
                                     @if ($p->penyetuju)<span>· {{ $p->isApproved() ? 'disetujui' : 'ditolak' }} {{ $p->penyetuju->name }}</span>@endif
-                                    @if ($p->bukti_path)<a href="{{ \Illuminate\Support\Facades\Storage::url($p->bukti_path) }}" target="_blank" class="font-medium text-brand-hover hover:underline">lihat bukti</a>@endif
+                                    @if ($p->bukti_path)<button type="button" x-on:click="$dispatch('show-bukti', { url: '{{ route('app.bukti-bayar', $p->id) }}' })" class="font-medium text-brand-hover hover:underline">lihat bukti</button>@endif
                                 </div>
                             </div>
                         @endforeach
