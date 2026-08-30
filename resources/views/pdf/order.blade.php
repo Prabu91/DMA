@@ -111,7 +111,7 @@
 
     @if ($order->pembayaran->where('status', \App\Models\OrderPembayaran::STATUS_APPROVED)->isNotEmpty())
         <table style="width:100%; margin-top:12px; font-size:10px">
-            <tr><td class="muted" style="padding-bottom:4px"><strong>Rincian pembayaran (disetujui)</strong></td></tr>
+            <tr><td class="muted" style="padding-bottom:4px"><strong>Rincian pembayaran</strong></td></tr>
             @foreach ($order->pembayaran->where('status', \App\Models\OrderPembayaran::STATUS_APPROVED) as $p)
                 <tr>
                     <td>{{ optional($p->tanggal_bayar)->format('d/m/Y') }} · {{ \App\Models\OrderPembayaran::JENIS[$p->jenis] ?? $p->jenis }}</td>
@@ -122,7 +122,7 @@
     @endif
 
     <p class="muted" style="margin-top:24px; font-size:10px">
-        Dokumen ini adalah nota &amp; bukti booking DMA. Tunjukkan kode/QR saat sesi foto.
+        Dokumen ini adalah nota &amp; bukti booking DMA.
     </p>
 </body>
 </html>

@@ -27,7 +27,7 @@
                 </a>
 
                 <div class="relative max-w-md">
-                    <h2 class="text-3xl font-medium leading-tight">
+                    <h2 class="text-3xl font-medium leading-tight text-white">
                         Operasional &amp; booking studio foto, tertata rapi.
                     </h2>
                     <p class="mt-4 text-sm leading-relaxed text-white/70">
