@@ -54,6 +54,7 @@ class OrderActivityTest extends TestCase
 
     public function test_catat_pembayaran_mencatat_aktivitas_dengan_pelaku(): void
     {
+        \Illuminate\Support\Facades\Storage::fake('public');
         $order = $this->order();
         $mkt = $this->marketing();
 
@@ -62,6 +63,7 @@ class OrderActivityTest extends TestCase
             ->set('bayarJenis', 'dp')
             ->set('bayarJumlah', 40000)
             ->set('bayarTanggal', now()->toDateString())
+            ->set('bayarBukti', \Illuminate\Http\UploadedFile::fake()->image('bukti.jpg'))
             ->call('catatPembayaran');
 
         $act = OrderActivity::where('order_id', $order->id)->where('action', 'pembayaran_dp')->first();

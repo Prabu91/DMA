@@ -87,30 +87,34 @@ class EventDetail extends Component
         $this->authorize('manageEvent', $order);
         abort_if($order->status === OrderStatus::BATAL, 422);
 
+        $sisa = $order->outstanding();
         $this->validate([
             'bayarJenis' => ['required', 'in:dp,pelunasan'],
-            'bayarJumlah' => ['required', 'integer', 'min:1'],
+            'bayarJumlah' => ['required', 'integer', 'min:1', 'max:'.max(1, $sisa)],
             'bayarTanggal' => ['required', 'date'],
-            'bayarBukti' => ['nullable', 'image', 'max:4096'],
+            'bayarBukti' => ['required', 'image', 'max:4096'],
         ], [
             'bayarJumlah.required' => 'Nominal wajib diisi.',
             'bayarJumlah.integer' => 'Nominal harus angka.',
+            'bayarJumlah.max' => 'Nominal tidak boleh melebihi sisa tagihan (Rp'.number_format($sisa, 0, ',', '.').').',
+            'bayarBukti.required' => 'Bukti bayar wajib diunggah.',
         ]);
 
-        $path = $this->bayarBukti ? $this->bayarBukti->store('bukti-bayar', 'public') : null;
+        $path = $this->bayarBukti->store('bukti-bayar', 'public');
         $order->pembayaran()->create([
             'jenis' => $this->bayarJenis,
             'jumlah' => $this->bayarJumlah,
+            'status' => \App\Models\OrderPembayaran::STATUS_PENDING, // menunggu approval admin sales
             'tanggal_bayar' => $this->bayarTanggal,
             'dicatat_oleh' => auth('web')->id(),
             'bukti_path' => $path,
         ]);
         $order->load('pembayaran')->recalcStatusPembayaran();
-        $order->catat('pembayaran_'.$this->bayarJenis, 'Rp'.number_format($this->bayarJumlah, 0, ',', '.'));
+        $order->catat('pembayaran_'.$this->bayarJenis, 'Rp'.number_format($this->bayarJumlah, 0, ',', '.').' (menunggu approval)');
 
         $this->reset(['bayarJumlah', 'bayarBukti']);
         unset($this->order);
-        session()->flash('event-flash', 'Pembayaran dicatat.');
+        session()->flash('event-flash', 'Pembayaran dicatat. Menunggu approval admin sales.');
     }
 
     #[Computed]
@@ -153,10 +157,10 @@ class EventDetail extends Component
         $this->authorize('manageEvent', $order);
         abort_if($order->isLocked(), 422);
 
-        $order->update(['konfirmasi_lokasi_at' => now()]);
+        $order->update(['konfirmasi_lokasi_at' => now(), 'konfirmasi_lokasi_oleh' => auth('web')->id()]);
         $order->catat('konfirmasi_lokasi');
         unset($this->order); // segarkan computed
-        session()->flash('event-flash', 'Detail dikonfirmasi sesuai di lokasi.');
+        session()->flash('event-flash', 'Data sekolah dikonfirmasi sesuai di lokasi.');
     }
 
     public function mulaiRevisi(): void
@@ -407,9 +411,21 @@ class EventDetail extends Component
         abort_if($order->isLocked(), 422);
         abort_if($order->tanggal_event === null, 422);
 
+        // Berurutan: data sekolah + H-2 harus beres dulu.
+        if (! $order->konfirmasi_lokasi_at) {
+            session()->flash('event-flash', 'Konfirmasi data sekolah dulu sebelum Hari-H.');
+
+            return;
+        }
+        if (! $order->konfirmasi_h2_at) {
+            session()->flash('event-flash', 'Konfirmasi H-2 (oleh admin sales) dulu sebelum Hari-H.');
+
+            return;
+        }
+
         $order->update([
             'konfirmasi_hh_at' => now(),
-            'konfirmasi_lokasi_at' => $order->konfirmasi_lokasi_at ?? now(),
+            'konfirmasi_hh_oleh' => auth('web')->id(),
         ]);
         $order->catat('milestone_hh', 'oleh tim event (final, order dikunci)');
 
@@ -434,8 +450,8 @@ class EventDetail extends Component
         $this->authorize('manageEvent', $order);
         abort_if($order->event_status === OrderStatus::EVENT_SELESAI, 422);
 
-        if (! $order->konfirmasi_lokasi_at) {
-            $this->addError('otpInput', 'Konfirmasi detail di lokasi dulu sebelum membuat OTP.');
+        if (! $order->konfirmasi_lokasi_at || ! $order->konfirmasi_hh_at) {
+            $this->addError('otpInput', 'Konfirmasi data sekolah dan Hari-H dulu sebelum membuat OTP.');
 
             return;
         }

@@ -57,6 +57,7 @@ class EventOtpTest extends TestCase
             'event_status' => OrderStatus::EVENT_DIJADWALKAN,
             'tanggal_event' => now()->addDays(2)->toDateString(),
             'konfirmasi_lokasi_at' => $konfirmasi ? now() : null,
+            'konfirmasi_hh_at' => $konfirmasi ? now() : null, // OTP butuh data sekolah + Hari-H
             'total' => 100000,
             'tanggal_booking' => now(),
         ]);
@@ -78,6 +79,23 @@ class EventOtpTest extends TestCase
 
         $this->assertNull($order->refresh()->otp_code);
         Mail::assertNothingSent();
+    }
+
+    public function test_generate_otp_wajib_hari_h_juga(): void
+    {
+        // Data sekolah sudah dikonfirmasi, tapi Hari-H belum → OTP tetap ditolak.
+        Mail::fake();
+        $order = $this->order(konfirmasi: false);
+        $order->update(['konfirmasi_lokasi_at' => now()]); // hanya data sekolah
+        $tim = $this->timEvent();
+        $order->timEvent()->attach($tim->id);
+
+        Livewire::actingAs($tim)
+            ->test(EventDetail::class, ['orderId' => $order->id])
+            ->call('generateOtp')
+            ->assertHasErrors('otpInput');
+
+        $this->assertNull($order->refresh()->otp_code);
     }
 
     public function test_generate_otp_membuat_kode_tanpa_kirim_email(): void

@@ -75,6 +75,7 @@ class FonnteWaTest extends TestCase
             'event_status' => OrderStatus::EVENT_DIJADWALKAN,
             'tanggal_event' => now()->addDays(2)->toDateString(),
             'konfirmasi_lokasi_at' => now(),
+            'konfirmasi_hh_at' => now(), // OTP butuh data sekolah + Hari-H
             'total' => 100000,
             'tanggal_booking' => now(),
         ]);
@@ -140,7 +141,7 @@ class FonnteWaTest extends TestCase
             'sekolah_id' => $this->sekolah->id,
             'cabang_id' => $this->jkt->id,
             'sumber' => 'sekolah',
-            'status' => 'baru',
+            'status' => 'dp', // DP sudah masuk → H-7 boleh dikonfirmasi
             'tanggal_event' => now()->addDays(7)->toDateString(),
             'total' => 100000,
             'jumlah_siswa' => 20,

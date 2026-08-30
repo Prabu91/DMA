@@ -125,13 +125,14 @@ class EventFinalisasiTest extends TestCase
     public function test_konfirmasi_hari_h_mengunci_order(): void
     {
         $order = $this->orderDenganItem();
+        // Prasyarat berurutan: data sekolah + H-2 harus beres dulu.
+        $order->update(['konfirmasi_lokasi_at' => now(), 'konfirmasi_h2_at' => now()]);
         $tim = $this->timEvent();
 
         $this->comp($order, $tim)->call('konfirmasiHariH');
 
         $order->refresh();
         $this->assertNotNull($order->konfirmasi_hh_at);
-        $this->assertNotNull($order->konfirmasi_lokasi_at); // ikut ditandai untuk OTP
         $this->assertTrue($order->isLocked());
     }
 

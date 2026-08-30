@@ -43,16 +43,19 @@
                         </nav>
 
                         <div class="flex items-center gap-2">
-                            {{-- Ikon keranjang + badge --}}
+                            {{-- Ikon keranjang + badge (reaktif ke event cart-updated) --}}
                             <a href="{{ route('sekolah.keranjang') }}"
+                               x-data="{ count: {{ $cartCount }}, bump: false }"
+                               @cart-updated.window="count = ($event.detail?.count ?? count); bump = true; setTimeout(() => bump = false, 300)"
                                class="relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/10 hover:text-white"
                                aria-label="Keranjang">
                                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="{{ \App\Support\Icons::path('cart') }}" />
                                 </svg>
-                                @if ($cartCount > 0)
-                                    <span class="absolute -right-0.5 -top-0.5 inline-flex min-w-[1.125rem] items-center justify-center rounded-full bg-brand px-1 text-[0.625rem] font-bold leading-tight text-white">{{ $cartCount }}</span>
-                                @endif
+                                <span x-show="count > 0" x-text="count"
+                                      :class="bump ? 'scale-125' : 'scale-100'"
+                                      @if ($cartCount == 0) style="display:none" @endif
+                                      class="absolute -right-0.5 -top-0.5 inline-flex min-w-[1.125rem] items-center justify-center rounded-full bg-brand px-1 text-[0.625rem] font-bold leading-tight text-white transition-transform duration-200">{{ $cartCount ?: '' }}</span>
                             </a>
 
                             @include('partials.account-menu')

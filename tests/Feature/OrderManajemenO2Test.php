@@ -10,6 +10,8 @@ use App\Models\Sekolah;
 use App\Models\User;
 use App\Support\RoleMenu;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
@@ -136,34 +138,73 @@ class OrderManajemenO2Test extends TestCase
 
     // ---------- O3: pembayaran (nominal → status otomatis) ----------
 
-    public function test_catat_dp_status_otomatis_dp(): void
+    public function test_catat_dp_pending_lalu_approve_status_dp(): void
     {
+        Storage::fake('public');
         $order = $this->order($this->jkt, 'baru'); // total 100.000
 
+        // Marketing catat DP (bukti wajib) → PENDING, belum dihitung.
         Livewire::actingAs($this->marketing($this->jkt))
             ->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
             ->set('bayarJenis', 'dp')
             ->set('bayarJumlah', 40000)
             ->set('bayarTanggal', now()->toDateString())
+            ->set('bayarBukti', UploadedFile::fake()->image('bukti.jpg'))
             ->call('catatPembayaran')
             ->assertHasNoErrors();
+
+        $order->refresh()->load('pembayaran');
+        $this->assertSame('baru', $order->status);          // pending → belum dihitung
+        $this->assertSame(0, $order->totalDibayar());
+        $bayar = $order->pembayaran()->first();
+        $this->assertSame('pending', $bayar->status);
+
+        // Bukti WAJIB: tanpa bukti gagal.
+        Livewire::actingAs($this->marketing($this->jkt))
+            ->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
+            ->set('bayarJumlah', 10000)->set('bayarTanggal', now()->toDateString())
+            ->call('catatPembayaran')
+            ->assertHasErrors('bayarBukti');
+
+        // Admin sales approve → baru dihitung.
+        Livewire::actingAs($this->area($this->jkt))
+            ->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
+            ->call('approvePembayaran', $bayar->id);
 
         $order->refresh()->load('pembayaran');
         $this->assertSame('dp', $order->status);
         $this->assertSame(60000, $order->outstanding());
     }
 
-    public function test_pelunasan_lalu_batal(): void
+    public function test_nominal_tak_boleh_melebihi_tagihan(): void
     {
-        $order = $this->order($this->jkt, 'baru');
-        $mkt = $this->marketing($this->jkt);
+        Storage::fake('public');
+        $order = $this->order($this->jkt, 'baru'); // total 100.000
 
-        Livewire::actingAs($mkt)->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
+        Livewire::actingAs($this->area($this->jkt))
+            ->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
+            ->set('bayarJenis', 'dp')->set('bayarJumlah', 150000)->set('bayarTanggal', now()->toDateString())
+            ->set('bayarBukti', UploadedFile::fake()->image('b.jpg'))
+            ->call('catatPembayaran')
+            ->assertHasErrors('bayarJumlah'); // melebihi sisa tagihan
+    }
+
+    public function test_pelunasan_approve_lalu_batal(): void
+    {
+        Storage::fake('public');
+        $order = $this->order($this->jkt, 'baru');
+
+        Livewire::actingAs($this->area($this->jkt))->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
             ->set('bayarJumlah', 100000)->set('bayarJenis', 'pelunasan')->set('bayarTanggal', now()->toDateString())
+            ->set('bayarBukti', UploadedFile::fake()->image('b.jpg'))
             ->call('catatPembayaran');
+
+        $bayar = $order->pembayaran()->first();
+        Livewire::actingAs($this->area($this->jkt))->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
+            ->call('approvePembayaran', $bayar->id);
         $this->assertSame('lunas', $order->refresh()->status);
 
-        Livewire::actingAs($mkt)->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
+        Livewire::actingAs($this->area($this->jkt))->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
             ->call('ubahStatus', 'batal');
         $this->assertSame('batal', $order->refresh()->status);
     }
@@ -262,7 +303,8 @@ class OrderManajemenO2Test extends TestCase
     public function test_konfirmasi_milestone_h7_oleh_admin_sales(): void
     {
         $order = $this->order($this->jkt);
-        $order->update(['tanggal_event' => now()->addDays(10)->toDateString()]);
+        // DP sudah masuk → H-7 boleh dikonfirmasi (berurutan).
+        $order->update(['tanggal_event' => now()->addDays(10)->toDateString(), 'status' => 'dp']);
 
         // H-7 kini wewenang admin sales (area), bukan marketing.
         Livewire::actingAs($this->area($this->jkt))
@@ -304,12 +346,13 @@ class OrderManajemenO2Test extends TestCase
     public function test_state_milestone_overdue_upcoming_dan_countdown(): void
     {
         $order = $this->order($this->jkt);
-        $order->update(['tanggal_event' => now()->addDays(5)->toDateString()]);
+        // DP sudah masuk → H-7 terbuka; H-2 & Hari-H masih terkunci (berurutan).
+        $order->update(['tanggal_event' => now()->addDays(5)->toDateString(), 'status' => 'dp']);
 
         $ms = collect($order->milestones())->keyBy('key');
-        $this->assertSame('overdue', $ms['h7']['state']);   // due = event-7 = -2 hari
-        $this->assertSame('upcoming', $ms['h2']['state']);  // due = +3 hari
-        $this->assertSame('upcoming', $ms['hh']['state']);  // due = +5 hari
+        $this->assertSame('overdue', $ms['h7']['state']);  // due = event-7 = -2 hari, DP beres → terbuka
+        $this->assertSame('locked', $ms['h2']['state']);   // H-7 belum → terkunci
+        $this->assertSame('locked', $ms['hh']['state']);   // H-2 belum → terkunci
 
         $this->assertSame('H-5', $order->eventCountdown()['label']);
     }

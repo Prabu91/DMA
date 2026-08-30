@@ -34,6 +34,7 @@ class OrderFinansialTest extends TestCase
     {
         OrderPembayaran::create([
             'order_id' => $order->id, 'jenis' => $jenis, 'jumlah' => $jumlah, 'tanggal_bayar' => now()->toDateString(),
+            'status' => OrderPembayaran::STATUS_APPROVED, // hanya yg disetujui dihitung
         ]);
         $order->load('pembayaran');
         $order->recalcStatusPembayaran();

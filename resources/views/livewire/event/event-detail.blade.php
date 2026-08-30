@@ -96,7 +96,7 @@
                             @else
                                 <span class="inline-flex items-center gap-1.5 text-sm text-status-success">
                                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                    Detail sudah dicek {{ $order->konfirmasi_lokasi_at->translatedFormat('d M · H:i') }}
+                                    Data sekolah dicek {{ $order->konfirmasi_lokasi_at->translatedFormat('d M · H:i') }}@if ($order->konfirmasiLokasiOleh) · {{ $order->konfirmasiLokasiOleh->name }}@endif
                                 </span>
                             @endunless
                             <x-button wire:click="mulaiRevisi" variant="ghost" size="sm">Revisi data sekolah/desain</x-button>
@@ -201,17 +201,22 @@
 
                 {{-- Konfirmasi Hari-H (final) --}}
                 @unless ($terkunci)
+                    @php $bolehHariH = $order->konfirmasi_lokasi_at && $order->konfirmasi_h2_at && $order->tanggal_event; @endphp
                     <x-card title="Konfirmasi Hari-H (final)">
                         <p class="text-sm text-ink-muted">Setelah semua data &amp; item benar, konfirmasi Hari-H. <span class="font-medium text-ink">Order akan dikunci</span> dan tidak bisa diubah lagi, lalu lanjut ke penyelesaian (OTP).</p>
                         <div class="mt-3">
-                            <x-button wire:click="konfirmasiHariH" wire:confirm="Konfirmasi Hari-H? Order akan FINAL & terkunci — tidak bisa diubah lagi." variant="primary">
+                            <x-button wire:click="konfirmasiHariH" wire:confirm="Konfirmasi Hari-H? Order akan FINAL & terkunci — tidak bisa diubah lagi." variant="primary" :disabled="! $bolehHariH">
                                 <span wire:loading.remove wire:target="konfirmasiHariH">Konfirmasi Hari-H &amp; kunci order</span>
                                 <span wire:loading wire:target="konfirmasiHariH">Memproses…</span>
                             </x-button>
                         </div>
-                        @if ($order->tanggal_event === null)
-                            <p class="mt-2 text-xs text-status-danger">Tanggal event belum ditentukan.</p>
-                        @endif
+                        @unless ($bolehHariH)
+                            <ul class="mt-2 space-y-1 text-xs text-ink-muted">
+                                @if ($order->tanggal_event === null)<li class="text-status-danger">⬜ Tanggal event belum ditentukan.</li>@endif
+                                <li>{{ $order->konfirmasi_lokasi_at ? '✅' : '⬜' }} Konfirmasi data sekolah dulu.</li>
+                                <li>{{ $order->konfirmasi_h2_at ? '✅' : '⬜' }} Konfirmasi H-2 (oleh admin sales) dulu.</li>
+                            </ul>
+                        @endunless
                     </x-card>
                 @endunless
             @endif
@@ -248,8 +253,12 @@
                             </x-button>
                         @endif
                     </div>
-                @elseif (! $order->konfirmasi_lokasi_at && ! $terkunci)
-                    <p class="text-sm text-ink-muted">Konfirmasi Hari-H (final) dulu, lalu buat OTP untuk menyelesaikan event.</p>
+                @elseif (! $terkunci)
+                    <p class="text-sm text-ink-muted">Konfirmasi <span class="font-medium text-ink">data sekolah</span> dan <span class="font-medium text-ink">Hari-H (final)</span> dulu — tombol OTP muncul setelah keduanya selesai.</p>
+                    <ul class="mt-2 space-y-1 text-xs text-ink-muted">
+                        <li>{{ $order->konfirmasi_lokasi_at ? '✅' : '⬜' }} Data sekolah</li>
+                        <li>{{ $order->konfirmasi_hh_at ? '✅' : '⬜' }} Hari-H (final)</li>
+                    </ul>
                 @elseif (! $order->eventOtpActive())
                     <p class="text-sm text-ink-muted">Buat OTP — kode tampil di akun sekolah (guru). Guru akan membacakan kodenya ke Anda.</p>
                     <x-button wire:click="generateOtp" class="mt-3 w-full">
@@ -297,32 +306,48 @@
                     <div class="flex justify-between border-t border-line pt-1.5"><dt class="font-bold text-ink">Outstanding</dt><dd class="font-bold text-brand-hover">Rp{{ number_format($order->outstanding(), 0, ',', '.') }}</dd></div>
                 </dl>
 
-                @unless ($order->status === \App\Support\OrderStatus::BATAL)
+                @if ($order->status !== \App\Support\OrderStatus::BATAL && $order->outstanding() > 0)
                     <div class="mt-4 space-y-3 border-t border-line pt-4">
                         <div class="grid gap-3 sm:grid-cols-2">
                             <x-select label="Jenis" wire:model="bayarJenis" :options="\App\Models\OrderPembayaran::JENIS" :selected="$bayarJenis" />
-                            <x-input type="number" min="1" label="Nominal (Rp)" wire:model="bayarJumlah" :error="$errors->first('bayarJumlah')" />
+                            <div class="space-y-1.5">
+                                <x-input type="number" min="1" :max="$order->outstanding()" label="Nominal (Rp)" wire:model="bayarJumlah" :error="$errors->first('bayarJumlah')" />
+                                <p class="text-xs text-ink-muted">Sisa tagihan Rp{{ number_format($order->outstanding(), 0, ',', '.') }}.</p>
+                            </div>
                             <x-input type="date" label="Tanggal bayar" wire:model="bayarTanggal" :error="$errors->first('bayarTanggal')" />
                             <div class="space-y-1.5">
-                                <span class="block text-sm font-medium text-ink">Bukti (opsional)</span>
+                                <span class="block text-sm font-medium text-ink">Bukti bayar (wajib)</span>
                                 <input type="file" wire:model="bayarBukti" accept="image/*"
                                        class="block w-full text-sm text-ink file:mr-3 file:rounded-lg file:border-0 file:bg-page file:px-3 file:py-2 file:text-sm file:font-medium file:text-ink hover:file:bg-line">
                                 @error('bayarBukti')<p class="text-xs text-status-danger">{{ $message }}</p>@enderror
                             </div>
                         </div>
+                        <p class="text-xs text-ink-muted">Pembayaran baru dihitung setelah disetujui admin sales.</p>
                         <x-button wire:click="catatPembayaran" size="sm">
                             <span wire:loading.remove wire:target="catatPembayaran,bayarBukti">Catat pembayaran</span>
                             <span wire:loading wire:target="catatPembayaran,bayarBukti">Menyimpan…</span>
                         </x-button>
                     </div>
-                @endunless
+                @endif
 
                 @if ($order->pembayaran->isNotEmpty())
-                    <div class="mt-4 space-y-1.5 border-t border-line pt-4">
+                    @php $badgeVar = ['approved' => 'success', 'pending' => 'pending', 'ditolak' => 'danger']; @endphp
+                    <div class="mt-4 space-y-2 border-t border-line pt-4">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Riwayat pembayaran</p>
                         @foreach ($order->pembayaran as $p)
-                            <div class="flex items-center justify-between gap-3 text-sm">
-                                <span class="text-ink-muted">{{ $p->tanggal_bayar->translatedFormat('d M Y') }} · {{ \App\Models\OrderPembayaran::JENIS[$p->jenis] ?? $p->jenis }}</span>
-                                <span class="font-medium text-ink">Rp{{ number_format($p->jumlah, 0, ',', '.') }}</span>
+                            <div class="rounded-lg border border-line px-3 py-2 text-sm">
+                                <div class="flex items-center justify-between gap-3">
+                                    <span class="font-medium text-ink">Rp{{ number_format($p->jumlah, 0, ',', '.') }}
+                                        <span class="text-xs font-normal text-ink-muted">· {{ \App\Models\OrderPembayaran::JENIS[$p->jenis] ?? $p->jenis }}</span>
+                                    </span>
+                                    <x-badge :variant="$badgeVar[$p->status] ?? 'neutral'">{{ \App\Models\OrderPembayaran::STATUS[$p->status] ?? $p->status }}</x-badge>
+                                </div>
+                                <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-ink-muted">
+                                    <span>{{ $p->tanggal_bayar->translatedFormat('d M Y') }}</span>
+                                    @if ($p->pencatat)<span>· dicatat {{ $p->pencatat->name }}</span>@endif
+                                    @if ($p->penyetuju)<span>· {{ $p->isApproved() ? 'disetujui' : 'ditolak' }} {{ $p->penyetuju->name }}</span>@endif
+                                    @if ($p->bukti_path)<a href="{{ \Illuminate\Support\Facades\Storage::url($p->bukti_path) }}" target="_blank" class="font-medium text-brand-hover hover:underline">lihat bukti</a>@endif
+                                </div>
                             </div>
                         @endforeach
                     </div>

@@ -31,6 +31,10 @@ class Order extends Model
         'konfirmasi_h2_at',
         'konfirmasi_hh_at',
         'konfirmasi_lokasi_at',
+        'konfirmasi_lokasi_oleh',
+        'konfirmasi_h7_oleh',
+        'konfirmasi_h2_oleh',
+        'konfirmasi_hh_oleh',
         'event_selesai_at',
         'sampai_kantor_at',
         'tanggal_event',
@@ -95,16 +99,23 @@ class Order extends Model
         $today = now()->startOfDay();
 
         $defs = [
-            ['h7', 'H-7', $event->copy()->subDays(7), $this->konfirmasi_h7_at],
-            ['h2', 'H-2', $event->copy()->subDays(2), $this->konfirmasi_h2_at],
-            ['hh', 'Hari-H', $event->copy(), $this->konfirmasi_hh_at],
+            ['h7', 'H-7', $event->copy()->subDays(7), $this->konfirmasi_h7_at, $this->konfirmasiH7Oleh],
+            ['h2', 'H-2', $event->copy()->subDays(2), $this->konfirmasi_h2_at, $this->konfirmasiH2Oleh],
+            ['hh', 'Hari-H', $event->copy(), $this->konfirmasi_hh_at, $this->konfirmasiHhOleh],
         ];
 
         return array_map(function ($d) use ($today) {
-            [$key, $label, $due, $confirmedAt] = $d;
-            $state = $confirmedAt ? 'confirmed' : ($due->lt($today) ? 'overdue' : 'upcoming');
+            [$key, $label, $due, $confirmedAt, $oleh] = $d;
+            // Berurutan: langkah terkunci bila prasyarat belum terpenuhi.
+            if ($confirmedAt) {
+                $state = 'confirmed';
+            } elseif (! $this->milestoneTerbuka($key)) {
+                $state = 'locked';
+            } else {
+                $state = $due->lt($today) ? 'overdue' : 'upcoming';
+            }
 
-            return ['key' => $key, 'label' => $label, 'due' => $due, 'confirmedAt' => $confirmedAt, 'state' => $state];
+            return ['key' => $key, 'label' => $label, 'due' => $due, 'confirmedAt' => $confirmedAt, 'oleh' => $oleh, 'state' => $state];
         }, $defs);
     }
 
@@ -114,8 +125,54 @@ class Order extends Model
         'hh' => 'konfirmasi_hh_at',
     ];
 
+    public const MILESTONE_OLEH_COL = [
+        'h7' => 'konfirmasi_h7_oleh',
+        'h2' => 'konfirmasi_h2_oleh',
+        'hh' => 'konfirmasi_hh_oleh',
+    ];
+
     /** Milestone H-7 & H-2 = wewenang admin sales; Hari-H = tim event. */
     public const MILESTONE_ADMIN = ['h7', 'h2'];
+
+    /** Ada pembayaran DP yang sudah disetujui → langkah DP terpenuhi. */
+    public function sudahDp(): bool
+    {
+        return in_array($this->status, [\App\Support\OrderStatus::DP, \App\Support\OrderStatus::LUNAS], true);
+    }
+
+    /**
+     * Gating berurutan: DP → H-7 → H-2 → Hari-H.
+     * Sebuah milestone hanya boleh dikonfirmasi bila prasyaratnya selesai.
+     */
+    public function milestoneTerbuka(string $key): bool
+    {
+        return match ($key) {
+            'h7' => $this->sudahDp(),
+            'h2' => $this->konfirmasi_h7_at !== null,
+            'hh' => $this->konfirmasi_h2_at !== null,
+            default => false,
+        };
+    }
+
+    public function konfirmasiLokasiOleh(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'konfirmasi_lokasi_oleh');
+    }
+
+    public function konfirmasiH7Oleh(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'konfirmasi_h7_oleh');
+    }
+
+    public function konfirmasiH2Oleh(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'konfirmasi_h2_oleh');
+    }
+
+    public function konfirmasiHhOleh(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'konfirmasi_hh_oleh');
+    }
 
     /**
      * Order TERKUNCI setelah tim event konfirmasi Hari-H (titik final) atau
@@ -257,12 +314,12 @@ class Order extends Model
         return max(0, (int) $this->total - $this->totalDiskon());
     }
 
-    /** Total sudah dibayar (Σ pembayaran). Pakai relasi ter-load bila ada. */
+    /** Total sudah dibayar (Σ pembayaran DISETUJUI). Pakai relasi ter-load bila ada. */
     public function totalDibayar(): int
     {
         return (int) ($this->relationLoaded('pembayaran')
-            ? $this->pembayaran->sum('jumlah')
-            : $this->pembayaran()->sum('jumlah'));
+            ? $this->pembayaran->where('status', OrderPembayaran::STATUS_APPROVED)->sum('jumlah')
+            : $this->pembayaran()->approved()->sum('jumlah'));
     }
 
     /** Sisa tagihan. */

@@ -97,11 +97,11 @@ class FinanceTest extends TestCase
     public function test_all_data_sales_outstanding_ikut_pembayaran(): void
     {
         $order = $this->order();
-        OrderPembayaran::create(['order_id' => $order->id, 'jenis' => 'dp', 'jumlah' => 30000, 'tanggal_bayar' => now()->toDateString()]);
+        OrderPembayaran::create(['order_id' => $order->id, 'jenis' => 'dp', 'jumlah' => 30000, 'status' => 'approved', 'tanggal_bayar' => now()->toDateString()]);
 
         Livewire::actingAs($this->finance())
             ->test(AllDataSales::class)
-            ->assertSee('Rp70.000'); // outstanding = 100.000 - 30.000
+            ->assertSee('Rp70.000'); // outstanding = 100.000 - 30.000 (disetujui)
     }
 
     public function test_modal_detail_tampilkan_produk(): void

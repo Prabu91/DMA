@@ -33,7 +33,8 @@
                 @if ($order->booking_code)
                     <div class="muted">Kode booking</div>
                     <div class="code">{{ $order->booking_code }}</div>
-                    <img src="{{ \App\Support\Qr::dataUri($order->booking_code, 110) }}" width="90" height="90" alt="QR">
+                    <img src="{{ \App\Support\Qr::dataUri(route('storefront.cek', $order->booking_code), 110) }}" width="90" height="90" alt="QR">
+                    <div class="muted" style="font-size:7px">Scan untuk verifikasi</div>
                 @else
                     <div class="pending">Menunggu penugasan marketing</div>
                     <div class="muted">Booking #{{ $order->id }}</div>

@@ -46,6 +46,9 @@ Route::view('/keranjang', 'storefront.keranjang')->name('storefront.keranjang');
 // Checkout — login-gate di controller (wajib login sekolah + verified + cabang != null).
 Route::get('/checkout', [CheckoutController::class, 'show'])->name('storefront.checkout');
 
+// Verifikasi publik booking dari QR (read-only, tanpa data sensitif).
+Route::get('/cek/{booking}', [StorefrontController::class, 'cek'])->name('storefront.cek');
+
 /*
 |--------------------------------------------------------------------------
 | PANEL STAF — semua di "/app" (guard web + spatie; CabangScope via model)

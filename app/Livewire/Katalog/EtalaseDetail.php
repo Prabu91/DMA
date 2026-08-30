@@ -155,7 +155,8 @@ class EtalaseDetail extends Component
         }
 
         $this->justAdded = true;
-        $this->dispatch('cart-updated');
+        // Sertakan jumlah terbaru agar badge keranjang bisa update realtime.
+        $this->dispatch('cart-updated', count: $cart->count());
     }
 
     public function render()

@@ -44,15 +44,24 @@ class TransaksiEventHarian extends Component
 
             return;
         }
+        if ($jumlah > $order->outstanding()) {
+            $this->addError('inputDp.'.$orderId, 'Nominal melebihi sisa tagihan.');
 
+            return;
+        }
+
+        // Dicatat oleh admin sales sendiri (peran approver) → langsung disetujui.
         $order->pembayaran()->create([
             'jenis' => 'dp',
             'jumlah' => $jumlah,
+            'status' => \App\Models\OrderPembayaran::STATUS_APPROVED,
             'tanggal_bayar' => $this->tanggal, // = tanggal event → transaksi hari-H
             'dicatat_oleh' => auth()->id(),
+            'disetujui_oleh' => auth()->id(),
+            'disetujui_at' => now(),
         ]);
         $order->load('pembayaran')->recalcStatusPembayaran();
-        $order->catat('pembayaran_dp', 'Rp'.number_format($jumlah, 0, ',', '.').' (hari-H)');
+        $order->catat('pembayaran_dp', 'Rp'.number_format($jumlah, 0, ',', '.').' (hari-H, disetujui)');
 
         unset($this->inputDp[$orderId]);
         $this->msg = 'DP dicatat.';

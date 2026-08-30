@@ -37,6 +37,17 @@ class OrderDetail extends Component
 
     public $bayarBukti = null;
 
+    // Edit pembayaran (admin sales).
+    public ?int $editPembayaranId = null;
+
+    public string $editJenis = 'dp';
+
+    public ?int $editJumlah = null;
+
+    public ?string $editTanggal = null;
+
+    public $editBukti = null;
+
     public ?string $bayarMsg = null;
 
     // Diskon per item (ajukan/setujui). [order_item_id => nominal per satuan]
@@ -139,31 +150,136 @@ class OrderDetail extends Component
         $this->authorize('update', $this->order);
         abort_if($this->order->status === \App\Support\OrderStatus::BATAL, 422);
 
+        // Nominal tak boleh melebihi sisa tagihan (yang belum disetujui-bayar).
+        $sisa = $this->order->outstanding();
+
         $this->validate([
             'bayarJenis' => ['required', 'in:dp,pelunasan'],
-            'bayarJumlah' => ['required', 'integer', 'min:1'],
+            'bayarJumlah' => ['required', 'integer', 'min:1', 'max:'.max(1, $sisa)],
             'bayarTanggal' => ['required', 'date'],
-            'bayarBukti' => ['nullable', 'image', 'max:4096'],
+            'bayarBukti' => ['required', 'image', 'max:4096'], // bukti WAJIB
         ], [
             'bayarJumlah.required' => 'Nominal wajib diisi.',
             'bayarJumlah.integer' => 'Nominal harus angka.',
+            'bayarJumlah.max' => 'Nominal melebihi sisa tagihan (Rp'.number_format($sisa, 0, ',', '.').').',
+            'bayarBukti.required' => 'Bukti bayar wajib diunggah.',
+            'bayarBukti.image' => 'Bukti harus berupa gambar.',
         ]);
 
-        $path = $this->bayarBukti ? $this->bayarBukti->store('bukti-bayar', 'public') : null;
+        $path = $this->bayarBukti->store('bukti-bayar', 'public');
         $this->order->pembayaran()->create([
             'jenis' => $this->bayarJenis,
             'jumlah' => $this->bayarJumlah,
+            'status' => \App\Models\OrderPembayaran::STATUS_PENDING, // menunggu approval admin sales
             'tanggal_bayar' => $this->bayarTanggal,
             'dicatat_oleh' => auth('web')->id(),
             'bukti_path' => $path,
         ]);
-        $this->order->load('pembayaran')->recalcStatusPembayaran();
-        $this->order->catat('pembayaran_'.$this->bayarJenis, 'Rp'.number_format($this->bayarJumlah, 0, ',', '.'));
+        $this->order->catat('pembayaran_'.$this->bayarJenis, 'Rp'.number_format($this->bayarJumlah, 0, ',', '.').' (menunggu approval)');
 
         $this->reset(['bayarJumlah', 'bayarBukti']);
         $this->bayarTanggal = now()->toDateString();
         unset($this->order);
-        $this->bayarMsg = 'Pembayaran dicatat.';
+        $this->bayarMsg = 'Pembayaran dicatat — menunggu approval admin sales.';
+    }
+
+    /** Admin sales: setujui pembayaran (bukti valid, dana masuk). */
+    public function approvePembayaran(int $pembayaranId): void
+    {
+        abort_unless($this->konteks === 'staf', 403);
+        abort_unless($this->isAdminSales, 403);
+
+        $bayar = $this->order->pembayaran()->findOrFail($pembayaranId);
+        $bayar->update([
+            'status' => \App\Models\OrderPembayaran::STATUS_APPROVED,
+            'disetujui_oleh' => auth('web')->id(),
+            'disetujui_at' => now(),
+        ]);
+        $this->order->load('pembayaran')->recalcStatusPembayaran();
+        $this->order->catat('pembayaran_disetujui', 'Rp'.number_format($bayar->jumlah, 0, ',', '.'));
+
+        unset($this->order);
+        $this->bayarMsg = 'Pembayaran disetujui.';
+    }
+
+    /** Admin sales: tolak pembayaran (bukti tidak sah). */
+    public function tolakPembayaran(int $pembayaranId): void
+    {
+        abort_unless($this->konteks === 'staf', 403);
+        abort_unless($this->isAdminSales, 403);
+
+        $bayar = $this->order->pembayaran()->findOrFail($pembayaranId);
+        $bayar->update([
+            'status' => \App\Models\OrderPembayaran::STATUS_DITOLAK,
+            'disetujui_oleh' => auth('web')->id(),
+            'disetujui_at' => now(),
+        ]);
+        $this->order->load('pembayaran')->recalcStatusPembayaran();
+        $this->order->catat('pembayaran_ditolak', 'Rp'.number_format($bayar->jumlah, 0, ',', '.'));
+
+        unset($this->order);
+        $this->bayarMsg = 'Pembayaran ditolak.';
+    }
+
+    /** Mulai edit pembayaran (admin sales). */
+    public function editPembayaran(int $pembayaranId): void
+    {
+        abort_unless($this->isAdminSales, 403);
+        $bayar = $this->order->pembayaran()->findOrFail($pembayaranId);
+        $this->editPembayaranId = $bayar->id;
+        $this->editJenis = $bayar->jenis;
+        $this->editJumlah = (int) $bayar->jumlah;
+        $this->editTanggal = optional($bayar->tanggal_bayar)->toDateString();
+        $this->editBukti = null;
+        $this->resetErrorBag();
+    }
+
+    public function batalEditPembayaran(): void
+    {
+        $this->reset(['editPembayaranId', 'editJenis', 'editJumlah', 'editTanggal', 'editBukti']);
+    }
+
+    /** Simpan edit pembayaran → RESET ke pending (perlu approve ulang). */
+    public function simpanEditPembayaran(): void
+    {
+        abort_unless($this->isAdminSales, 403);
+        $bayar = $this->order->pembayaran()->findOrFail($this->editPembayaranId);
+
+        // Sisa tagihan tanpa memperhitungkan pembayaran ini (agar boleh menyamai nilainya).
+        $sisaTanpaIni = $this->order->outstanding()
+            + ($bayar->isApproved() ? (int) $bayar->jumlah : 0);
+
+        $this->validate([
+            'editJenis' => ['required', 'in:dp,pelunasan'],
+            'editJumlah' => ['required', 'integer', 'min:1', 'max:'.max(1, $sisaTanpaIni)],
+            'editTanggal' => ['required', 'date'],
+            'editBukti' => ['nullable', 'image', 'max:4096'], // opsional: kosong = pertahankan bukti lama
+        ], [
+            'editJumlah.max' => 'Nominal melebihi sisa tagihan (Rp'.number_format($sisaTanpaIni, 0, ',', '.').').',
+        ]);
+
+        $data = [
+            'jenis' => $this->editJenis,
+            'jumlah' => $this->editJumlah,
+            'tanggal_bayar' => $this->editTanggal,
+            'status' => \App\Models\OrderPembayaran::STATUS_PENDING, // edit → approve ulang
+            'disetujui_oleh' => null,
+            'disetujui_at' => null,
+        ];
+        if ($this->editBukti) {
+            $lama = $bayar->bukti_path;
+            $data['bukti_path'] = $this->editBukti->store('bukti-bayar', 'public');
+            if ($lama) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($lama);
+            }
+        }
+        $bayar->update($data);
+        $this->order->load('pembayaran')->recalcStatusPembayaran();
+        $this->order->catat('pembayaran_diedit', 'Rp'.number_format($this->editJumlah, 0, ',', '.').' (menunggu approval)');
+
+        $this->batalEditPembayaran();
+        unset($this->order);
+        $this->bayarMsg = 'Pembayaran diperbarui — menunggu approval ulang.';
     }
 
     /** Validasi nominal diskon per item (≥0 & ≤ harga satuan). Return [item_id => nominal]. */
@@ -259,8 +375,17 @@ class OrderDetail extends Component
         abort_if($this->order->isLocked(), 423);
         abort_if($this->order->tanggal_event === null, 422);
 
+        // Berurutan: DP → H-7 → H-2. Tolak bila prasyarat belum terpenuhi.
+        if (! $this->order->milestoneTerbuka($key)) {
+            $this->milestoneMsg = $key === 'h7'
+                ? 'DP harus disetujui dulu sebelum konfirmasi H-7.'
+                : 'Konfirmasi H-7 dulu sebelum H-2.';
+
+            return;
+        }
+
         $col = Order::MILESTONE_COL[$key];
-        $this->order->update([$col => now()]);
+        $this->order->update([$col => now(), Order::MILESTONE_OLEH_COL[$key] => auth('web')->id()]);
         $this->order->catat('milestone_'.$key);
 
         // Notifikasi WA konfirmasi (H-7/H-2) — ditahan via saklar; OTP tetap jalan.
@@ -351,7 +476,7 @@ class OrderDetail extends Component
     public function qrSvg(): ?string
     {
         return $this->order->booking_code
-            ? \App\Support\Qr::svg($this->order->booking_code, 150)
+            ? \App\Support\Qr::svg(route('storefront.cek', $this->order->booking_code), 150)
             : null;
     }
 

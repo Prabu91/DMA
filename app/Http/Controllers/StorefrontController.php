@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Kategori;
+use App\Models\Order;
 use App\Models\Paket;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -40,5 +41,21 @@ class StorefrontController extends Controller
             'kategoriList' => $kategoriList,
             'paketUnggulan' => $paketUnggulan,
         ]);
+    }
+
+    /**
+     * Halaman verifikasi publik dari QR — /cek/{booking_code}.
+     * Read-only, tanpa data sensitif (tanpa nominal/kontak). Untuk memastikan
+     * booking asli terdaftar di sistem DMA.
+     */
+    public function cek(string $booking): View
+    {
+        $order = Order::query()
+            ->where('booking_code', $booking)
+            ->with(['sekolah:id,nama', 'cabang:id,nama'])
+            ->withCount('items')
+            ->first();
+
+        return view('storefront.cek', ['order' => $order, 'booking' => $booking]);
     }
 }
