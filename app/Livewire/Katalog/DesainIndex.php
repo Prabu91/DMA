@@ -209,6 +209,19 @@ class DesainIndex extends Component
         return auth()->user()?->hasRole('super_admin') ?? false;
     }
 
+    /** Nilai opsi ukuran yang dipakai produk (saran isian field Ukuran). */
+    #[\Livewire\Attributes\Computed]
+    public function ukuranTersedia(): array
+    {
+        return \App\Models\ProdukOpsi::where('tipe_opsi', 'ukuran')
+            ->whereNotNull('nilai_opsi')
+            ->where('nilai_opsi', '!=', '')
+            ->distinct()
+            ->orderBy('nilai_opsi')
+            ->pluck('nilai_opsi')
+            ->all();
+    }
+
     public function resetForm(): void
     {
         $this->reset(['editingId', 'kategori_id', 'kode', 'seri', 'ukuran', 'orientasi', 'tahun_ajaran', 'status', 'foto_preview', 'fotoExisting']);

@@ -80,10 +80,31 @@
                         <x-select label="Kategori" wire:model="kategori_id" :options="$this->kategoriDesainOptions" :selected="$kategori_id" placeholder="— Pilih kategori —" :error="$errors->first('kategori_id')" hint="Hanya kategori berdesain." />
                         <x-input label="Kode" wire:model="kode" :error="$errors->first('kode')" placeholder="mis. ERP-001" />
                         <x-input label="Seri" wire:model="seri" :error="$errors->first('seri')" hint="Opsional." />
-                        <x-input label="Ukuran" wire:model="ukuran" :error="$errors->first('ukuran')" placeholder="mis. 8R / 10R" hint="Opsional. Isi bila desain khusus ukuran tertentu (mis. 8R single, 10R kolase). Kosongkan = semua ukuran." />
                         <x-select label="Orientasi" wire:model="orientasi" :options="$this->orientasiOptions" :selected="$orientasi" placeholder="— Tidak ditentukan —" :error="$errors->first('orientasi')" />
                         <x-input label="Tahun ajaran" wire:model="tahun_ajaran" :error="$errors->first('tahun_ajaran')" placeholder="mis. 2025/2026" />
                         <x-select label="Status" wire:model="status" :options="$this->statusOptions" :selected="$status" :error="$errors->first('status')" />
+                    </div>
+
+                    {{-- Ukuran (opsional) + caution pencocokan --}}
+                    <div class="space-y-1.5">
+                        <x-input label="Ukuran (opsional)" wire:model="ukuran" :error="$errors->first('ukuran')" placeholder="mis. 8R / 10R" />
+                        <div class="rounded-lg border border-status-pending/30 bg-status-pending/10 p-3">
+                            <div class="flex gap-2">
+                                <svg class="mt-0.5 h-4 w-4 shrink-0 text-status-pending" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                                <div class="text-xs text-ink">
+                                    <p><span class="font-semibold">Harus sama persis</span> dengan nilai opsi ukuran di produk (mis. <span class="font-mono">10R</span>, bukan <span class="font-mono">10 R</span> / <span class="font-mono">10RP</span> / <span class="font-mono">10r</span>). Kalau beda, desain ini tidak akan muncul saat ukuran itu dipilih. <span class="text-ink-muted">Kosongkan bila berlaku untuk semua ukuran.</span></p>
+                                    @if (! empty($this->ukuranTersedia))
+                                        <div class="mt-2 flex flex-wrap items-center gap-1.5">
+                                            <span class="text-ink-muted">Ukuran terpakai di produk:</span>
+                                            @foreach ($this->ukuranTersedia as $u)
+                                                <button type="button" wire:click="$set('ukuran', @js($u))"
+                                                        class="rounded-md border border-status-pending/40 bg-card px-2 py-0.5 font-mono text-[11px] text-ink hover:bg-status-pending/10">{{ $u }}</button>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     {{-- Foto preview --}}
