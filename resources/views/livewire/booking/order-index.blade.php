@@ -80,9 +80,12 @@
                             @if ($order->deleted_at) · dihapus {{ $order->deleted_at->translatedFormat('d M Y H:i') }}@endif
                         </div>
                     </div>
-                    <div class="flex shrink-0 gap-2">
-                        <x-confirm action="pulihkan" :arg="$order->id" title="Pulihkan order" message="Pulihkan order {{ $order->booking_code ?? '#'.$order->id }} dari sampah?" confirm-label="Pulihkan" variant="secondary" size="sm">Pulihkan</x-confirm>
-                        <x-confirm action="hapusPermanen" :arg="$order->id" title="Hapus permanen" message="Hapus PERMANEN order ini beserta seluruh datanya (item, pembayaran, aktivitas)? Tidak bisa dipulihkan." confirm-label="Ya, hapus permanen" variant="ghost" confirm-variant="danger" size="sm">Hapus permanen</x-confirm>
+                    <div class="flex shrink-0 flex-wrap gap-2">
+                        <x-confirm action="pulihkan" :arg="$order->id" title="Pulihkan order?" message="Order {{ $order->booking_code ?? '#'.$order->id }} akan dikembalikan dari sampah." confirm-label="Pulihkan" variant="secondary" size="sm">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg>
+                            Pulihkan
+                        </x-confirm>
+                        <x-confirm action="hapusPermanen" :arg="$order->id" title="Hapus permanen?" message="Order ini beserta seluruh datanya (item, pembayaran, aktivitas) dihapus permanen dan tidak bisa dipulihkan." confirm-label="Ya, hapus permanen" variant="danger-soft" confirm-variant="danger" size="sm">Hapus permanen</x-confirm>
                     </div>
                 </div>
             @empty
@@ -116,9 +119,12 @@
             </a>
             @if ($this->isSuperAdmin)
                 <div class="flex justify-end border-t border-line px-3.5 py-2">
-                    <x-confirm action="hapusOrder" :arg="$order->id" title="Hapus order"
-                               message="Hapus order {{ $order->booking_code ?? '#'.$order->id }}? Masuk sampah, bisa dipulihkan hingga {{ \App\Models\Order::TRASH_RETENTION_DAYS }} hari."
-                               confirm-label="Ya, hapus" variant="ghost" confirm-variant="danger" size="sm">Hapus</x-confirm>
+                    <x-confirm action="hapusOrder" :arg="$order->id" title="Hapus order?"
+                               message="Order {{ $order->booking_code ?? '#'.$order->id }} akan dipindahkan ke sampah dan bisa dipulihkan hingga {{ \App\Models\Order::TRASH_RETENTION_DAYS }} hari."
+                               confirm-label="Ya, hapus" variant="danger-soft" confirm-variant="danger" size="sm">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                        Hapus
+                    </x-confirm>
                 </div>
             @endif
             </div>
@@ -163,9 +169,12 @@
                 <x-table.td align="right" nowrap class="font-medium">Rp{{ number_format($order->total, 0, ',', '.') }}</x-table.td>
                 @if ($this->isSuperAdmin)
                     <x-table.td align="right" nowrap>
-                        <x-confirm action="hapusOrder" :arg="$order->id" title="Hapus order"
-                                   message="Hapus order {{ $order->booking_code ?? '#'.$order->id }}? Masuk sampah, bisa dipulihkan hingga {{ \App\Models\Order::TRASH_RETENTION_DAYS }} hari."
-                                   confirm-label="Ya, hapus" variant="ghost" confirm-variant="danger" size="sm">Hapus</x-confirm>
+                        <x-confirm action="hapusOrder" :arg="$order->id" title="Hapus order?"
+                                   message="Order {{ $order->booking_code ?? '#'.$order->id }} akan dipindahkan ke sampah dan bisa dipulihkan hingga {{ \App\Models\Order::TRASH_RETENTION_DAYS }} hari."
+                                   confirm-label="Ya, hapus" variant="danger-soft" confirm-variant="danger" size="sm">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                            Hapus
+                        </x-confirm>
                     </x-table.td>
                 @endif
             </x-table.tr>

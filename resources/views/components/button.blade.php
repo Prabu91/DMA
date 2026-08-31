@@ -19,6 +19,7 @@
         'secondary' => 'bg-card text-ink border border-line hover:bg-page',
         'ghost' => 'text-ink hover:bg-page',
         'danger' => 'bg-status-danger text-white hover:opacity-90',
+        'danger-soft' => 'bg-status-danger/10 text-status-danger hover:bg-status-danger/20',
     ];
 
     $classes = $base
