@@ -7,6 +7,7 @@ use App\Models\Cabang;
 use App\Models\Order;
 use App\Support\OrderStatus;
 use Illuminate\Support\Carbon;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -54,6 +55,9 @@ class OrderIndex extends Component
     #[Url]
     public string $cabangId = '';      // filter cabang (admin)
 
+    #[Url]
+    public bool $sampah = false;       // tampilkan order terhapus (super admin)
+
     public function mount(): void
     {
         $this->authorize('viewAny', Order::class);
@@ -61,15 +65,45 @@ class OrderIndex extends Component
 
     public function updated($name): void
     {
-        if (in_array($name, ['q', 'status', 'eventStatus', 'tahap', 'dari', 'sampai', 'cabangId'], true)) {
+        if (in_array($name, ['q', 'status', 'eventStatus', 'tahap', 'dari', 'sampai', 'cabangId', 'sampah'], true)) {
             $this->resetPage();
         }
     }
 
     public function resetFilter(): void
     {
-        $this->reset(['q', 'status', 'eventStatus', 'tahap', 'dari', 'sampai', 'cabangId']);
+        $this->reset(['q', 'status', 'eventStatus', 'tahap', 'dari', 'sampai', 'cabangId', 'sampah']);
         $this->resetPage();
+    }
+
+    #[Computed]
+    public function isSuperAdmin(): bool
+    {
+        return auth()->user()?->hasRole('super_admin') ?? false;
+    }
+
+    /** Pulihkan order dari sampah (super admin). */
+    public function pulihkan(int $id): void
+    {
+        abort_unless($this->isSuperAdmin, 403);
+        $order = Order::onlyTrashed()->findOrFail($id);
+        $order->restore();
+        $order->catat('order_dipulihkan');
+    }
+
+    /** Hapus permanen order dari sampah (super admin) + relasi anak. */
+    public function hapusPermanen(int $id): void
+    {
+        abort_unless($this->isSuperAdmin, 403);
+        $order = Order::onlyTrashed()->findOrFail($id);
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($order) {
+            $order->items()->delete();
+            $order->timEvent()->detach();
+            $order->pembayaran()->delete();   // + cascade
+            $order->activities()->delete();
+            $order->forceDelete();
+        });
     }
 
     /** Builder dengan SEMUA filter kecuali cabang (dipakai untuk daftar + hitung per-cabang). */
@@ -80,6 +114,7 @@ class OrderIndex extends Component
         $belumSelesai = fn ($w) => $w->whereNull('event_status')->orWhere('event_status', '!=', $selesai);
 
         return Order::query()
+            ->when($this->sampah && $user->hasRole('super_admin'), fn ($x) => $x->onlyTrashed())
             ->when($user->hasRole('marketing') && ! $user->seesAllCabang(),
                 fn ($x) => $x->where('marketing_id', $user->id))
             ->when($this->status !== '', fn ($x) => $x->where('status', $this->status))

@@ -8,11 +8,17 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[ScopedBy(CabangScope::class)]
 class Order extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'orders';
+
+    /** Order di "sampah" bisa dipulihkan super admin sampai batas ini, lalu dibersihkan. */
+    public const TRASH_RETENTION_DAYS = 30;
 
     /** Jalur asal order. */
     public const SUMBER_SEKOLAH = 'sekolah';

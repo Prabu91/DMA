@@ -285,6 +285,13 @@
                             <x-confirm action="ubahStatus" arg="batal" title="Batalkan order" message="Batalkan order ini? Tindakan ini menghentikan proses order." variant="danger" size="sm">Batalkan order</x-confirm>
                         @endif
                         @if ($statusMsg)<span class="text-sm font-medium text-status-success">{{ $statusMsg }}</span>@endif
+                        @if ($this->isSuperAdmin)
+                            <div class="ml-auto">
+                                <x-confirm action="hapusOrder" title="Hapus order"
+                                           message="Order dipindahkan ke sampah dan bisa dipulihkan hingga {{ \App\Models\Order::TRASH_RETENTION_DAYS }} hari. Lanjutkan?"
+                                           confirm-label="Ya, hapus" variant="ghost" confirm-variant="danger" size="sm">Hapus order</x-confirm>
+                            </div>
+                        @endif
                     </div>
                 </x-card>
 

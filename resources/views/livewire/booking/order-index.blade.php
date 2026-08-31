@@ -48,9 +48,51 @@
                 Reset
             </button>
         @endif
+
+        @if ($this->isSuperAdmin)
+            <button type="button" wire:click="$toggle('sampah')"
+                    @class([
+                        'ml-auto inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-colors',
+                        'bg-status-danger/10 text-status-danger' => $sampah,
+                        'text-ink-muted hover:bg-page' => ! $sampah,
+                    ])>
+                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                {{ $sampah ? 'Keluar dari sampah' : 'Terhapus' }}
+            </button>
+        @endif
     </div>
 
+    @if ($sampah)
+        <div class="mb-3 rounded-lg border border-status-danger/20 bg-status-danger/5 px-4 py-2.5 text-sm text-ink">
+            Menampilkan <span class="font-medium">order terhapus</span>. Bisa dipulihkan hingga {{ \App\Models\Order::TRASH_RETENTION_DAYS }} hari sejak dihapus.
+        </div>
+    @endif
+
+    {{-- Sampah: daftar order terhapus + pulihkan/hapus permanen (super admin) --}}
+    @if ($sampah)
+        <div class="space-y-2">
+            @forelse ($orders as $order)
+                <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-card p-3.5">
+                    <div class="min-w-0">
+                        <div class="font-medium text-ink">{{ $order->booking_code ?? 'Order #'.$order->id }}</div>
+                        <div class="text-xs text-ink-muted">
+                            {{ $order->sekolah?->nama ?? '—' }} · {{ $order->cabang?->nama }} · Rp{{ number_format($order->total, 0, ',', '.') }}
+                            @if ($order->deleted_at) · dihapus {{ $order->deleted_at->translatedFormat('d M Y H:i') }}@endif
+                        </div>
+                    </div>
+                    <div class="flex shrink-0 gap-2">
+                        <x-confirm action="pulihkan" :arg="$order->id" title="Pulihkan order" message="Pulihkan order {{ $order->booking_code ?? '#'.$order->id }} dari sampah?" confirm-label="Pulihkan" variant="secondary" size="sm">Pulihkan</x-confirm>
+                        <x-confirm action="hapusPermanen" :arg="$order->id" title="Hapus permanen" message="Hapus PERMANEN order ini beserta seluruh datanya (item, pembayaran, aktivitas)? Tidak bisa dipulihkan." confirm-label="Ya, hapus permanen" variant="ghost" confirm-variant="danger" size="sm">Hapus permanen</x-confirm>
+                    </div>
+                </div>
+            @empty
+                <div class="rounded-xl border border-line bg-card px-4 py-10 text-center text-sm text-ink-muted">Sampah kosong.</div>
+            @endforelse
+        </div>
+    @endif
+
     {{-- Mobile: kartu ringkas (tabel disembunyikan) --}}
+    @unless ($sampah)
     <div class="space-y-2 md:hidden">
         @forelse ($orders as $order)
             @php $cd = $order->eventCountdown(); @endphp
@@ -115,6 +157,7 @@
         @endforelse
     </x-table>
     </div>
+    @endunless
 
     <div class="mt-4">
         {{ $orders->links() }}

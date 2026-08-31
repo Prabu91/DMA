@@ -107,6 +107,65 @@ class SuperAdminBypassTest extends TestCase
             ->assertDontSee('654321');
     }
 
+    // ---------- A: hapus order (soft delete) + pulihkan + purge ----------
+
+    public function test_super_admin_soft_delete_order(): void
+    {
+        $order = $this->orderTerkunci();
+
+        Livewire::actingAs($this->user('super_admin'))
+            ->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
+            ->call('hapusOrder');
+
+        $this->assertSoftDeleted('orders', ['id' => $order->id]);
+        $this->assertNull(Order::find($order->id));                 // hilang dari query normal
+        $this->assertNotNull(Order::onlyTrashed()->find($order->id)); // masih di sampah
+    }
+
+    public function test_non_super_admin_tak_bisa_hapus_order(): void
+    {
+        $order = $this->orderTerkunci();
+
+        Livewire::actingAs($this->user('admin_sales'))
+            ->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
+            ->call('hapusOrder')
+            ->assertStatus(403);
+
+        $this->assertNotSoftDeleted('orders', ['id' => $order->id]);
+    }
+
+    public function test_super_admin_pulihkan_dan_hapus_permanen(): void
+    {
+        $order = $this->orderTerkunci();
+        $order->delete();
+
+        $comp = Livewire::actingAs($this->user('super_admin'))
+            ->test(\App\Livewire\Booking\OrderIndex::class);
+
+        $comp->call('pulihkan', $order->id);
+        $this->assertNotSoftDeleted('orders', ['id' => $order->id]);
+
+        // hapus permanen
+        $order->refresh()->delete();
+        $comp->call('hapusPermanen', $order->id);
+        $this->assertDatabaseMissing('orders', ['id' => $order->id]);
+    }
+
+    public function test_purge_command_hapus_sampah_lewat_retensi(): void
+    {
+        $lama = $this->orderTerkunci();
+        $lama->delete();
+        $lama->forceFill(['deleted_at' => now()->subDays(Order::TRASH_RETENTION_DAYS + 1)])->saveQuietly();
+
+        $baru = $this->orderTerkunci();
+        $baru->delete(); // baru dihapus → tak kena purge
+
+        $this->artisan('orders:purge-trash')->assertSuccessful();
+
+        $this->assertDatabaseMissing('orders', ['id' => $lama->id]);      // lewat retensi → hilang
+        $this->assertNotNull(Order::onlyTrashed()->find($baru->id));      // masih di sampah
+    }
+
     // ---------- D: force delete desain ----------
 
     private function desainDipakai(): array
