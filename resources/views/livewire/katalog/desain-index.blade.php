@@ -41,6 +41,7 @@
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
                             <span class="text-sm font-medium text-ink">{{ $item->kode }}</span>
+                            @if ($item->ukuran)<x-badge variant="brand">{{ $item->ukuran }}</x-badge>@endif
                             @if ($item->orientasi)<x-badge variant="neutral">{{ \App\Models\Desain::ORIENTASI[$item->orientasi] ?? $item->orientasi }}</x-badge>@endif
                             <x-badge :variant="$item->status === 'aktif' ? 'success' : 'danger'">{{ \App\Models\Desain::STATUS[$item->status] ?? $item->status }}</x-badge>
                         </div>
@@ -79,6 +80,7 @@
                         <x-select label="Kategori" wire:model="kategori_id" :options="$this->kategoriDesainOptions" :selected="$kategori_id" placeholder="— Pilih kategori —" :error="$errors->first('kategori_id')" hint="Hanya kategori berdesain." />
                         <x-input label="Kode" wire:model="kode" :error="$errors->first('kode')" placeholder="mis. ERP-001" />
                         <x-input label="Seri" wire:model="seri" :error="$errors->first('seri')" hint="Opsional." />
+                        <x-input label="Ukuran" wire:model="ukuran" :error="$errors->first('ukuran')" placeholder="mis. 8R / 10R" hint="Opsional. Isi bila desain khusus ukuran tertentu (mis. 8R single, 10R kolase). Kosongkan = semua ukuran." />
                         <x-select label="Orientasi" wire:model="orientasi" :options="$this->orientasiOptions" :selected="$orientasi" placeholder="— Tidak ditentukan —" :error="$errors->first('orientasi')" />
                         <x-input label="Tahun ajaran" wire:model="tahun_ajaran" :error="$errors->first('tahun_ajaran')" placeholder="mis. 2025/2026" />
                         <x-select label="Status" wire:model="status" :options="$this->statusOptions" :selected="$status" :error="$errors->first('status')" />

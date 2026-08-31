@@ -107,6 +107,48 @@ class EtalaseFase2Test extends TestCase
             ->assertDontSee('ERP-2026');
     }
 
+    public function test_desain_difilter_oleh_ukuran_terpilih(): void
+    {
+        $kategori = Kategori::create(['nama' => 'Free Sekolah', 'pakai_desain' => true]);
+        $produk = Produk::create(['kategori_id' => $kategori->id, 'nama' => 'Free', 'harga' => 0, 'status' => 'aktif']);
+        $produk->opsi()->create(['tipe_opsi' => 'ukuran', 'nilai_opsi' => '8R', 'is_wajib' => true]);
+        $produk->opsi()->create(['tipe_opsi' => 'ukuran', 'nilai_opsi' => '10R', 'is_wajib' => true]);
+
+        Desain::create(['kategori_id' => $kategori->id, 'kode' => 'SINGLE-8R', 'ukuran' => '8R', 'tahun_ajaran' => '2026/2027', 'status' => 'aktif']);
+        Desain::create(['kategori_id' => $kategori->id, 'kode' => 'KOLASE-10R', 'ukuran' => '10R', 'tahun_ajaran' => '2026/2027', 'status' => 'aktif']);
+        Desain::create(['kategori_id' => $kategori->id, 'kode' => 'UMUM', 'ukuran' => null, 'tahun_ajaran' => '2026/2027', 'status' => 'aktif']);
+
+        $comp = Livewire::test(EtalaseDetail::class, ['konteks' => 'staf', 'tipe' => 'produk', 'id' => $produk->id]);
+
+        // Pilih 8R → hanya desain 8R + desain tanpa label ukuran.
+        $comp->set('selectedUkuran', '8R')
+            ->assertSee('SINGLE-8R')
+            ->assertSee('UMUM')
+            ->assertDontSee('KOLASE-10R');
+
+        // Ganti ke 10R → hanya desain 10R + tanpa label.
+        $comp->set('selectedUkuran', '10R')
+            ->assertSee('KOLASE-10R')
+            ->assertSee('UMUM')
+            ->assertDontSee('SINGLE-8R');
+    }
+
+    public function test_ganti_ukuran_melepas_desain_tak_cocok(): void
+    {
+        $kategori = Kategori::create(['nama' => 'Free Sekolah', 'pakai_desain' => true]);
+        $produk = Produk::create(['kategori_id' => $kategori->id, 'nama' => 'Free', 'harga' => 0, 'status' => 'aktif']);
+        $produk->opsi()->create(['tipe_opsi' => 'ukuran', 'nilai_opsi' => '8R', 'is_wajib' => true]);
+        $produk->opsi()->create(['tipe_opsi' => 'ukuran', 'nilai_opsi' => '10R', 'is_wajib' => true]);
+        $d8 = Desain::create(['kategori_id' => $kategori->id, 'kode' => 'SINGLE-8R', 'ukuran' => '8R', 'tahun_ajaran' => '2026/2027', 'status' => 'aktif']);
+        Desain::create(['kategori_id' => $kategori->id, 'kode' => 'KOLASE-10R', 'ukuran' => '10R', 'tahun_ajaran' => '2026/2027', 'status' => 'aktif']);
+
+        Livewire::test(EtalaseDetail::class, ['konteks' => 'staf', 'tipe' => 'produk', 'id' => $produk->id])
+            ->set('selectedUkuran', '8R')
+            ->set('selectedDesain', $d8->id)
+            ->set('selectedUkuran', '10R')      // desain 8R tak lagi cocok
+            ->assertSet('selectedDesain', null);
+    }
+
     public function test_detail_paket_menampilkan_produk_termasuk(): void
     {
         $kategori = Kategori::create(['nama' => 'K', 'pakai_desain' => false]);

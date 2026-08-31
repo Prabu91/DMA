@@ -34,6 +34,8 @@ class DesainIndex extends Component
 
     public ?string $seri = null;
 
+    public ?string $ukuran = null;
+
     public ?string $orientasi = null;
 
     public string $tahun_ajaran = '';
@@ -96,6 +98,7 @@ class DesainIndex extends Component
             'kategori_id' => ['required', Rule::exists('kategori', 'id')->where('pakai_desain', true)],
             'kode' => ['required', 'string', 'max:100', Rule::unique('desain', 'kode')->ignore($this->editingId)],
             'seri' => ['nullable', 'string', 'max:100'],
+            'ukuran' => ['nullable', 'string', 'max:20'],
             'orientasi' => ['nullable', 'in:'.implode(',', array_keys(Desain::ORIENTASI))],
             'tahun_ajaran' => ['required', 'string', 'max:20'],
             'status' => ['required', 'in:'.implode(',', array_keys(Desain::STATUS))],
@@ -123,6 +126,7 @@ class DesainIndex extends Component
         $this->kategori_id = $desain->kategori_id;
         $this->kode = $desain->kode;
         $this->seri = $desain->seri;
+        $this->ukuran = $desain->ukuran;
         $this->orientasi = $desain->orientasi;
         $this->tahun_ajaran = $desain->tahun_ajaran ?? '';
         $this->status = $desain->status ?: 'aktif';
@@ -142,6 +146,7 @@ class DesainIndex extends Component
             'kategori_id' => $this->kategori_id,
             'kode' => $this->kode,
             'seri' => $this->seri,
+            'ukuran' => $this->ukuran ?: null,
             'orientasi' => $this->orientasi,
             'tahun_ajaran' => $this->tahun_ajaran,
             'status' => $this->status,
@@ -206,7 +211,7 @@ class DesainIndex extends Component
 
     public function resetForm(): void
     {
-        $this->reset(['editingId', 'kategori_id', 'kode', 'seri', 'orientasi', 'tahun_ajaran', 'status', 'foto_preview', 'fotoExisting']);
+        $this->reset(['editingId', 'kategori_id', 'kode', 'seri', 'ukuran', 'orientasi', 'tahun_ajaran', 'status', 'foto_preview', 'fotoExisting']);
         $this->status = 'aktif';
         $this->resetErrorBag();
     }

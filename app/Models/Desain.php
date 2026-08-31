@@ -20,6 +20,7 @@ class Desain extends Model
         'kategori_id',
         'kode',
         'seri',
+        'ukuran',
         'orientasi',
         'foto_preview',
         'tahun_ajaran',

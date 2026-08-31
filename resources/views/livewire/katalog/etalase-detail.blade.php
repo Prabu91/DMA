@@ -116,7 +116,7 @@
                 {{-- Pool desain --}}
                 @if ($this->pakaiDesain)
                     <x-card>
-                        <x-slot name="title">Pilih desain</x-slot>
+                        <x-slot name="title">Pilih desain @if ($selectedUkuran)<span class="text-sm font-normal text-ink-muted">· untuk ukuran {{ $selectedUkuran }}</span>@endif</x-slot>
                         <x-slot name="actions">
                             @if (count($this->tahunOptions) > 0)
                                 <x-select wire:model.live="tahunAjaran" :options="$this->tahunOptions" :selected="$tahunAjaran" class="min-w-[10rem]" />
@@ -141,12 +141,18 @@
                                                 </div>
                                             @endif
                                         </div>
-                                        <div class="px-2 py-1.5 text-center text-xs text-ink">{{ $desain->kode }}</div>
+                                        <div class="px-2 py-1.5 text-center text-xs text-ink">{{ $desain->kode }}@if ($desain->ukuran)<span class="ml-1 text-ink-muted">· {{ $desain->ukuran }}</span>@endif</div>
                                     </label>
                                 @endforeach
                             </div>
                         @else
-                            <p class="text-sm text-ink-muted">Belum ada desain aktif untuk kategori ini pada tahun ajaran terpilih.</p>
+                            <p class="text-sm text-ink-muted">
+                                @if ($selectedUkuran)
+                                    Belum ada desain untuk ukuran {{ $selectedUkuran }} pada tahun ajaran terpilih.
+                                @else
+                                    Belum ada desain aktif untuk kategori ini pada tahun ajaran terpilih.
+                                @endif
+                            </p>
                         @endif
                     </x-card>
                 @endif

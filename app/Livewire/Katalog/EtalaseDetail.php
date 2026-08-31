@@ -100,8 +100,21 @@ class EtalaseDetail extends Component
         return Desain::where('kategori_id', $this->produk()->kategori_id)
             ->where('status', 'aktif')
             ->when($this->tahunAjaran, fn ($q) => $q->where('tahun_ajaran', $this->tahunAjaran))
+            // Bila ukuran dipilih, tampilkan desain berlabel ukuran itu + desain tanpa label
+            // (berlaku semua ukuran). Bila belum pilih ukuran, tampilkan semua.
+            ->when($this->selectedUkuran, fn ($q) => $q->where(fn ($w) => $w
+                ->whereNull('ukuran')->orWhere('ukuran', $this->selectedUkuran)))
             ->orderBy('kode')
             ->get();
+    }
+
+    /** Saat ukuran berubah, lepas pilihan desain bila tak lagi cocok dengan ukuran. */
+    public function updatedSelectedUkuran(): void
+    {
+        unset($this->desainPool); // segarkan computed
+        if ($this->selectedDesain && ! $this->desainPool->contains('id', $this->selectedDesain)) {
+            $this->selectedDesain = null;
+        }
     }
 
     public function indexUrl(): string
