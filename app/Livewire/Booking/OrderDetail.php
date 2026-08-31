@@ -421,29 +421,6 @@ class OrderDetail extends Component
         return auth('web')->user()?->hasAnyRole(['super_admin', 'admin_sales']) ?? false;
     }
 
-    #[Computed]
-    public function isSuperAdmin(): bool
-    {
-        return auth('web')->user()?->hasRole('super_admin') ?? false;
-    }
-
-    /**
-     * Hapus order (soft delete) — hanya super admin. Masuk "sampah", masih bisa
-     * dipulihkan sampai TRASH_RETENTION_DAYS. Redirect ke daftar order.
-     */
-    public function hapusOrder()
-    {
-        abort_unless($this->konteks === 'staf', 403);
-        abort_unless($this->isSuperAdmin, 403);
-
-        $this->order->catat('order_dihapus');
-        $this->order->delete(); // soft delete
-
-        session()->flash('order-flash', 'Order dipindahkan ke sampah — bisa dipulihkan dari filter "Terhapus" hingga '.Order::TRASH_RETENTION_DAYS.' hari.');
-
-        return $this->redirect(route('app.order.index'), navigate: true);
-    }
-
     /** Marketing/area/operasional/super_admin ubah tanggal & jam event. */
     public function simpanJadwal(): void
     {

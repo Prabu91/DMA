@@ -114,8 +114,8 @@ class SuperAdminBypassTest extends TestCase
         $order = $this->orderTerkunci();
 
         Livewire::actingAs($this->user('super_admin'))
-            ->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
-            ->call('hapusOrder');
+            ->test(\App\Livewire\Booking\OrderIndex::class)
+            ->call('hapusOrder', $order->id);
 
         $this->assertSoftDeleted('orders', ['id' => $order->id]);
         $this->assertNull(Order::find($order->id));                 // hilang dari query normal
@@ -127,8 +127,8 @@ class SuperAdminBypassTest extends TestCase
         $order = $this->orderTerkunci();
 
         Livewire::actingAs($this->user('admin_sales'))
-            ->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
-            ->call('hapusOrder')
+            ->test(\App\Livewire\Booking\OrderIndex::class)
+            ->call('hapusOrder', $order->id)
             ->assertStatus(403);
 
         $this->assertNotSoftDeleted('orders', ['id' => $order->id]);

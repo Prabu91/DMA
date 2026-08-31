@@ -96,7 +96,8 @@
     <div class="space-y-2 md:hidden">
         @forelse ($orders as $order)
             @php $cd = $order->eventCountdown(); @endphp
-            <a href="{{ route('app.order.show', $order->id) }}" wire:navigate class="block rounded-xl border border-line bg-card p-3.5 transition-colors hover:border-brand/40">
+            <div class="rounded-xl border border-line bg-card transition-colors hover:border-brand/40">
+            <a href="{{ route('app.order.show', $order->id) }}" wire:navigate class="block p-3.5">
                 <div class="flex items-center justify-between gap-2">
                     <span class="font-medium text-brand">{{ $order->booking_code ?? 'Order #'.$order->id }}</span>
                     <span class="shrink-0 font-medium text-ink">Rp{{ number_format($order->total, 0, ',', '.') }}</span>
@@ -113,6 +114,14 @@
                     · Event {{ $order->tanggal_event ? $order->tanggal_event->translatedFormat('d M Y') : '—' }}
                 </div>
             </a>
+            @if ($this->isSuperAdmin)
+                <div class="flex justify-end border-t border-line px-3.5 py-2">
+                    <x-confirm action="hapusOrder" :arg="$order->id" title="Hapus order"
+                               message="Hapus order {{ $order->booking_code ?? '#'.$order->id }}? Masuk sampah, bisa dipulihkan hingga {{ \App\Models\Order::TRASH_RETENTION_DAYS }} hari."
+                               confirm-label="Ya, hapus" variant="ghost" confirm-variant="danger" size="sm">Hapus</x-confirm>
+                </div>
+            @endif
+            </div>
         @empty
             <div class="rounded-xl border border-line bg-card px-4 py-10 text-center text-sm text-ink-muted">Belum ada order yang cocok.</div>
         @endforelse
@@ -128,6 +137,7 @@
             <x-table.th sortable field="event" :sort="$sortField" :dir="$sortDir">Event</x-table.th>
             <x-table.th>Marketing</x-table.th>
             <x-table.th sortable field="total" :sort="$sortField" :dir="$sortDir" align="right">Total</x-table.th>
+            @if ($this->isSuperAdmin)<x-table.th align="right">Aksi</x-table.th>@endif
         </x-slot:head>
 
         @forelse ($orders as $order)
@@ -151,9 +161,16 @@
                 <x-table.td nowrap muted>{{ $order->tanggal_event ? $order->tanggal_event->translatedFormat('d M Y') : '—' }}</x-table.td>
                 <x-table.td muted>{{ $order->marketing?->nama ?? $order->marketing?->name ?? '—' }}</x-table.td>
                 <x-table.td align="right" nowrap class="font-medium">Rp{{ number_format($order->total, 0, ',', '.') }}</x-table.td>
+                @if ($this->isSuperAdmin)
+                    <x-table.td align="right" nowrap>
+                        <x-confirm action="hapusOrder" :arg="$order->id" title="Hapus order"
+                                   message="Hapus order {{ $order->booking_code ?? '#'.$order->id }}? Masuk sampah, bisa dipulihkan hingga {{ \App\Models\Order::TRASH_RETENTION_DAYS }} hari."
+                                   confirm-label="Ya, hapus" variant="ghost" confirm-variant="danger" size="sm">Hapus</x-confirm>
+                    </x-table.td>
+                @endif
             </x-table.tr>
         @empty
-            <x-table.empty :colspan="6">Belum ada order yang cocok.</x-table.empty>
+            <x-table.empty :colspan="$this->isSuperAdmin ? 7 : 6">Belum ada order yang cocok.</x-table.empty>
         @endforelse
     </x-table>
     </div>

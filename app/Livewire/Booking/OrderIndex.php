@@ -82,6 +82,15 @@ class OrderIndex extends Component
         return auth()->user()?->hasRole('super_admin') ?? false;
     }
 
+    /** Hapus order (soft delete) langsung dari daftar — super admin. */
+    public function hapusOrder(int $id): void
+    {
+        abort_unless($this->isSuperAdmin, 403);
+        $order = Order::findOrFail($id);
+        $order->catat('order_dihapus');
+        $order->delete(); // soft delete → masuk sampah
+    }
+
     /** Pulihkan order dari sampah (super admin). */
     public function pulihkan(int $id): void
     {
