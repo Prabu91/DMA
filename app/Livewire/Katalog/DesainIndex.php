@@ -179,6 +179,31 @@ class DesainIndex extends Component
         $this->success = 'Desain dihapus.';
     }
 
+    /**
+     * Hapus paksa (super admin) — walau desain masih dipakai order berjalan.
+     * Referensi di order lama dilepas (desain_id → null), bukan ikut terhapus.
+     */
+    public function forceDelete(int $id): void
+    {
+        abort_unless(auth()->user()?->hasRole('super_admin'), 403);
+        $desain = Desain::findOrFail($id);
+        $this->authorize('delete', $desain);
+
+        $dipakai = \App\Models\OrderItem::where('desain_id', $desain->id)->update(['desain_id' => null]);
+
+        if ($desain->foto_preview) {
+            Storage::disk('public')->delete($desain->foto_preview);
+        }
+        $desain->delete();
+        $this->success = "Desain dihapus paksa. {$dipakai} item order melepas referensi desain ini.";
+    }
+
+    #[\Livewire\Attributes\Computed]
+    public function isSuperAdmin(): bool
+    {
+        return auth()->user()?->hasRole('super_admin') ?? false;
+    }
+
     public function resetForm(): void
     {
         $this->reset(['editingId', 'kategori_id', 'kode', 'seri', 'orientasi', 'tahun_ajaran', 'status', 'foto_preview', 'fotoExisting']);
@@ -190,6 +215,7 @@ class DesainIndex extends Component
     {
         $desain = Desain::query()
             ->with('kategori')
+            ->withCount('orderItems')
             ->when($this->filterKategori, fn ($q) => $q->where('kategori_id', $this->filterKategori))
             ->when($this->filterTahun, fn ($q) => $q->where('tahun_ajaran', $this->filterTahun))
             ->when($this->search !== '', fn ($q) => $q->where('kode', 'ilike', '%'.$this->search.'%'))

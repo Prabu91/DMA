@@ -155,7 +155,7 @@ class EventDetail extends Component
     {
         $order = $this->order();
         $this->authorize('manageEvent', $order);
-        abort_if($order->isLocked(), 422);
+        abort_if($order->terkunciUntuk(auth('web')->user()), 422);
 
         $order->update(['konfirmasi_lokasi_at' => now(), 'konfirmasi_lokasi_oleh' => auth('web')->id()]);
         $order->catat('konfirmasi_lokasi');
@@ -167,7 +167,7 @@ class EventDetail extends Component
     {
         $order = $this->order();
         $this->authorize('manageEvent', $order);
-        abort_if($order->isLocked(), 422);
+        abort_if($order->terkunciUntuk(auth('web')->user()), 422);
 
         $this->resetErrorBag();
         $this->namaSekolah = $order->sekolah?->nama ?? '';
@@ -193,7 +193,7 @@ class EventDetail extends Component
     {
         $order = $this->order();
         $this->authorize('manageEvent', $order);
-        abort_if($order->isLocked(), 422);
+        abort_if($order->terkunciUntuk(auth('web')->user()), 422);
 
         $this->validate([
             'namaSekolah' => ['required', 'string', 'max:255'],
@@ -311,7 +311,7 @@ class EventDetail extends Component
     {
         $order = $this->order();
         $this->authorize('manageEvent', $order);
-        abort_if($order->isLocked(), 422);
+        abort_if($order->terkunciUntuk(auth('web')->user()), 422);
 
         $this->validate([
             'tambahTipe' => ['required', 'in:produk,paket'],
@@ -368,7 +368,7 @@ class EventDetail extends Component
     {
         $order = $this->order();
         $this->authorize('manageEvent', $order);
-        abort_if($order->isLocked(), 422);
+        abort_if($order->terkunciUntuk(auth('web')->user()), 422);
 
         $item = $order->items()->where('id', $itemId)->where('is_free', false)->first();
         abort_unless($item, 404);
@@ -386,7 +386,7 @@ class EventDetail extends Component
     {
         $order = $this->order();
         $this->authorize('manageEvent', $order);
-        abort_if($order->isLocked(), 422);
+        abort_if($order->terkunciUntuk(auth('web')->user()), 422);
 
         $item = $order->items()->where('id', $itemId)->where('is_free', false)->first();
         abort_unless($item, 404);
@@ -408,7 +408,7 @@ class EventDetail extends Component
     {
         $order = $this->order();
         $this->authorize('manageEvent', $order);
-        abort_if($order->isLocked(), 422);
+        abort_if($order->terkunciUntuk(auth('web')->user()), 422);
         abort_if($order->tanggal_event === null, 422);
 
         // Berurutan: data sekolah + H-2 harus beres dulu.

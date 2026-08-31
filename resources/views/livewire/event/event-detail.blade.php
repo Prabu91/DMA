@@ -4,6 +4,8 @@
         $order = $this->order;
         $selesai = $order->event_status === \App\Support\OrderStatus::EVENT_SELESAI;
         $terkunci = $order->isLocked();
+        $bypassKunci = auth()->user()?->hasRole('super_admin') ?? false; // super_admin tembus kunci
+        $bolehEdit = ! $terkunci || $bypassKunci;
     @endphp
 
     <div class="mb-6 flex items-start justify-between gap-3">
@@ -35,7 +37,7 @@
 
     @if ($terkunci && ! $selesai)
         <div class="mb-4 rounded-lg border-l-4 border-navy bg-navy/5 px-4 py-3 text-sm text-ink">
-            <span class="font-medium">Order terkunci.</span> Hari-H telah dikonfirmasi — data & item tidak bisa diubah lagi. Lanjutkan ke penyelesaian (OTP).
+            <span class="font-medium">Order terkunci.</span> Hari-H telah dikonfirmasi — data & item tidak bisa diubah lagi. Lanjutkan ke penyelesaian (OTP).@if ($bypassKunci) <span class="font-medium text-brand">Sebagai super admin, Anda tetap bisa mengubah.</span>@endif
         </div>
     @endif
 
@@ -85,7 +87,7 @@
                 </x-card>
             @else
                 {{-- ============ KONFIRMASI & FINALISASI DI LOKASI ============ --}}
-                @unless ($terkunci)
+                @unless ($terkunci && ! $bypassKunci)
                     <x-card title="Konfirmasi di lokasi">
                         <p class="text-sm text-ink-muted">Cek ulang data sekolah &amp; item. Bila perlu, revisi atau tambah/kurangi item di bawah. Setelah semua benar, konfirmasi Hari-H (final).</p>
                         <div class="mt-3 flex flex-wrap items-center gap-3">
@@ -152,7 +154,7 @@
                                     Rp{{ number_format($item->harga, 0, ',', '.') }} × {{ $item->qty }}
                                 </div>
                             </div>
-                            @if (! $terkunci && ! $item->is_free)
+                            @if ($bolehEdit && ! $item->is_free)
                                 <div class="flex shrink-0 items-center gap-1.5">
                                     <button type="button" wire:click="ubahQtyItem({{ $item->id }}, {{ $item->qty - 1 }})" @disabled($item->qty <= 1)
                                             class="grid h-8 w-8 place-items-center rounded-lg border border-line text-ink hover:bg-page disabled:opacity-40">−</button>
@@ -175,7 +177,7 @@
                     @endforelse
 
                     {{-- Tambah item --}}
-                    @unless ($terkunci)
+                    @unless ($terkunci && ! $bypassKunci)
                         <div class="border-t border-line bg-page/50 px-5 py-4">
                             <h3 class="mb-3 text-sm font-medium text-ink">Tambah item</h3>
                             <div class="grid gap-3 sm:grid-cols-2">

@@ -104,7 +104,7 @@ class OrderDetail extends Component
         abort_unless($this->konteks === 'staf', 403);
         $this->authorize('update', $this->order);
         abort_unless($this->bisaAssignTimEvent, 403); // marketing read-only
-        abort_if($this->order->isLocked(), 423);
+        abort_if($this->order->terkunciUntuk(auth('web')->user()), 423);
 
         $ids = array_map('intval', $this->timEventTerpilih);
         $valid = User::role('tim_event')
@@ -373,7 +373,7 @@ class OrderDetail extends Component
         // Hanya H-7 & H-2 di panel staf, dan hanya admin sales.
         abort_unless(in_array($key, Order::MILESTONE_ADMIN, true), 422);
         abort_unless(auth('web')->user()->isAdminSales(), 403);
-        abort_if($this->order->isLocked(), 423);
+        abort_if($this->order->terkunciUntuk(auth('web')->user()), 423);
         abort_if($this->order->tanggal_event === null, 422);
 
         // Berurutan: DP → H-7 → H-2. Tolak bila prasyarat belum terpenuhi.
@@ -414,12 +414,19 @@ class OrderDetail extends Component
         return auth('web')->user()?->hasAnyRole(['super_admin', 'operasional', 'admin_sales']) ?? false;
     }
 
+    /** Super admin & admin sales boleh melihat kode OTP di web (fallback bila WA gagal). */
+    #[Computed]
+    public function bisaLihatOtp(): bool
+    {
+        return auth('web')->user()?->hasAnyRole(['super_admin', 'admin_sales']) ?? false;
+    }
+
     /** Marketing/area/operasional/super_admin ubah tanggal & jam event. */
     public function simpanJadwal(): void
     {
         abort_unless($this->konteks === 'staf', 403);
         $this->authorize('update', $this->order);
-        abort_if($this->order->isLocked(), 423);
+        abort_if($this->order->terkunciUntuk(auth('web')->user()), 423);
 
         $this->validate([
             'tanggalEvent' => ['required', 'date'],

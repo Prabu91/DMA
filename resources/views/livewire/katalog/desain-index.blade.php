@@ -53,7 +53,13 @@
                 </div>
                 <div class="flex shrink-0 items-center gap-2 pl-[3.75rem] sm:pl-0">
                     <x-button wire:click="edit({{ $item->id }})" variant="secondary" size="sm">Ubah</x-button>
-                    <x-button wire:click="delete({{ $item->id }})" wire:confirm="Hapus desain {{ $item->kode }}?" variant="ghost" size="sm">Hapus</x-button>
+                    @if ($item->order_items_count > 0 && $this->isSuperAdmin)
+                        <x-confirm action="forceDelete" :arg="$item->id" title="Hapus paksa desain"
+                                   message="Desain {{ $item->kode }} dipakai di {{ $item->order_items_count }} item order. Hapus paksa akan melepas referensi di order tersebut lalu menghapus desain. Lanjutkan?"
+                                   confirm-label="Ya, hapus paksa" variant="ghost" confirm-variant="danger" size="sm">Hapus paksa</x-confirm>
+                    @else
+                        <x-confirm action="delete" :arg="$item->id" title="Hapus desain" message="Hapus desain {{ $item->kode }}?" confirm-label="Ya, hapus" variant="ghost" confirm-variant="danger" size="sm">Hapus</x-confirm>
+                    @endif
                 </div>
             </div>
         @empty

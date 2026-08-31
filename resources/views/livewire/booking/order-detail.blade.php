@@ -388,7 +388,7 @@
                                         @elseif ($isHari)
                                             {{-- Hari-H hanya dikonfirmasi tim event → read-only di panel staf --}}
                                             @if ($m['state'] === 'overdue')<x-badge variant="danger">Terlewat</x-badge>@else<x-badge variant="neutral">Menunggu tim event</x-badge>@endif
-                                        @elseif ($this->isAdminSales && ! $order->isLocked())
+                                        @elseif ($this->isAdminSales && ! $order->terkunciUntuk(auth()->user()))
                                             @if ($m['state'] === 'overdue')<x-badge variant="danger">Terlewat</x-badge>@endif
                                             <x-confirm action="konfirmasiMilestone" arg="{{ $m['key'] }}" title="Konfirmasi {{ $m['label'] }}" message="Konfirmasi milestone {{ $m['label'] }} sekarang?" variant="secondary" confirm-variant="primary" size="sm">Konfirmasi</x-confirm>
                                         @else
@@ -410,6 +410,19 @@
                     @endif
                 </x-card>
             @endunless
+
+            {{-- OTP penyelesaian (fallback web) — super admin & admin sales bila WA gagal --}}
+            @if (! $sf && $this->bisaLihatOtp && $order->eventOtpActive())
+                <x-card title="Kode OTP penyelesaian (fallback)">
+                    <div class="rounded-lg border border-status-info/20 bg-status-info/10 p-4">
+                        <p class="text-sm text-ink">Kode OTP aktif untuk order ini. Gunakan sebagai <span class="font-medium">cadangan bila WhatsApp ke guru gagal</span> — bacakan/berikan kode ke tim event di lokasi.</p>
+                        <div class="mt-3 flex items-baseline gap-3">
+                            <span class="font-mono text-3xl font-bold tracking-[0.3em] text-navy">{{ $order->otp_code }}</span>
+                            <span class="text-xs text-ink-muted">berlaku s/d {{ $order->otp_expires->translatedFormat('H:i') }}</span>
+                        </div>
+                    </div>
+                </x-card>
+            @endif
 
             {{-- Tim event + STE (staf) --}}
             @unless ($sf)

@@ -184,6 +184,19 @@ class Order extends Model
             || $this->event_status === \App\Support\OrderStatus::EVENT_SELESAI;
     }
 
+    /**
+     * Kunci berlaku untuk semua peran KECUALI super_admin — super_admin punya
+     * bypass agar tetap bisa mengubah order bila ada keadaan khusus.
+     */
+    public function terkunciUntuk(?User $user): bool
+    {
+        if ($user && $user->hasRole('super_admin')) {
+            return false;
+        }
+
+        return $this->isLocked();
+    }
+
     /** Ada pembayaran berstatus pending (menunggu approval admin sales)? */
     public function adaPembayaranPending(): bool
     {
