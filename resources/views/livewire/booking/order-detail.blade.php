@@ -18,7 +18,17 @@
             <h1 class="{{ $sf ? 'text-2xl font-extrabold tracking-tight text-ink' : 'text-lg font-medium text-ink' }}">{{ $sf ? 'Booking tersimpan' : ($order->booking_code ?? 'Order #'.$order->id) }}</h1>
             <p class="text-sm text-ink-muted">{{ $order->sekolah?->nama }}@unless ($sf) · <span class="font-mono">{{ $order->sekolah?->id_sekolah }}</span>@endunless · {{ optional($order->tanggal_booking)->translatedFormat('d M Y H:i') }}</p>
         </div>
-        <a href="{{ $this->kembaliUrl() }}" wire:navigate class="text-sm font-semibold text-ink-muted hover:text-ink">Selesai</a>
+        <div class="flex shrink-0 items-center gap-3">
+            @if (! $sf && $this->isSuperAdmin)
+                <x-confirm action="hapusOrder" title="Hapus order"
+                           message="Order dipindahkan ke sampah dan bisa dipulihkan hingga {{ \App\Models\Order::TRASH_RETENTION_DAYS }} hari. Lanjutkan?"
+                           confirm-label="Ya, hapus" variant="ghost" confirm-variant="danger" size="sm">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                    Hapus
+                </x-confirm>
+            @endif
+            <a href="{{ $this->kembaliUrl() }}" wire:navigate class="text-sm font-semibold text-ink-muted hover:text-ink">Selesai</a>
+        </div>
     </div>
 
     <div class="grid gap-6 lg:grid-cols-3">
@@ -285,13 +295,6 @@
                             <x-confirm action="ubahStatus" arg="batal" title="Batalkan order" message="Batalkan order ini? Tindakan ini menghentikan proses order." variant="danger" size="sm">Batalkan order</x-confirm>
                         @endif
                         @if ($statusMsg)<span class="text-sm font-medium text-status-success">{{ $statusMsg }}</span>@endif
-                        @if ($this->isSuperAdmin)
-                            <div class="ml-auto">
-                                <x-confirm action="hapusOrder" title="Hapus order"
-                                           message="Order dipindahkan ke sampah dan bisa dipulihkan hingga {{ \App\Models\Order::TRASH_RETENTION_DAYS }} hari. Lanjutkan?"
-                                           confirm-label="Ya, hapus" variant="ghost" confirm-variant="danger" size="sm">Hapus order</x-confirm>
-                            </div>
-                        @endif
                     </div>
                 </x-card>
 
