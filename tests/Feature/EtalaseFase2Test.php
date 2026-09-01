@@ -133,6 +133,29 @@ class EtalaseFase2Test extends TestCase
             ->assertDontSee('SINGLE-8R');
     }
 
+    public function test_desain_difilter_oleh_produk(): void
+    {
+        $kategori = Kategori::create(['nama' => 'Souvenir', 'pakai_desain' => true]);
+        $hanging = Produk::create(['kategori_id' => $kategori->id, 'nama' => 'Hanging', 'harga' => 20000, 'status' => 'aktif']);
+        $kalender = Produk::create(['kategori_id' => $kategori->id, 'nama' => 'Kalender', 'harga' => 30000, 'status' => 'aktif']);
+
+        Desain::create(['kategori_id' => $kategori->id, 'produk_id' => $hanging->id, 'kode' => 'DSN-HANGING', 'tahun_ajaran' => '2026/2027', 'status' => 'aktif']);
+        Desain::create(['kategori_id' => $kategori->id, 'produk_id' => $kalender->id, 'kode' => 'DSN-KALENDER', 'tahun_ajaran' => '2026/2027', 'status' => 'aktif']);
+        Desain::create(['kategori_id' => $kategori->id, 'produk_id' => null, 'kode' => 'DSN-UMUM', 'tahun_ajaran' => '2026/2027', 'status' => 'aktif']);
+
+        // Etalase produk Hanging → hanya desain Hanging + umum.
+        Livewire::test(EtalaseDetail::class, ['konteks' => 'staf', 'tipe' => 'produk', 'id' => $hanging->id])
+            ->assertSee('DSN-HANGING')
+            ->assertSee('DSN-UMUM')
+            ->assertDontSee('DSN-KALENDER');
+
+        // Etalase produk Kalender → hanya desain Kalender + umum.
+        Livewire::test(EtalaseDetail::class, ['konteks' => 'staf', 'tipe' => 'produk', 'id' => $kalender->id])
+            ->assertSee('DSN-KALENDER')
+            ->assertSee('DSN-UMUM')
+            ->assertDontSee('DSN-HANGING');
+    }
+
     public function test_ganti_ukuran_melepas_desain_tak_cocok(): void
     {
         $kategori = Kategori::create(['nama' => 'Free Sekolah', 'pakai_desain' => true]);

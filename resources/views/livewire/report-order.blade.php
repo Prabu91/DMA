@@ -79,11 +79,17 @@
         </x-slot:head>
 
         @forelse ($rows as $row)
+            @php $dihapus = ! empty($row->deleted_at); @endphp
             <x-table.tr>
                 <x-table.td nowrap>
-                    <a href="{{ route('app.order.show', $row->order_id) }}" wire:navigate class="font-medium text-brand hover:text-brand-hover">
-                        {{ $row->booking_code ?? '#'.$row->order_id }}
-                    </a>
+                    @if ($dihapus)
+                        <span class="font-medium text-ink-muted line-through">{{ $row->booking_code ?? '#'.$row->order_id }}</span>
+                        <x-badge variant="danger" class="ml-1">Data dihapus</x-badge>
+                    @else
+                        <a href="{{ route('app.order.show', $row->order_id) }}" wire:navigate class="font-medium text-brand hover:text-brand-hover">
+                            {{ $row->booking_code ?? '#'.$row->order_id }}
+                        </a>
+                    @endif
                 </x-table.td>
                 <x-table.td nowrap muted>{{ $row->tanggal_booking ? \Illuminate\Support\Carbon::parse($row->tanggal_booking)->translatedFormat('d M Y') : '—' }}</x-table.td>
                 <x-table.td nowrap>{{ $row->marketing_nama ?? '—' }}</x-table.td>
@@ -99,8 +105,8 @@
                     @if ($row->tipe_item === 'paket')<x-badge variant="brand" class="ml-1">Paket</x-badge>@endif
                     @if ($row->is_free)<x-badge variant="success" class="ml-1">Free</x-badge>@endif
                 </x-table.td>
-                <x-table.td nowrap align="right" class="font-semibold">{{ number_format($row->qty, 0, ',', '.') }}</x-table.td>
-                <x-table.td nowrap align="right" class="font-semibold text-brand-hover">Rp{{ number_format($row->nominal, 0, ',', '.') }}</x-table.td>
+                <x-table.td nowrap align="right" class="{{ $dihapus ? 'text-ink-muted line-through' : 'font-semibold' }}">{{ number_format($row->qty, 0, ',', '.') }}</x-table.td>
+                <x-table.td nowrap align="right" class="{{ $dihapus ? 'text-ink-muted line-through' : 'font-semibold text-brand-hover' }}">Rp{{ number_format($row->nominal, 0, ',', '.') }}</x-table.td>
             </x-table.tr>
         @empty
             <x-table.empty :colspan="9">Tidak ada data untuk filter ini.</x-table.empty>

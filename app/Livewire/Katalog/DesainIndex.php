@@ -30,6 +30,8 @@ class DesainIndex extends Component
 
     public ?int $kategori_id = null;
 
+    public ?int $produk_id = null;
+
     public string $kode = '';
 
     public ?string $seri = null;
@@ -69,6 +71,29 @@ class DesainIndex extends Component
         return $this->kategoriDesainOptions();
     }
 
+    /** Produk pada kategori terpilih (untuk membatasi desain ke produk tertentu). */
+    #[Computed]
+    public function produkOptions(): array
+    {
+        if (! $this->kategori_id) {
+            return [];
+        }
+
+        return \App\Models\Produk::where('kategori_id', $this->kategori_id)
+            ->orderBy('nama')
+            ->pluck('nama', 'id')
+            ->all();
+    }
+
+    /** Ganti kategori → lepas produk yang tak lagi cocok. */
+    public function updatedKategoriId(): void
+    {
+        unset($this->produkOptions);
+        if ($this->produk_id && ! array_key_exists($this->produk_id, $this->produkOptions)) {
+            $this->produk_id = null;
+        }
+    }
+
     #[Computed]
     public function tahunOptions(): array
     {
@@ -96,6 +121,7 @@ class DesainIndex extends Component
     {
         return [
             'kategori_id' => ['required', Rule::exists('kategori', 'id')->where('pakai_desain', true)],
+            'produk_id' => ['nullable', Rule::exists('produk', 'id')->where('kategori_id', $this->kategori_id)],
             'kode' => ['required', 'string', 'max:100', Rule::unique('desain', 'kode')->ignore($this->editingId)],
             'seri' => ['nullable', 'string', 'max:100'],
             'ukuran' => ['nullable', 'string', 'max:20'],
@@ -124,6 +150,7 @@ class DesainIndex extends Component
         $this->error = null;
         $this->editingId = $desain->id;
         $this->kategori_id = $desain->kategori_id;
+        $this->produk_id = $desain->produk_id;
         $this->kode = $desain->kode;
         $this->seri = $desain->seri;
         $this->ukuran = $desain->ukuran;
@@ -144,6 +171,7 @@ class DesainIndex extends Component
 
         $data = [
             'kategori_id' => $this->kategori_id,
+            'produk_id' => $this->produk_id ?: null,
             'kode' => $this->kode,
             'seri' => $this->seri,
             'ukuran' => $this->ukuran ?: null,
@@ -224,7 +252,7 @@ class DesainIndex extends Component
 
     public function resetForm(): void
     {
-        $this->reset(['editingId', 'kategori_id', 'kode', 'seri', 'ukuran', 'orientasi', 'tahun_ajaran', 'status', 'foto_preview', 'fotoExisting']);
+        $this->reset(['editingId', 'kategori_id', 'produk_id', 'kode', 'seri', 'ukuran', 'orientasi', 'tahun_ajaran', 'status', 'foto_preview', 'fotoExisting']);
         $this->status = 'aktif';
         $this->resetErrorBag();
     }
@@ -232,7 +260,7 @@ class DesainIndex extends Component
     public function render()
     {
         $desain = Desain::query()
-            ->with('kategori')
+            ->with(['kategori', 'produk'])
             ->withCount('orderItems')
             ->when($this->filterKategori, fn ($q) => $q->where('kategori_id', $this->filterKategori))
             ->when($this->filterTahun, fn ($q) => $q->where('tahun_ajaran', $this->filterTahun))

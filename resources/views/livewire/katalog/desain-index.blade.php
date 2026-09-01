@@ -47,6 +47,7 @@
                         </div>
                         <div class="mt-0.5 text-xs text-ink-muted">
                             {{ $item->kategori?->nama ?? '—' }}
+                            @if ($item->produk) · <span class="font-medium text-ink">{{ $item->produk->nama }}</span>@else · <span class="italic">semua produk</span>@endif
                             @if ($item->seri) · Seri {{ $item->seri }}@endif
                             · {{ $item->tahun_ajaran ?: '—' }}
                         </div>
@@ -77,7 +78,8 @@
 
                 <form wire:submit="save" class="mt-4 space-y-4">
                     <div class="grid gap-4 sm:grid-cols-2">
-                        <x-select label="Kategori" wire:model="kategori_id" :options="$this->kategoriDesainOptions" :selected="$kategori_id" placeholder="— Pilih kategori —" :error="$errors->first('kategori_id')" hint="Hanya kategori berdesain." />
+                        <x-select label="Kategori" wire:model.live="kategori_id" :options="$this->kategoriDesainOptions" :selected="$kategori_id" placeholder="— Pilih kategori —" :error="$errors->first('kategori_id')" hint="Hanya kategori berdesain." />
+                        <x-select label="Produk (opsional)" wire:model="produk_id" :options="$this->produkOptions" :selected="$produk_id" placeholder="— Semua produk di kategori —" :error="$errors->first('produk_id')" :hint="$kategori_id ? 'Kosongkan bila berlaku semua produk di kategori. Isi bila khusus 1 produk (mis. Hanging / Kalender / Medali).' : 'Pilih kategori dulu untuk memilih produk.'" />
                         <x-input label="Kode" wire:model="kode" :error="$errors->first('kode')" placeholder="mis. ERP-001" />
                         <x-input label="Seri" wire:model="seri" :error="$errors->first('seri')" hint="Opsional." />
                         <x-select label="Orientasi" wire:model="orientasi" :options="$this->orientasiOptions" :selected="$orientasi" placeholder="— Tidak ditentukan —" :error="$errors->first('orientasi')" />

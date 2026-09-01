@@ -18,6 +18,7 @@ class Desain extends Model
 
     protected $fillable = [
         'kategori_id',
+        'produk_id',
         'kode',
         'seri',
         'ukuran',
@@ -30,6 +31,11 @@ class Desain extends Model
     public function kategori(): BelongsTo
     {
         return $this->belongsTo(Kategori::class);
+    }
+
+    public function produk(): BelongsTo
+    {
+        return $this->belongsTo(Produk::class);
     }
 
     public function orderItems(): HasMany

@@ -73,6 +73,19 @@ class ReportOrderTest extends TestCase
         return $order;
     }
 
+    public function test_order_dihapus_ditandai_tapi_tak_masuk_nominal(): void
+    {
+        $order = $this->orderDengan3Item();
+        $order->delete(); // soft delete
+
+        Livewire::actingAs($this->superAdmin())
+            ->test(ReportOrder::class)
+            ->assertViewHas('totalBaris', 3)     // baris tetap tampil (sebagai penanda)
+            ->assertViewHas('totalQty', 0)       // qty order terhapus TAK dihitung
+            ->assertViewHas('totalNominal', 0)   // nominal order terhapus TAK dihitung
+            ->assertSee('Data dihapus');
+    }
+
     public function test_per_item_satu_order_tampil_banyak_baris(): void
     {
         $this->orderDengan3Item();

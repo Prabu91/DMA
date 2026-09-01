@@ -17,7 +17,7 @@ use Livewire\WithPagination;
  * tampil 4 baris. Fokus: melihat produk apa terjual berapa banyak.
  * Bisa difilter (cari, cabang, produk, jenis item, rentang tanggal) + paginasi.
  */
-#[Layout('layouts.app')]
+#[Layout('layouts.app', ['contentWidth' => 'max-w-screen-2xl'])]
 class ReportOrder extends Component
 {
     use WithPagination, WithSorting;
@@ -117,16 +117,17 @@ class ReportOrder extends Component
                 's.id_sekolah', 's.nama as sekolah_nama', 's.alamat as sekolah_alamat',
                 DB::raw('coalesce(p.nama, pk.nama) as item_nama'),
                 DB::raw('(oi.harga - oi.diskon) * oi.qty as nominal'), // nominal setelah diskon
+                'o.deleted_at', // penanda order dihapus (query mentah tak kena SoftDeletes)
             ]);
 
         $rows = $this->applySort($rowsQuery, 'o.tanggal_booking', 'desc')
             ->orderBy('oi.id')
             ->paginate($this->perPage);
 
-        // Ringkasan untuk seluruh hasil filter (bukan hanya halaman ini).
-        $totalBaris = $rows->total(); // paginate sudah menghitung total → tak perlu COUNT lagi
-        $totalQty = (int) (clone $this->baseQuery())->sum('oi.qty');
-        $totalNominal = (int) (clone $this->baseQuery())->sum(DB::raw('(oi.harga - oi.diskon) * oi.qty'));
+        $totalBaris = $rows->total(); // semua baris (termasuk yang dihapus, ditandai di tabel)
+        // Qty & Nominal HANYA order tidak dihapus → angka uang tak terpengaruh order terhapus.
+        $totalQty = (int) (clone $this->baseQuery())->whereNull('o.deleted_at')->sum('oi.qty');
+        $totalNominal = (int) (clone $this->baseQuery())->whereNull('o.deleted_at')->sum(DB::raw('(oi.harga - oi.diskon) * oi.qty'));
 
         return view('livewire.report-order', [
             'rows' => $rows,

@@ -99,6 +99,8 @@ class EtalaseDetail extends Component
 
         return Desain::where('kategori_id', $this->produk()->kategori_id)
             ->where('status', 'aktif')
+            // Desain khusus produk ini + desain umum (produk_id null) untuk kategori.
+            ->where(fn ($w) => $w->whereNull('produk_id')->orWhere('produk_id', $this->produk()->id))
             ->when($this->tahunAjaran, fn ($q) => $q->where('tahun_ajaran', $this->tahunAjaran))
             // Bila ukuran dipilih, tampilkan desain berlabel ukuran itu + desain tanpa label
             // (berlaku semua ukuran). Bila belum pilih ukuran, tampilkan semua.

@@ -36,13 +36,13 @@
                 {{-- Judul halaman (opsional) --}}
                 @isset($header)
                     <div class="border-b border-line bg-card px-4 py-4 sm:px-6">
-                        <div class="mx-auto w-full max-w-6xl">
+                        <div class="mx-auto w-full {{ $contentWidth ?? 'max-w-6xl' }}">
                             {{ $header }}
                         </div>
                     </div>
                 @endisset
 
-                <main class="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:py-8">
+                <main class="mx-auto w-full {{ $contentWidth ?? 'max-w-6xl' }} px-4 py-6 sm:px-6 lg:py-8">
                     @include('layouts.flash')
                     {{ $slot }}
                 </main>
