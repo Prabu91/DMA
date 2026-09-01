@@ -21,6 +21,27 @@
         <a href="{{ $this->kembaliUrl() }}" wire:navigate class="text-sm font-semibold text-ink-muted hover:text-ink">Selesai</a>
     </div>
 
+    {{-- OTP penyelesaian (fallback web) — di paling atas agar jelas; super admin & admin sales bila WA gagal --}}
+    @if (! $sf && $this->bisaLihatOtp && $order->eventOtpActive())
+        <div class="mb-6 rounded-xl border border-status-info/30 bg-status-info/10 p-4 sm:p-5">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex items-start gap-3">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-status-info/15 text-status-info">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
+                    </span>
+                    <div>
+                        <h3 class="text-sm font-bold text-ink">Kode OTP penyelesaian (fallback)</h3>
+                        <p class="mt-0.5 text-sm text-ink-muted">Cadangan bila WhatsApp ke guru gagal — bacakan/berikan kode ke tim event di lokasi.</p>
+                    </div>
+                </div>
+                <div class="flex items-baseline gap-3 sm:flex-col sm:items-end sm:gap-0.5">
+                    <span class="font-mono text-3xl font-bold tracking-[0.3em] text-navy">{{ $order->otp_code }}</span>
+                    <span class="text-xs text-ink-muted">berlaku s/d {{ $order->otp_expires->translatedFormat('H:i') }}</span>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <div class="grid gap-6 lg:grid-cols-3">
         <div class="space-y-6 lg:col-span-2">
             {{-- Perlu tindakan (staf): sorot yang belum dilakukan --}}
@@ -410,19 +431,6 @@
                     @endif
                 </x-card>
             @endunless
-
-            {{-- OTP penyelesaian (fallback web) — super admin & admin sales bila WA gagal --}}
-            @if (! $sf && $this->bisaLihatOtp && $order->eventOtpActive())
-                <x-card title="Kode OTP penyelesaian (fallback)">
-                    <div class="rounded-lg border border-status-info/20 bg-status-info/10 p-4">
-                        <p class="text-sm text-ink">Kode OTP aktif untuk order ini. Gunakan sebagai <span class="font-medium">cadangan bila WhatsApp ke guru gagal</span> — bacakan/berikan kode ke tim event di lokasi.</p>
-                        <div class="mt-3 flex items-baseline gap-3">
-                            <span class="font-mono text-3xl font-bold tracking-[0.3em] text-navy">{{ $order->otp_code }}</span>
-                            <span class="text-xs text-ink-muted">berlaku s/d {{ $order->otp_expires->translatedFormat('H:i') }}</span>
-                        </div>
-                    </div>
-                </x-card>
-            @endif
 
             {{-- Tim event + STE (staf) --}}
             @unless ($sf)
