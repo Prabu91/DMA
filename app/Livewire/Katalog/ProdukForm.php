@@ -2,9 +2,11 @@
 
 namespace App\Livewire\Katalog;
 
+use App\Models\Desain;
 use App\Models\Kategori;
 use App\Models\Produk;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -39,8 +41,19 @@ class ProdukForm extends Component
 
     public array $bonus = [];         // bonus_produk_id, qty
 
+    // Blok Desain (khusus produk yang sudah tersimpan) — kelola pivot desain↔produk.
+    public $desainFoto = null;
+    public string $desainKode = '';
+    public ?string $desainOrientasi = null;
+    public string $desainTahun = '';
+    public array $desainUkuran = [];   // ukuran dicentang utk desain baru ([] = semua)
+    public ?int $tempelDesainId = null; // desain existing utk ditempel
+    public ?string $desainMsg = null;
+
     public function mount(?Produk $produk = null): void
     {
+        $this->desainTahun = $this->tahunAjaranDefault();
+
         if ($produk && $produk->exists) {
             $this->authorize('update', $produk);
             $this->produkId = $produk->id;
@@ -189,6 +202,138 @@ class ProdukForm extends Component
         session()->flash('success', $this->produkId ? 'Produk diperbarui.' : 'Produk ditambahkan.');
 
         return $this->redirectRoute('app.produk.index', navigate: true);
+    }
+
+    // ========================= BLOK DESAIN (pivot desain↔produk) =========================
+
+    private function tahunAjaranDefault(): string
+    {
+        $y = (int) now()->year;
+
+        return now()->month >= 7 ? $y.'/'.($y + 1) : ($y - 1).'/'.$y;
+    }
+
+    /** Kategori produk ini memakai desain? */
+    #[Computed]
+    public function pakaiDesain(): bool
+    {
+        return (bool) (Kategori::find($this->kategori_id)?->pakai_desain);
+    }
+
+    /** Nilai opsi ukuran dari FORM (reaktif) → jadi checkbox untuk desain. */
+    #[Computed]
+    public function ukuranOpsiForm(): array
+    {
+        return collect($this->opsi)
+            ->where('tipe_opsi', 'ukuran')
+            ->pluck('nilai_opsi')
+            ->filter(fn ($v) => $v !== null && $v !== '')
+            ->unique()->values()->all();
+    }
+
+    /** Desain yang sudah ditempel ke produk ini (+ ukuran pivot). */
+    #[Computed]
+    public function attachedDesigns()
+    {
+        if (! $this->produkId) {
+            return collect();
+        }
+
+        return Produk::find($this->produkId)->desains()->orderBy('kode')->get();
+    }
+
+    /** Desain existing (kategori sama) yang belum ditempel. */
+    #[Computed]
+    public function availableDesigns(): array
+    {
+        if (! $this->produkId || ! $this->kategori_id) {
+            return [];
+        }
+
+        $attached = $this->attachedDesigns->pluck('id')->all();
+
+        return Desain::where('kategori_id', $this->kategori_id)
+            ->whereNotIn('id', $attached)
+            ->orderBy('kode')
+            ->pluck('kode', 'id')
+            ->all();
+    }
+
+    private function refreshDesigns(): void
+    {
+        unset($this->attachedDesigns, $this->availableDesigns);
+    }
+
+    /** Buat desain baru + tempel ke produk ini dengan ukuran terpilih. */
+    public function tambahDesainBaru(): void
+    {
+        abort_unless($this->produkId, 422);
+        $this->authorize('update', Produk::findOrFail($this->produkId));
+
+        $this->validate([
+            'desainKode' => ['required', 'string', 'max:100', Rule::unique('desain', 'kode')],
+            'desainOrientasi' => ['nullable', 'in:'.implode(',', array_keys(Desain::ORIENTASI))],
+            'desainTahun' => ['required', 'string', 'max:20'],
+            'desainFoto' => ['nullable', 'image', 'max:2048'],
+            'desainUkuran' => ['array'],
+            'desainUkuran.*' => ['string', Rule::in($this->ukuranOpsiForm)],
+        ]);
+
+        $path = $this->desainFoto ? $this->desainFoto->store('desain', 'public') : null;
+
+        $desain = Desain::create([
+            'kategori_id' => $this->kategori_id,
+            'kode' => $this->desainKode,
+            'orientasi' => $this->desainOrientasi,
+            'tahun_ajaran' => $this->desainTahun,
+            'status' => 'aktif',
+            'foto_preview' => $path,
+        ]);
+        $desain->products()->attach($this->produkId, ['ukuran' => $this->desainUkuran ?: null]);
+
+        $this->reset(['desainKode', 'desainOrientasi', 'desainFoto', 'desainUkuran']);
+        $this->desainTahun = $this->tahunAjaranDefault();
+        $this->refreshDesigns();
+        $this->desainMsg = 'Desain ditambahkan ke produk.';
+    }
+
+    /** Tempel desain yang sudah ada ke produk ini. */
+    public function tempelDesain(): void
+    {
+        abort_unless($this->produkId, 422);
+        $this->authorize('update', Produk::findOrFail($this->produkId));
+        if (! $this->tempelDesainId) {
+            return;
+        }
+
+        Produk::findOrFail($this->produkId)->desains()->syncWithoutDetaching([
+            $this->tempelDesainId => ['ukuran' => null],
+        ]);
+        $this->tempelDesainId = null;
+        $this->refreshDesigns();
+        $this->desainMsg = 'Desain ditempel ke produk.';
+    }
+
+    /** Lepas desain dari produk (tidak menghapus asetnya). */
+    public function lepasDesain(int $desainId): void
+    {
+        abort_unless($this->produkId, 422);
+        $this->authorize('update', Produk::findOrFail($this->produkId));
+        Produk::findOrFail($this->produkId)->desains()->detach($desainId);
+        $this->refreshDesigns();
+        $this->desainMsg = 'Desain dilepas dari produk.';
+    }
+
+    /** Set ukuran berlaku untuk sebuah desain yang ditempel ([] = semua ukuran). */
+    public function setUkuranDesain(int $desainId, array $ukuran): void
+    {
+        abort_unless($this->produkId, 422);
+        $this->authorize('update', Produk::findOrFail($this->produkId));
+        $valid = array_values(array_intersect($ukuran, $this->ukuranOpsiForm));
+        Produk::findOrFail($this->produkId)->desains()->updateExistingPivot($desainId, [
+            'ukuran' => $valid ?: null,
+        ]);
+        $this->refreshDesigns();
     }
 
     public function render()

@@ -76,6 +76,103 @@
             @endforelse
         </x-card>
 
+        {{-- ============ DESAIN PRODUK (pivot desain↔produk) ============ --}}
+        @if ($this->pakaiDesain)
+            <x-card>
+                <x-slot name="title">Desain produk</x-slot>
+                <x-slot name="subtitle">Upload / tempel desain untuk produk ini. Centang ukuran bila desain khusus ukuran tertentu; kosong = semua ukuran.</x-slot>
+
+                @if (! $produkId)
+                    <div class="rounded-lg border border-status-pending/30 bg-status-pending/10 p-3 text-sm text-ink">
+                        Simpan produk dulu, lalu kamu bisa menambah &amp; menempel desain di sini.
+                    </div>
+                @else
+                    @if ($desainMsg)<p class="mb-3 text-sm font-medium text-status-success">{{ $desainMsg }}</p>@endif
+
+                    {{-- Daftar desain terpasang --}}
+                    @if ($this->attachedDesigns->isEmpty())
+                        <p class="text-sm text-ink-muted">Belum ada desain untuk produk ini.</p>
+                    @else
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            @foreach ($this->attachedDesigns as $d)
+                                <div class="flex gap-3 rounded-lg border border-line p-3">
+                                    <div class="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-page">
+                                        @if ($d->foto_preview)
+                                            <img src="{{ asset('storage/'.$d->foto_preview) }}" loading="lazy" class="max-h-full max-w-full object-contain" alt="">
+                                        @else
+                                            <svg class="h-6 w-6 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="{{ \App\Support\Icons::path('photo') }}" /></svg>
+                                        @endif
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <span class="truncate text-sm font-medium text-ink">{{ $d->kode }}</span>
+                                            <button type="button" wire:click="lepasDesain({{ $d->id }})" class="shrink-0 text-xs font-medium text-status-danger hover:underline">Lepas</button>
+                                        </div>
+                                        @if (! empty($this->ukuranOpsiForm))
+                                            <div x-data="{ uk: {{ \Illuminate\Support\Js::from($d->pivot->ukuran ?? []) }} }" class="mt-1.5 flex flex-wrap gap-2">
+                                                @foreach ($this->ukuranOpsiForm as $u)
+                                                    <label class="inline-flex items-center gap-1 text-xs text-ink">
+                                                        <input type="checkbox" value="{{ $u }}" x-model="uk"
+                                                               x-on:change="$wire.setUkuranDesain({{ $d->id }}, uk)"
+                                                               class="h-3.5 w-3.5 rounded border-line text-brand focus:ring-1 focus:ring-brand/30">
+                                                        {{ $u }}
+                                                    </label>
+                                                @endforeach
+                                                <span class="text-xs text-ink-muted" x-show="uk.length === 0">semua ukuran</span>
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+
+                    {{-- Tempel desain yang sudah ada --}}
+                    @if (! empty($this->availableDesigns))
+                        <div class="mt-4 flex flex-wrap items-end gap-2 border-t border-line pt-4">
+                            <div class="min-w-[200px] flex-1">
+                                <x-select label="Tempel desain yang sudah ada" wire:model="tempelDesainId" :options="$this->availableDesigns" :selected="$tempelDesainId" placeholder="— Pilih desain —" />
+                            </div>
+                            <x-button type="button" wire:click="tempelDesain" variant="secondary" size="sm">Tempel</x-button>
+                        </div>
+                    @endif
+
+                    {{-- Tambah desain baru (upload) --}}
+                    <div class="mt-4 border-t border-line pt-4">
+                        <p class="mb-2 text-sm font-medium text-ink">Tambah desain baru</p>
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <x-input label="Kode desain" wire:model="desainKode" :error="$errors->first('desainKode')" placeholder="mis. ERP-001" />
+                            <x-select label="Orientasi" wire:model="desainOrientasi" :options="\App\Models\Desain::ORIENTASI" :selected="$desainOrientasi" placeholder="— Tidak ditentukan —" />
+                            <x-input label="Tahun ajaran" wire:model="desainTahun" :error="$errors->first('desainTahun')" placeholder="mis. 2026/2027" />
+                            <div class="space-y-1.5">
+                                <span class="block text-sm font-medium text-ink">Foto desain</span>
+                                <input type="file" wire:model="desainFoto" accept="image/*" class="block w-full text-sm text-ink file:mr-3 file:rounded-lg file:border-0 file:bg-page file:px-3 file:py-2 file:text-sm file:font-medium file:text-ink hover:file:bg-line">
+                                <div wire:loading wire:target="desainFoto" class="text-xs text-ink-muted">Mengunggah…</div>
+                                @error('desainFoto')<p class="text-xs text-status-danger">{{ $message }}</p>@enderror
+                            </div>
+                        </div>
+                        @if (! empty($this->ukuranOpsiForm))
+                            <div class="mt-3">
+                                <span class="block text-xs font-medium text-ink-muted">Berlaku untuk ukuran (kosong = semua)</span>
+                                <div class="mt-1.5 flex flex-wrap gap-3">
+                                    @foreach ($this->ukuranOpsiForm as $u)
+                                        <label class="inline-flex items-center gap-1.5 text-sm text-ink">
+                                            <input type="checkbox" value="{{ $u }}" wire:model="desainUkuran" class="h-4 w-4 rounded border-line text-brand focus:ring-2 focus:ring-brand/30">
+                                            {{ $u }}
+                                        </label>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+                        <x-button type="button" wire:click="tambahDesainBaru" variant="secondary" size="sm" class="mt-3">
+                            <span wire:loading.remove wire:target="tambahDesainBaru,desainFoto">Tambah desain</span>
+                            <span wire:loading wire:target="tambahDesainBaru,desainFoto">Menyimpan…</span>
+                        </x-button>
+                    </div>
+                @endif
+            </x-card>
+        @endif
+
         {{-- Bonus tetap (produk_bonus) --}}
         <x-card>
             <x-slot name="actions">

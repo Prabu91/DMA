@@ -42,6 +42,40 @@ class ProdukFase2Test extends TestCase
         return Kategori::create(['nama' => 'Foto Kelas', 'pakai_desain' => false]);
     }
 
+    public function test_tambah_desain_baru_lalu_tempel_ke_produk(): void
+    {
+        Storage::fake('public');
+        Livewire::actingAs($this->admin());
+
+        $kat = Kategori::create(['nama' => 'Souvenir', 'pakai_desain' => true]);
+        $produk = Produk::create(['kategori_id' => $kat->id, 'nama' => 'Plakat', 'harga' => 50000, 'status' => 'aktif']);
+        $produk->opsi()->create(['tipe_opsi' => 'ukuran', 'nilai_opsi' => '8R', 'is_wajib' => false]);
+        $produk->opsi()->create(['tipe_opsi' => 'ukuran', 'nilai_opsi' => '10RP', 'is_wajib' => false]);
+
+        Livewire::test(ProdukForm::class, ['produk' => $produk])
+            ->set('desainKode', 'PLK-001')
+            ->set('desainUkuran', ['8R'])
+            ->set('desainFoto', UploadedFile::fake()->image('d.jpg'))
+            ->call('tambahDesainBaru')
+            ->assertHasNoErrors();
+
+        $produk->refresh();
+        $this->assertCount(1, $produk->desains);
+        $d = $produk->desains->first();
+        $this->assertSame(['8R'], $d->pivot->ukuran);   // pivot ukuran tersimpan sbg array
+
+        // Ubah ukuran → semua (array kosong = null).
+        Livewire::test(ProdukForm::class, ['produk' => $produk])
+            ->call('setUkuranDesain', $d->id, []);
+        $this->assertNull($produk->fresh()->desains->first()->pivot->ukuran);
+
+        // Lepas desain (aset tetap ada, hanya pivot dilepas).
+        Livewire::test(ProdukForm::class, ['produk' => $produk])
+            ->call('lepasDesain', $d->id);
+        $this->assertCount(0, $produk->fresh()->desains);
+        $this->assertDatabaseHas('desain', ['kode' => 'PLK-001']); // aset tak terhapus
+    }
+
     public function test_marketing_ditolak_akses_produk(): void
     {
         $m = User::factory()->create();
