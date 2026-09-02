@@ -61,9 +61,10 @@
         <div class="grid gap-6 lg:grid-cols-3">
             {{-- Media --}}
             <div>
-                <div class="aspect-square w-full overflow-hidden rounded-xl border border-line bg-page">
+                <div class="flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl border border-line bg-page p-2">
                     @if ($produk->foto)
-                        <img src="{{ asset('storage/'.$produk->foto) }}" alt="" class="h-full w-full object-cover">
+                        {{-- object-contain: tampil utuh mengikuti orientasi asli (potret/lanskap), tak dipotong --}}
+                        <img src="{{ asset('storage/'.$produk->foto) }}" alt="" class="max-h-full max-w-full object-contain">
                     @else
                         <div class="flex h-full w-full items-center justify-center text-ink-muted">
                             <svg class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="{{ \App\Support\Icons::path('product') }}" /></svg>
@@ -132,9 +133,10 @@
                                         'border-line hover:border-brand/40' => $selectedDesain !== $desain->id,
                                     ])>
                                         <input type="radio" wire:model.live="selectedDesain" value="{{ $desain->id }}" class="sr-only">
-                                        <div class="aspect-[3/4] w-full bg-page">
+                                        <div class="flex aspect-square w-full items-center justify-center bg-page p-1">
                                             @if ($desain->foto_preview)
-                                                <img src="{{ asset('storage/'.$desain->foto_preview) }}" alt="" class="h-full w-full object-cover">
+                                                {{-- object-contain: preview mengikuti orientasi foto asli (potret/lanskap) --}}
+                                                <img src="{{ asset('storage/'.$desain->foto_preview) }}" alt="" class="max-h-full max-w-full object-contain">
                                             @else
                                                 <div class="flex h-full w-full items-center justify-center text-ink-muted">
                                                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="{{ \App\Support\Icons::path('photo') }}" /></svg>

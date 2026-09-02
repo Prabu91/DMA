@@ -80,12 +80,13 @@ class KatalogPublikFase2Test extends TestCase
             'harga' => 75000,
             'status' => 'aktif',
         ]);
-        Desain::create([
+        $desain = Desain::create([
             'kategori_id' => $kategori->id,
             'kode' => 'WSD-2025-001',
             'tahun_ajaran' => '2025/2026',
             'status' => 'aktif',
         ]);
+        $desain->products()->attach($produk->id, ['ukuran' => null]); // ditempel ke produk
 
         Livewire::test(EtalaseDetail::class, ['konteks' => 'publik', 'tipe' => 'produk', 'id' => $produk->id])
             ->call('tambah')

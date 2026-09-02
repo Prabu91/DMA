@@ -10,11 +10,12 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use Livewire\WithPagination;
 
 #[Layout('layouts.app')]
 class DesainIndex extends Component
 {
-    use WithFileUploads;
+    use WithFileUploads, WithPagination;
 
     // Filter daftar
     public ?int $filterKategori = null;
@@ -30,13 +31,9 @@ class DesainIndex extends Component
 
     public ?int $kategori_id = null;
 
-    public ?int $produk_id = null;
-
     public string $kode = '';
 
     public ?string $seri = null;
-
-    public ?string $ukuran = null;
 
     public ?string $orientasi = null;
 
@@ -57,6 +54,21 @@ class DesainIndex extends Component
         $this->authorize('viewAny', Desain::class);
     }
 
+    public function updatedSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterKategori(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterTahun(): void
+    {
+        $this->resetPage();
+    }
+
     /** Kategori untuk form: hanya yang memakai desain. */
     #[Computed]
     public function kategoriDesainOptions(): array
@@ -71,28 +83,6 @@ class DesainIndex extends Component
         return $this->kategoriDesainOptions();
     }
 
-    /** Produk pada kategori terpilih (untuk membatasi desain ke produk tertentu). */
-    #[Computed]
-    public function produkOptions(): array
-    {
-        if (! $this->kategori_id) {
-            return [];
-        }
-
-        return \App\Models\Produk::where('kategori_id', $this->kategori_id)
-            ->orderBy('nama')
-            ->pluck('nama', 'id')
-            ->all();
-    }
-
-    /** Ganti kategori → lepas produk yang tak lagi cocok. */
-    public function updatedKategoriId(): void
-    {
-        unset($this->produkOptions);
-        if ($this->produk_id && ! array_key_exists($this->produk_id, $this->produkOptions)) {
-            $this->produk_id = null;
-        }
-    }
 
     #[Computed]
     public function tahunOptions(): array
@@ -121,10 +111,8 @@ class DesainIndex extends Component
     {
         return [
             'kategori_id' => ['required', Rule::exists('kategori', 'id')->where('pakai_desain', true)],
-            'produk_id' => ['nullable', Rule::exists('produk', 'id')->where('kategori_id', $this->kategori_id)],
             'kode' => ['required', 'string', 'max:100', Rule::unique('desain', 'kode')->ignore($this->editingId)],
             'seri' => ['nullable', 'string', 'max:100'],
-            'ukuran' => ['nullable', 'string', 'max:20'],
             'orientasi' => ['nullable', 'in:'.implode(',', array_keys(Desain::ORIENTASI))],
             'tahun_ajaran' => ['required', 'string', 'max:20'],
             'status' => ['required', 'in:'.implode(',', array_keys(Desain::STATUS))],
@@ -150,10 +138,8 @@ class DesainIndex extends Component
         $this->error = null;
         $this->editingId = $desain->id;
         $this->kategori_id = $desain->kategori_id;
-        $this->produk_id = $desain->produk_id;
         $this->kode = $desain->kode;
         $this->seri = $desain->seri;
-        $this->ukuran = $desain->ukuran;
         $this->orientasi = $desain->orientasi;
         $this->tahun_ajaran = $desain->tahun_ajaran ?? '';
         $this->status = $desain->status ?: 'aktif';
@@ -171,10 +157,8 @@ class DesainIndex extends Component
 
         $data = [
             'kategori_id' => $this->kategori_id,
-            'produk_id' => $this->produk_id ?: null,
             'kode' => $this->kode,
             'seri' => $this->seri,
-            'ukuran' => $this->ukuran ?: null,
             'orientasi' => $this->orientasi,
             'tahun_ajaran' => $this->tahun_ajaran,
             'status' => $this->status,
@@ -237,22 +221,9 @@ class DesainIndex extends Component
         return auth()->user()?->hasRole('super_admin') ?? false;
     }
 
-    /** Nilai opsi ukuran yang dipakai produk (saran isian field Ukuran). */
-    #[\Livewire\Attributes\Computed]
-    public function ukuranTersedia(): array
-    {
-        return \App\Models\ProdukOpsi::where('tipe_opsi', 'ukuran')
-            ->whereNotNull('nilai_opsi')
-            ->where('nilai_opsi', '!=', '')
-            ->distinct()
-            ->orderBy('nilai_opsi')
-            ->pluck('nilai_opsi')
-            ->all();
-    }
-
     public function resetForm(): void
     {
-        $this->reset(['editingId', 'kategori_id', 'produk_id', 'kode', 'seri', 'ukuran', 'orientasi', 'tahun_ajaran', 'status', 'foto_preview', 'fotoExisting']);
+        $this->reset(['editingId', 'kategori_id', 'kode', 'seri', 'orientasi', 'tahun_ajaran', 'status', 'foto_preview', 'fotoExisting']);
         $this->status = 'aktif';
         $this->resetErrorBag();
     }
@@ -260,13 +231,13 @@ class DesainIndex extends Component
     public function render()
     {
         $desain = Desain::query()
-            ->with(['kategori', 'produk'])
-            ->withCount('orderItems')
+            ->with(['kategori', 'products:id,nama'])
+            ->withCount(['orderItems', 'products'])
             ->when($this->filterKategori, fn ($q) => $q->where('kategori_id', $this->filterKategori))
             ->when($this->filterTahun, fn ($q) => $q->where('tahun_ajaran', $this->filterTahun))
             ->when($this->search !== '', fn ($q) => $q->where('kode', 'ilike', '%'.$this->search.'%'))
             ->orderBy('kode')
-            ->get();
+            ->paginate(24);
 
         return view('livewire.katalog.desain-index', compact('desain'));
     }

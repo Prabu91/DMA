@@ -38,6 +38,15 @@ class Desain extends Model
         return $this->belongsTo(Produk::class);
     }
 
+    /** Produk-produk yang memakai desain ini (many-to-many) + ukuran berlaku per produk. */
+    public function products(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(Produk::class, 'desain_produk')
+            ->using(DesainProduk::class)
+            ->withPivot('ukuran')
+            ->withTimestamps();
+    }
+
     public function orderItems(): HasMany
     {
         return $this->hasMany(OrderItem::class);

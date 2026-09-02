@@ -38,6 +38,23 @@ class Produk extends Model
         return $this->hasMany(ProdukOpsi::class);
     }
 
+    /** Desain yang dipakai produk ini (many-to-many) + ukuran berlaku (pivot). */
+    public function desains(): BelongsToMany
+    {
+        return $this->belongsToMany(Desain::class, 'desain_produk')
+            ->using(DesainProduk::class)
+            ->withPivot('ukuran')
+            ->withTimestamps();
+    }
+
+    /** Nilai opsi ukuran produk ini (untuk checkbox ukuran pada desain). */
+    public function ukuranOpsi(): array
+    {
+        return $this->opsi
+            ? $this->opsi->where('tipe_opsi', 'ukuran')->pluck('nilai_opsi')->filter()->values()->all()
+            : $this->opsi()->where('tipe_opsi', 'ukuran')->pluck('nilai_opsi')->filter()->values()->all();
+    }
+
     public function paket(): BelongsToMany
     {
         return $this->belongsToMany(Paket::class, 'paket_item', 'produk_id', 'paket_id')->distinct();

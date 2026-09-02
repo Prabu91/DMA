@@ -32,7 +32,7 @@
             <div class="flex flex-col gap-2 border-b border-line px-5 py-3.5 last:border-b-0 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                 <div class="flex min-w-0 items-start gap-3">
                     @if ($item->foto_preview)
-                        <img src="{{ asset('storage/'.$item->foto_preview) }}" alt="" class="h-12 w-12 shrink-0 rounded-lg border border-line object-cover">
+                        <img src="{{ asset('storage/'.$item->foto_preview) }}" alt="" loading="lazy" class="h-12 w-12 shrink-0 rounded-lg border border-line object-cover">
                     @else
                         <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-line bg-page text-ink-muted">
                             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="{{ \App\Support\Icons::path('photo') }}" /></svg>
@@ -41,13 +41,12 @@
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
                             <span class="text-sm font-medium text-ink">{{ $item->kode }}</span>
-                            @if ($item->ukuran)<x-badge variant="brand">{{ $item->ukuran }}</x-badge>@endif
                             @if ($item->orientasi)<x-badge variant="neutral">{{ \App\Models\Desain::ORIENTASI[$item->orientasi] ?? $item->orientasi }}</x-badge>@endif
                             <x-badge :variant="$item->status === 'aktif' ? 'success' : 'danger'">{{ \App\Models\Desain::STATUS[$item->status] ?? $item->status }}</x-badge>
                         </div>
                         <div class="mt-0.5 text-xs text-ink-muted">
                             {{ $item->kategori?->nama ?? '—' }}
-                            @if ($item->produk) · <span class="font-medium text-ink">{{ $item->produk->nama }}</span>@else · <span class="italic">semua produk</span>@endif
+                            · @if ($item->products_count > 0)<span class="font-medium text-ink">{{ $item->products->pluck('nama')->join(', ') }}</span>@else<span class="italic">belum dipakai produk</span>@endif
                             @if ($item->seri) · Seri {{ $item->seri }}@endif
                             · {{ $item->tahun_ajaran ?: '—' }}
                         </div>
@@ -69,6 +68,10 @@
         @endforelse
     </x-card>
 
+    @if ($desain->hasPages())
+        <div class="mt-4">{{ $desain->links() }}</div>
+    @endif
+
     {{-- Modal --}}
     @if ($showForm)
         <div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center" wire:key="desain-modal">
@@ -78,8 +81,7 @@
 
                 <form wire:submit="save" class="mt-4 space-y-4">
                     <div class="grid gap-4 sm:grid-cols-2">
-                        <x-select label="Kategori" wire:model.live="kategori_id" :options="$this->kategoriDesainOptions" :selected="$kategori_id" placeholder="— Pilih kategori —" :error="$errors->first('kategori_id')" hint="Hanya kategori berdesain." />
-                        <x-select label="Produk (opsional)" wire:model="produk_id" :options="$this->produkOptions" :selected="$produk_id" placeholder="— Semua produk di kategori —" :error="$errors->first('produk_id')" :hint="$kategori_id ? 'Kosongkan bila berlaku semua produk di kategori. Isi bila khusus 1 produk (mis. Hanging / Kalender / Medali).' : 'Pilih kategori dulu untuk memilih produk.'" />
+                        <x-select label="Kategori" wire:model="kategori_id" :options="$this->kategoriDesainOptions" :selected="$kategori_id" placeholder="— Pilih kategori —" :error="$errors->first('kategori_id')" hint="Untuk pengelompokan." />
                         <x-input label="Kode" wire:model="kode" :error="$errors->first('kode')" placeholder="mis. ERP-001" />
                         <x-input label="Seri" wire:model="seri" :error="$errors->first('seri')" hint="Opsional." />
                         <x-select label="Orientasi" wire:model="orientasi" :options="$this->orientasiOptions" :selected="$orientasi" placeholder="— Tidak ditentukan —" :error="$errors->first('orientasi')" />
@@ -87,26 +89,8 @@
                         <x-select label="Status" wire:model="status" :options="$this->statusOptions" :selected="$status" :error="$errors->first('status')" />
                     </div>
 
-                    {{-- Ukuran (opsional) + caution pencocokan --}}
-                    <div class="space-y-1.5">
-                        <x-input label="Ukuran (opsional)" wire:model="ukuran" :error="$errors->first('ukuran')" placeholder="mis. 8R / 10R" />
-                        <div class="rounded-lg border border-status-pending/30 bg-status-pending/10 p-3">
-                            <div class="flex gap-2">
-                                <svg class="mt-0.5 h-4 w-4 shrink-0 text-status-pending" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
-                                <div class="text-xs text-ink">
-                                    <p><span class="font-semibold">Harus sama persis</span> dengan nilai opsi ukuran di produk (mis. <span class="font-mono">10R</span>, bukan <span class="font-mono">10 R</span> / <span class="font-mono">10RP</span> / <span class="font-mono">10r</span>). Kalau beda, desain ini tidak akan muncul saat ukuran itu dipilih. <span class="text-ink-muted">Kosongkan bila berlaku untuk semua ukuran.</span></p>
-                                    @if (! empty($this->ukuranTersedia))
-                                        <div class="mt-2 flex flex-wrap items-center gap-1.5">
-                                            <span class="text-ink-muted">Ukuran terpakai di produk:</span>
-                                            @foreach ($this->ukuranTersedia as $u)
-                                                <button type="button" wire:click="$set('ukuran', @js($u))"
-                                                        class="rounded-md border border-status-pending/40 bg-card px-2 py-0.5 font-mono text-[11px] text-ink hover:bg-status-pending/10">{{ $u }}</button>
-                                            @endforeach
-                                        </div>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
+                    <div class="rounded-lg border border-status-info/20 bg-status-info/10 p-3 text-xs text-ink">
+                        Penempelan desain ke <span class="font-medium">produk</span> &amp; pemilihan <span class="font-medium">ukuran</span> dilakukan di <span class="font-medium">halaman Produk</span> (blok Desain), bukan di sini.
                     </div>
 
                     {{-- Foto preview --}}

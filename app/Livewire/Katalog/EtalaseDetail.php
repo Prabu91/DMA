@@ -97,17 +97,29 @@ class EtalaseDetail extends Component
             return collect();
         }
 
-        return Desain::where('kategori_id', $this->produk()->kategori_id)
-            ->where('status', 'aktif')
-            // Desain khusus produk ini + desain umum (produk_id null) untuk kategori.
-            ->where(fn ($w) => $w->whereNull('produk_id')->orWhere('produk_id', $this->produk()->id))
+        $pid = $this->produk()->id;
+
+        $pool = Desain::where('status', 'aktif')
             ->when($this->tahunAjaran, fn ($q) => $q->where('tahun_ajaran', $this->tahunAjaran))
-            // Bila ukuran dipilih, tampilkan desain berlabel ukuran itu + desain tanpa label
-            // (berlaku semua ukuran). Bila belum pilih ukuran, tampilkan semua.
-            ->when($this->selectedUkuran, fn ($q) => $q->where(fn ($w) => $w
-                ->whereNull('ukuran')->orWhere('ukuran', $this->selectedUkuran)))
+            // Desain yang ditempel ke produk ini (pivot desain_produk).
+            ->whereHas('products', fn ($q) => $q->where('produk.id', $pid))
+            ->with(['products' => fn ($q) => $q->where('produk.id', $pid)])
             ->orderBy('kode')
             ->get();
+
+        // Filter ukuran: pivot.ukuran kosong = semua ukuran; selain itu harus memuat ukuran terpilih.
+        if ($this->selectedUkuran) {
+            $pool = $pool->filter(function ($d) {
+                $uk = $d->products->first()?->pivot->ukuran ?? [];
+                if (is_string($uk)) {
+                    $uk = json_decode($uk, true) ?: [];
+                }
+
+                return empty($uk) || in_array($this->selectedUkuran, $uk, true);
+            })->values();
+        }
+
+        return $pool;
     }
 
     /** Saat ukuran berubah, lepas pilihan desain bila tak lagi cocok dengan ukuran. */

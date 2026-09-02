@@ -85,15 +85,26 @@ class EtalaseFase2Test extends TestCase
 
     // ---------- Detail: desain pool + opsi ----------
 
+    /** Buat desain + tempel ke produk (pivot) dgn ukuran. $attach = [produkId => [sizes]|null]. */
+    private function desain(Kategori $kat, string $kode, array $attach, string $tahun = '2026/2027', string $status = 'aktif'): Desain
+    {
+        $d = Desain::create(['kategori_id' => $kat->id, 'kode' => $kode, 'tahun_ajaran' => $tahun, 'status' => $status]);
+        foreach ($attach as $produkId => $ukuran) {
+            $d->products()->attach($produkId, ['ukuran' => $ukuran ? json_encode($ukuran) : null]);
+        }
+
+        return $d;
+    }
+
     public function test_detail_produk_menampilkan_pool_desain_dan_opsi(): void
     {
         $kategori = Kategori::create(['nama' => 'Wisuda', 'pakai_desain' => true]);
         $produk = Produk::create(['kategori_id' => $kategori->id, 'nama' => 'Foto Wisuda', 'harga' => 50000, 'status' => 'aktif']);
         $produk->opsi()->create(['tipe_opsi' => 'ukuran', 'nilai_opsi' => '10RP', 'is_wajib' => true]);
 
-        Desain::create(['kategori_id' => $kategori->id, 'kode' => 'ERP-2026', 'tahun_ajaran' => '2026/2027', 'status' => 'aktif']);
-        Desain::create(['kategori_id' => $kategori->id, 'kode' => 'ERP-2025', 'tahun_ajaran' => '2025/2026', 'status' => 'aktif']);
-        Desain::create(['kategori_id' => $kategori->id, 'kode' => 'ERP-OFF', 'tahun_ajaran' => '2026/2027', 'status' => 'nonaktif']);
+        $this->desain($kategori, 'ERP-2026', [$produk->id => null], '2026/2027');
+        $this->desain($kategori, 'ERP-2025', [$produk->id => null], '2025/2026');
+        $this->desain($kategori, 'ERP-OFF', [$produk->id => null], '2026/2027', 'nonaktif');
 
         Livewire::test(EtalaseDetail::class, ['konteks' => 'staf', 'tipe' => 'produk', 'id' => $produk->id])
             ->assertSet('tahunAjaran', '2026/2027')   // tahun terbaru = default aktif
@@ -114,9 +125,9 @@ class EtalaseFase2Test extends TestCase
         $produk->opsi()->create(['tipe_opsi' => 'ukuran', 'nilai_opsi' => '8R', 'is_wajib' => true]);
         $produk->opsi()->create(['tipe_opsi' => 'ukuran', 'nilai_opsi' => '10R', 'is_wajib' => true]);
 
-        Desain::create(['kategori_id' => $kategori->id, 'kode' => 'SINGLE-8R', 'ukuran' => '8R', 'tahun_ajaran' => '2026/2027', 'status' => 'aktif']);
-        Desain::create(['kategori_id' => $kategori->id, 'kode' => 'KOLASE-10R', 'ukuran' => '10R', 'tahun_ajaran' => '2026/2027', 'status' => 'aktif']);
-        Desain::create(['kategori_id' => $kategori->id, 'kode' => 'UMUM', 'ukuran' => null, 'tahun_ajaran' => '2026/2027', 'status' => 'aktif']);
+        $this->desain($kategori, 'SINGLE-8R', [$produk->id => ['8R']]);
+        $this->desain($kategori, 'KOLASE-10R', [$produk->id => ['10R']]);
+        $this->desain($kategori, 'UMUM', [$produk->id => null]); // semua ukuran
 
         $comp = Livewire::test(EtalaseDetail::class, ['konteks' => 'staf', 'tipe' => 'produk', 'id' => $produk->id]);
 
@@ -139,9 +150,9 @@ class EtalaseFase2Test extends TestCase
         $hanging = Produk::create(['kategori_id' => $kategori->id, 'nama' => 'Hanging', 'harga' => 20000, 'status' => 'aktif']);
         $kalender = Produk::create(['kategori_id' => $kategori->id, 'nama' => 'Kalender', 'harga' => 30000, 'status' => 'aktif']);
 
-        Desain::create(['kategori_id' => $kategori->id, 'produk_id' => $hanging->id, 'kode' => 'DSN-HANGING', 'tahun_ajaran' => '2026/2027', 'status' => 'aktif']);
-        Desain::create(['kategori_id' => $kategori->id, 'produk_id' => $kalender->id, 'kode' => 'DSN-KALENDER', 'tahun_ajaran' => '2026/2027', 'status' => 'aktif']);
-        Desain::create(['kategori_id' => $kategori->id, 'produk_id' => null, 'kode' => 'DSN-UMUM', 'tahun_ajaran' => '2026/2027', 'status' => 'aktif']);
+        $this->desain($kategori, 'DSN-HANGING', [$hanging->id => null]);
+        $this->desain($kategori, 'DSN-KALENDER', [$kalender->id => null]);
+        $this->desain($kategori, 'DSN-UMUM', [$hanging->id => null, $kalender->id => null]); // dipakai kedua produk
 
         // Etalase produk Hanging → hanya desain Hanging + umum.
         Livewire::test(EtalaseDetail::class, ['konteks' => 'staf', 'tipe' => 'produk', 'id' => $hanging->id])
@@ -162,8 +173,8 @@ class EtalaseFase2Test extends TestCase
         $produk = Produk::create(['kategori_id' => $kategori->id, 'nama' => 'Free', 'harga' => 0, 'status' => 'aktif']);
         $produk->opsi()->create(['tipe_opsi' => 'ukuran', 'nilai_opsi' => '8R', 'is_wajib' => true]);
         $produk->opsi()->create(['tipe_opsi' => 'ukuran', 'nilai_opsi' => '10R', 'is_wajib' => true]);
-        $d8 = Desain::create(['kategori_id' => $kategori->id, 'kode' => 'SINGLE-8R', 'ukuran' => '8R', 'tahun_ajaran' => '2026/2027', 'status' => 'aktif']);
-        Desain::create(['kategori_id' => $kategori->id, 'kode' => 'KOLASE-10R', 'ukuran' => '10R', 'tahun_ajaran' => '2026/2027', 'status' => 'aktif']);
+        $d8 = $this->desain($kategori, 'SINGLE-8R', [$produk->id => ['8R']]);
+        $this->desain($kategori, 'KOLASE-10R', [$produk->id => ['10R']]);
 
         Livewire::test(EtalaseDetail::class, ['konteks' => 'staf', 'tipe' => 'produk', 'id' => $produk->id])
             ->set('selectedUkuran', '8R')

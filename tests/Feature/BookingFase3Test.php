@@ -49,7 +49,8 @@ class BookingFase3Test extends TestCase
         $kategori = Kategori::create(['nama' => 'Wisuda', 'pakai_desain' => true]);
         $produk = Produk::create(['kategori_id' => $kategori->id, 'nama' => 'Foto Wisuda', 'harga' => 50000, 'status' => 'aktif']);
         $produk->opsi()->create(['tipe_opsi' => 'ukuran', 'nilai_opsi' => '10RP', 'is_wajib' => true]);
-        \App\Models\Desain::create(['kategori_id' => $kategori->id, 'kode' => 'ERP-001', 'tahun_ajaran' => '2026/2027', 'status' => 'aktif']);
+        $desain = \App\Models\Desain::create(['kategori_id' => $kategori->id, 'kode' => 'ERP-001', 'tahun_ajaran' => '2026/2027', 'status' => 'aktif']);
+        $desain->products()->attach($produk->id, ['ukuran' => null]); // ditempel ke produk (semua ukuran)
 
         Livewire::test(EtalaseDetail::class, ['konteks' => 'staf', 'tipe' => 'produk', 'id' => $produk->id])
             ->call('tambah')
