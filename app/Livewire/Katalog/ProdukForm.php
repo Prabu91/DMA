@@ -37,7 +37,8 @@ class ProdukForm extends Component
     public ?string $fotoExisting = null;
 
     // Repeater bersarang
-    public array $opsi = [];          // tipe_opsi, nilai_opsi, harga_override, is_wajib
+    // Varian produk: [ ['tipe'=>'ukuran','is_wajib'=>bool,'values'=>[['nilai'=>'8R','harga_override'=>null], ...]], ... ]
+    public array $variants = [];
 
     public array $bonus = [];         // bonus_produk_id, qty
 
@@ -65,12 +66,16 @@ class ProdukForm extends Component
             $this->status = $produk->status ?: 'aktif';
             $this->fotoExisting = $produk->foto;
 
-            $this->opsi = $produk->opsi->map(fn ($o) => [
-                'tipe_opsi' => $o->tipe_opsi,
-                'nilai_opsi' => $o->nilai_opsi,
-                'harga_override' => $o->harga_override,
-                'is_wajib' => (bool) $o->is_wajib,
-            ])->values()->all();
+            $this->variants = $produk->opsi
+                ->groupBy('tipe_opsi')
+                ->map(fn ($rows, $tipe) => [
+                    'tipe' => $tipe,
+                    'is_wajib' => (bool) $rows->contains(fn ($r) => $r->is_wajib),
+                    'values' => $rows->map(fn ($r) => [
+                        'nilai' => $r->nilai_opsi,
+                        'harga_override' => $r->harga_override,
+                    ])->values()->all(),
+                ])->values()->all();
 
             $this->bonus = $produk->bonus->map(fn ($b) => [
                 'bonus_produk_id' => $b->bonus_produk_id,
@@ -109,15 +114,26 @@ class ProdukForm extends Component
             ->all();
     }
 
-    public function addOpsi(): void
+    public function addVariant(): void
     {
-        $this->opsi[] = ['tipe_opsi' => 'ukuran', 'nilai_opsi' => '', 'harga_override' => null, 'is_wajib' => false];
+        $this->variants[] = ['tipe' => 'ukuran', 'is_wajib' => false, 'values' => [['nilai' => '', 'harga_override' => null]]];
     }
 
-    public function removeOpsi(int $i): void
+    public function removeVariant(int $vi): void
     {
-        unset($this->opsi[$i]);
-        $this->opsi = array_values($this->opsi);
+        unset($this->variants[$vi]);
+        $this->variants = array_values($this->variants);
+    }
+
+    public function addValue(int $vi): void
+    {
+        $this->variants[$vi]['values'][] = ['nilai' => '', 'harga_override' => null];
+    }
+
+    public function removeValue(int $vi, int $ki): void
+    {
+        unset($this->variants[$vi]['values'][$ki]);
+        $this->variants[$vi]['values'] = array_values($this->variants[$vi]['values']);
     }
 
     public function addBonus(): void
@@ -142,11 +158,12 @@ class ProdukForm extends Component
             'status' => ['required', 'in:'.implode(',', array_keys(Produk::STATUS))],
             'foto' => ['nullable', 'image', 'max:2048'],
 
-            'opsi' => ['array'],
-            'opsi.*.tipe_opsi' => ['required', 'string', 'max:50'],
-            'opsi.*.nilai_opsi' => ['required', 'string', 'max:100'],
-            'opsi.*.harga_override' => ['nullable', 'integer', 'min:0'],
-            'opsi.*.is_wajib' => ['boolean'],
+            'variants' => ['array'],
+            'variants.*.tipe' => ['required', 'string', 'max:50'],
+            'variants.*.is_wajib' => ['boolean'],
+            'variants.*.values' => ['array', 'min:1'],
+            'variants.*.values.*.nilai' => ['required', 'string', 'max:100'],
+            'variants.*.values.*.harga_override' => ['nullable', 'integer', 'min:0'],
 
             'bonus' => ['array'],
             'bonus.*.bonus_produk_id' => ['required', 'exists:produk,id'],
@@ -180,15 +197,20 @@ class ProdukForm extends Component
 
         $produk->fill($data)->save();
 
-        // Sync opsi & bonus: hapus-lalu-buat-ulang (aman, tak ada FK ke id-nya).
+        // Sync opsi & bonus: hapus-lalu-buat-ulang. Varian (grup) diratakan → baris produk_opsi.
         $produk->opsi()->delete();
-        foreach ($this->opsi as $o) {
-            $produk->opsi()->create([
-                'tipe_opsi' => $o['tipe_opsi'] ?: 'ukuran',
-                'nilai_opsi' => $o['nilai_opsi'],
-                'harga_override' => $o['harga_override'] !== '' ? $o['harga_override'] : null,
-                'is_wajib' => (bool) ($o['is_wajib'] ?? false),
-            ]);
+        foreach ($this->variants as $v) {
+            foreach (($v['values'] ?? []) as $val) {
+                if (($val['nilai'] ?? '') === '') {
+                    continue;
+                }
+                $produk->opsi()->create([
+                    'tipe_opsi' => $v['tipe'] ?: 'ukuran',
+                    'nilai_opsi' => $val['nilai'],
+                    'harga_override' => ($val['harga_override'] ?? '') !== '' ? $val['harga_override'] : null,
+                    'is_wajib' => (bool) ($v['is_wajib'] ?? false),
+                ]);
+            }
         }
 
         $produk->bonus()->delete();
@@ -224,10 +246,10 @@ class ProdukForm extends Component
     #[Computed]
     public function ukuranOpsiForm(): array
     {
-        return collect($this->opsi)
-            ->where('tipe_opsi', 'ukuran')
-            ->pluck('nilai_opsi')
-            ->filter(fn ($v) => $v !== null && $v !== '')
+        return collect($this->variants)
+            ->filter(fn ($v) => ($v['tipe'] ?? '') === 'ukuran')
+            ->flatMap(fn ($v) => collect($v['values'] ?? [])->pluck('nilai'))
+            ->filter(fn ($x) => $x !== null && $x !== '')
             ->unique()->values()->all();
     }
 

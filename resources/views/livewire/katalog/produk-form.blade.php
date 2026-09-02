@@ -43,36 +43,48 @@
             </div>
         </x-card>
 
-        {{-- Opsi (produk_opsi) --}}
+        {{-- Varian produk (produk_opsi dikelompokkan per tipe) --}}
         <x-card>
             <x-slot name="actions">
-                <x-button type="button" wire:click="addOpsi" variant="secondary" size="sm">Tambah opsi</x-button>
+                <x-button type="button" wire:click="addVariant" variant="secondary" size="sm">Tambah varian</x-button>
             </x-slot>
-            <x-slot name="title">Opsi produk (mis. ukuran)</x-slot>
+            <x-slot name="title">Varian produk</x-slot>
+            <x-slot name="subtitle">Mis. varian <span class="font-medium">Ukuran</span> dgn nilai 8R &amp; 10RP, atau varian <span class="font-medium">Box</span> dgn pilihannya. Satu tipe = satu varian, tambah nilainya di dalam.</x-slot>
 
-            @forelse ($opsi as $i => $row)
-                <div wire:key="opsi-{{ $i }}" class="mb-3 rounded-lg border border-line p-3 last:mb-0">
-                    <div class="grid gap-3 sm:grid-cols-12">
-                        <div class="sm:col-span-3">
-                            <x-input label="Tipe" wire:model="opsi.{{ $i }}.tipe_opsi" :error="$errors->first('opsi.'.$i.'.tipe_opsi')" placeholder="ukuran" />
+            <datalist id="varian-tipe"><option value="ukuran"></option><option value="box"></option><option value="warna"></option><option value="bahan"></option></datalist>
+
+            @forelse ($variants as $vi => $v)
+                <div wire:key="var-{{ $vi }}" class="mb-3 rounded-xl border border-line p-3 last:mb-0">
+                    <div class="flex flex-wrap items-end gap-3 border-b border-line pb-3">
+                        <div class="w-44">
+                            <x-input label="Tipe varian" wire:model="variants.{{ $vi }}.tipe" list="varian-tipe" placeholder="ukuran / box / warna" :error="$errors->first('variants.'.$vi.'.tipe')" />
                         </div>
-                        <div class="sm:col-span-3">
-                            <x-input label="Nilai" wire:model="opsi.{{ $i }}.nilai_opsi" :error="$errors->first('opsi.'.$i.'.nilai_opsi')" placeholder="mis. 10RP" />
-                        </div>
-                        <div class="sm:col-span-3">
-                            <x-input label="Harga override" type="number" min="0" wire:model="opsi.{{ $i }}.harga_override" :error="$errors->first('opsi.'.$i.'.harga_override')" hint="Kosong = pakai harga produk." />
-                        </div>
-                        <div class="flex items-end justify-between gap-2 sm:col-span-3">
-                            <label class="flex items-center gap-2 pb-2.5">
-                                <input type="checkbox" wire:model="opsi.{{ $i }}.is_wajib" class="h-4 w-4 rounded border-line text-brand focus:ring-2 focus:ring-brand/30">
-                                <span class="text-sm text-ink">Wajib</span>
-                            </label>
-                            <x-button type="button" wire:click="removeOpsi({{ $i }})" variant="ghost" size="sm">Hapus</x-button>
-                        </div>
+                        <label class="flex items-center gap-2 pb-2.5">
+                            <input type="checkbox" wire:model="variants.{{ $vi }}.is_wajib" class="h-4 w-4 rounded border-line text-brand focus:ring-2 focus:ring-brand/30">
+                            <span class="text-sm text-ink">Wajib dipilih</span>
+                        </label>
+                        <x-button type="button" wire:click="removeVariant({{ $vi }})" variant="ghost" size="sm" class="ml-auto text-status-danger">Hapus varian</x-button>
+                    </div>
+
+                    <div class="mt-3 space-y-2">
+                        @foreach (($v['values'] ?? []) as $ki => $val)
+                            <div wire:key="var-{{ $vi }}-val-{{ $ki }}" class="flex flex-wrap items-end gap-2">
+                                <div class="w-40">
+                                    <x-input label="Nilai" wire:model="variants.{{ $vi }}.values.{{ $ki }}.nilai" placeholder="mis. 8R" :error="$errors->first('variants.'.$vi.'.values.'.$ki.'.nilai')" />
+                                </div>
+                                <div class="w-44">
+                                    <x-input label="Harga override" type="number" min="0" wire:model="variants.{{ $vi }}.values.{{ $ki }}.harga_override" hint="Kosong = harga produk." />
+                                </div>
+                                <button type="button" wire:click="removeValue({{ $vi }}, {{ $ki }})" class="mb-2.5 grid h-8 w-8 place-items-center rounded-lg border border-line text-status-danger hover:bg-status-danger/10" title="Hapus nilai">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                            </div>
+                        @endforeach
+                        <x-button type="button" wire:click="addValue({{ $vi }})" variant="ghost" size="sm">+ Tambah nilai</x-button>
                     </div>
                 </div>
             @empty
-                <p class="text-sm text-ink-muted">Belum ada opsi. Tambahkan bila produk punya varian ukuran.</p>
+                <p class="text-sm text-ink-muted">Belum ada varian. Tambahkan bila produk punya pilihan (mis. ukuran, box).</p>
             @endforelse
         </x-card>
 

@@ -100,10 +100,10 @@ class ProdukFase2Test extends TestCase
             ->set('harga', 35000)
             ->set('status', 'aktif')
             ->set('foto', UploadedFile::fake()->image('f.jpg'))
-            ->call('addOpsi')
-            ->set('opsi.0.nilai_opsi', '10RP')
-            ->set('opsi.0.harga_override', 40000)
-            ->set('opsi.0.is_wajib', true)
+            ->call('addVariant')
+            ->set('variants.0.values.0.nilai', '10RP')
+            ->set('variants.0.values.0.harga_override', 40000)
+            ->set('variants.0.is_wajib', true)
             ->call('addBonus')
             ->set('bonus.0.bonus_produk_id', $bonusProduk->id)
             ->set('bonus.0.qty', 2)
@@ -149,9 +149,10 @@ class ProdukFase2Test extends TestCase
 
         Livewire::actingAs($this->admin());
 
+        // Dua opsi ukuran → 1 varian "ukuran" dgn 2 nilai [8R, 10RP]. Hapus nilai ke-2.
         Livewire::test(ProdukForm::class, ['produk' => $produk])
             ->assertSet('nama', 'P')
-            ->call('removeOpsi', 1) // sisakan satu
+            ->call('removeValue', 0, 1) // sisakan 8R
             ->call('save')
             ->assertHasNoErrors();
 
