@@ -14,7 +14,7 @@
     $current = $name ? old($name, $selected) : $selected;
 @endphp
 
-<div class="space-y-1.5">
+<div {{ $attributes->only('class')->merge(['class' => 'space-y-1.5']) }}>
     @if ($label)
         <label for="{{ $id }}" class="block text-sm font-medium text-ink">{{ $label }}</label>
     @endif
@@ -22,7 +22,7 @@
     <select
         @if ($name) name="{{ $name }}" @endif
         @if ($id) id="{{ $id }}" @endif
-        {{ $attributes->merge([
+        {{ $attributes->except('class')->merge([
             'class' => 'block w-full min-h-[44px] rounded-lg border bg-card py-2 pl-3 pr-9 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand '
                 . ($err ? 'border-status-danger' : 'border-line'),
         ]) }}

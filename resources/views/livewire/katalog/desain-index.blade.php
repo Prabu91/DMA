@@ -96,7 +96,7 @@
                     {{-- Foto preview --}}
                     <div class="space-y-1.5">
                         <span class="block text-sm font-medium text-ink">Foto preview</span>
-                        <div class="flex items-center gap-4">
+                        <div class="flex flex-wrap items-center gap-4">
                             <div class="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line bg-page">
                                 @if ($foto_preview)
                                     <img src="{{ $foto_preview->temporaryUrl() }}" alt="" class="max-h-full max-w-full object-contain">
@@ -106,9 +106,9 @@
                                     <svg class="h-6 w-6 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="{{ \App\Support\Icons::path('photo') }}" /></svg>
                                 @endif
                             </div>
-                            <div>
+                            <div class="min-w-0 flex-1">
                                 <input type="file" wire:model="foto_preview" accept="image/*"
-                                       class="block text-sm text-ink-muted file:mr-3 file:rounded-lg file:border file:border-line file:bg-card file:px-3 file:py-2 file:text-sm file:text-ink hover:file:bg-page">
+                                       class="block w-full text-sm text-ink-muted file:mr-3 file:rounded-lg file:border file:border-line file:bg-card file:px-3 file:py-2 file:text-sm file:text-ink hover:file:bg-page">
                                 <div wire:loading wire:target="foto_preview" class="mt-1 text-xs text-ink-muted">Mengunggah…</div>
                                 <p class="mt-1 text-xs text-ink-muted">JPG/PNG, maks 2 MB.</p>
                                 @error('foto_preview')<p class="mt-1 text-xs text-status-danger">{{ $message }}</p>@enderror

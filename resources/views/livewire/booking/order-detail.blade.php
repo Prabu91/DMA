@@ -186,7 +186,7 @@
                         </div>
                         <x-confirm action="simpanJadwal" title="Simpan jadwal" message="Simpan perubahan jadwal event?">Simpan jadwal</x-confirm>
                         @if ($jadwalMsg)
-                            <span class="pb-2.5 text-sm font-medium text-status-success">{{ $jadwalMsg }}</span>
+                            <span class="flex min-h-[44px] items-center text-sm font-medium text-status-success">{{ $jadwalMsg }}</span>
                         @endif
                     </div>
                 </x-card>

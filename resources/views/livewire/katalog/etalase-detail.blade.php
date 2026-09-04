@@ -46,7 +46,7 @@
                             <span wire:loading wire:target="tambah">Menambah…</span>
                         </x-button>
                         @unless ($sf)
-                            <a href="{{ $this->keranjangUrl() }}" wire:navigate class="pb-2.5 text-sm font-medium text-brand hover:text-brand-hover">Lihat keranjang →</a>
+                            <a href="{{ $this->keranjangUrl() }}" wire:navigate class="flex min-h-[44px] items-center text-sm font-medium text-brand hover:text-brand-hover">Lihat keranjang →</a>
                         @endunless
                     </div>
                     @if ($justAdded)
@@ -165,14 +165,14 @@
 
                     <div class="flex flex-wrap items-end gap-3">
                         <div class="w-32">
-                            <x-input label="Jumlah" type="number" min="1" wire:model="qty" hint="Jumlah produk dipesan." />
+                            <x-input label="Jumlah" type="number" min="1" wire:model="qty" />
                         </div>
                         <x-button wire:click="tambah">
                             <span wire:loading.remove wire:target="tambah">Tambah ke keranjang</span>
                             <span wire:loading wire:target="tambah">Menambah…</span>
                         </x-button>
                         @unless ($sf)
-                            <a href="{{ $this->keranjangUrl() }}" wire:navigate class="pb-2.5 text-sm font-medium text-brand hover:text-brand-hover">Lihat keranjang →</a>
+                            <a href="{{ $this->keranjangUrl() }}" wire:navigate class="flex min-h-[44px] items-center text-sm font-medium text-brand hover:text-brand-hover">Lihat keranjang →</a>
                         @endunless
                     </div>
 

@@ -21,7 +21,7 @@
                 {{-- Foto --}}
                 <div class="space-y-1.5 sm:col-span-2">
                     <span class="block text-sm font-medium text-ink">Foto produk</span>
-                    <div class="flex items-center gap-4">
+                    <div class="flex flex-wrap items-center gap-4">
                         <div class="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line bg-page">
                             @if ($foto)
                                 <img src="{{ $foto->temporaryUrl() }}" alt="" class="max-h-full max-w-full object-contain">
@@ -31,9 +31,9 @@
                                 <svg class="h-6 w-6 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="{{ \App\Support\Icons::path('photo') }}" /></svg>
                             @endif
                         </div>
-                        <div>
+                        <div class="min-w-0 flex-1">
                             <input type="file" wire:model="foto" accept="image/*"
-                                   class="block text-sm text-ink-muted file:mr-3 file:rounded-lg file:border file:border-line file:bg-card file:px-3 file:py-2 file:text-sm file:text-ink hover:file:bg-page">
+                                   class="block w-full text-sm text-ink-muted file:mr-3 file:rounded-lg file:border file:border-line file:bg-card file:px-3 file:py-2 file:text-sm file:text-ink hover:file:bg-page">
                             <div wire:loading wire:target="foto" class="mt-1 text-xs text-ink-muted">Mengunggah…</div>
                             <p class="mt-1 text-xs text-ink-muted">JPG/PNG, maks 2 MB.</p>
                             @error('foto')<p class="mt-1 text-xs text-status-danger">{{ $message }}</p>@enderror
@@ -59,28 +59,33 @@
                         <div class="w-44">
                             <x-input label="Tipe varian" wire:model.live.debounce.500ms="variants.{{ $vi }}.tipe" list="varian-tipe" placeholder="ukuran / box / warna" :error="$errors->first('variants.'.$vi.'.tipe')" />
                         </div>
-                        <label class="flex items-center gap-2 pb-2.5">
+                        <label class="flex min-h-[44px] items-center gap-2">
                             <input type="checkbox" wire:model="variants.{{ $vi }}.is_wajib" class="h-4 w-4 rounded border-line text-brand focus:ring-2 focus:ring-brand/30">
                             <span class="text-sm text-ink">Wajib dipilih</span>
                         </label>
                         <x-button type="button" wire:click="removeVariant({{ $vi }})" variant="ghost" size="sm" class="ml-auto text-status-danger">Hapus varian</x-button>
                     </div>
 
+                    {{-- Nilai varian. Label hanya di baris pertama supaya kolom tetap sejajar. --}}
                     <div class="mt-3 space-y-2">
                         @foreach (($v['values'] ?? []) as $ki => $val)
                             <div wire:key="var-{{ $vi }}-val-{{ $ki }}" class="flex flex-wrap items-end gap-2">
                                 <div class="w-40">
-                                    <x-input label="Nilai" wire:model.live.debounce.500ms="variants.{{ $vi }}.values.{{ $ki }}.nilai" placeholder="mis. 8R" :error="$errors->first('variants.'.$vi.'.values.'.$ki.'.nilai')" />
+                                    <x-input :label="$ki === 0 ? 'Nilai' : null" wire:model.live.debounce.500ms="variants.{{ $vi }}.values.{{ $ki }}.nilai" placeholder="mis. 8R" :error="$errors->first('variants.'.$vi.'.values.'.$ki.'.nilai')" />
                                 </div>
                                 <div class="w-44">
-                                    <x-input label="Harga override" type="number" min="0" wire:model="variants.{{ $vi }}.values.{{ $ki }}.harga_override" hint="Kosong = harga produk." />
+                                    <x-input :label="$ki === 0 ? 'Harga override' : null" type="number" min="0" wire:model="variants.{{ $vi }}.values.{{ $ki }}.harga_override" placeholder="Ikut harga produk" />
                                 </div>
-                                <button type="button" wire:click="removeValue({{ $vi }}, {{ $ki }})" class="mb-2.5 grid h-8 w-8 place-items-center rounded-lg border border-line text-status-danger hover:bg-status-danger/10" title="Hapus nilai">
+                                <button type="button" wire:click="removeValue({{ $vi }}, {{ $ki }})" class="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-line text-ink-muted transition hover:border-status-danger/50 hover:text-status-danger" title="Hapus nilai">
                                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                                 </button>
                             </div>
                         @endforeach
-                        <x-button type="button" wire:click="addValue({{ $vi }})" variant="ghost" size="sm">+ Tambah nilai</x-button>
+
+                        <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+                            <x-button type="button" wire:click="addValue({{ $vi }})" variant="ghost" size="sm">+ Tambah nilai</x-button>
+                            <p class="text-xs text-ink-muted">Harga override kosong = memakai harga produk.</p>
+                        </div>
                     </div>
                 </div>
             @empty
