@@ -32,7 +32,9 @@
             <div class="flex flex-col gap-2 border-b border-line px-5 py-3.5 last:border-b-0 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                 <div class="flex min-w-0 items-start gap-3">
                     @if ($item->foto_preview)
-                        <img src="{{ asset('storage/'.$item->foto_preview) }}" alt="" loading="lazy" class="h-12 w-12 shrink-0 rounded-lg border border-line object-cover">
+                        <div class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line bg-page">
+                        <img src="{{ asset('storage/'.$item->foto_preview) }}" alt="" loading="lazy" class="max-h-full max-w-full object-contain">
+                    </div>
                     @else
                         <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-line bg-page text-ink-muted">
                             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="{{ \App\Support\Icons::path('photo') }}" /></svg>
@@ -68,9 +70,7 @@
         @endforelse
     </x-card>
 
-    @if ($desain->hasPages())
-        <div class="mt-4">{{ $desain->links() }}</div>
-    @endif
+    <x-table-footer :paginator="$desain" />
 
     {{-- Modal --}}
     @if ($showForm)
@@ -99,9 +99,9 @@
                         <div class="flex items-center gap-4">
                             <div class="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line bg-page">
                                 @if ($foto_preview)
-                                    <img src="{{ $foto_preview->temporaryUrl() }}" alt="" class="h-full w-full object-cover">
+                                    <img src="{{ $foto_preview->temporaryUrl() }}" alt="" class="max-h-full max-w-full object-contain">
                                 @elseif ($fotoExisting)
-                                    <img src="{{ asset('storage/'.$fotoExisting) }}" alt="" class="h-full w-full object-cover">
+                                    <img src="{{ asset('storage/'.$fotoExisting) }}" alt="" class="max-h-full max-w-full object-contain">
                                 @else
                                     <svg class="h-6 w-6 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="{{ \App\Support\Icons::path('photo') }}" /></svg>
                                 @endif

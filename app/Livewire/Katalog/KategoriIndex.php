@@ -2,13 +2,23 @@
 
 namespace App\Livewire\Katalog;
 
+use App\Livewire\Concerns\WithPerPage;
+use App\Livewire\Concerns\WithSorting;
 use App\Models\Kategori;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 #[Layout('layouts.app')]
 class KategoriIndex extends Component
 {
+    use WithPagination, WithPerPage, WithSorting;
+
+    protected function sortableColumns(): array
+    {
+        return ['nama' => 'nama', 'produk' => 'produk_count'];
+    }
+
     public bool $showForm = false;
 
     public ?int $editingId = null;
@@ -37,7 +47,7 @@ class KategoriIndex extends Component
         return [
             'nama' => ['required', 'string', 'max:255'],
             'pakai_desain' => ['boolean'],
-            'grup' => ['required', 'in:'.implode(',', array_keys(\App\Models\Kategori::GRUP))],
+            'grup' => ['required', 'in:'.implode(',', array_keys(Kategori::GRUP))],
         ];
     }
 
@@ -105,13 +115,18 @@ class KategoriIndex extends Component
         $this->resetErrorBag();
     }
 
+    public function updatedSearch(): void
+    {
+        $this->resetPage();
+    }
+
     public function render()
     {
         $kategori = Kategori::query()
             ->when($this->search !== '', fn ($q) => $q->where('nama', 'ilike', '%'.$this->search.'%'))
-            ->withCount(['produk', 'desain'])
-            ->orderBy('nama')
-            ->get();
+            ->withCount(['produk', 'desain']);
+
+        $kategori = $this->applySort($kategori, 'nama', 'asc')->paginate($this->perPage());
 
         return view('livewire.katalog.kategori-index', compact('kategori'));
     }

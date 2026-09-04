@@ -9,7 +9,6 @@
     <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <h1 class="text-lg font-medium text-ink">Frame</h1>
-            <p class="text-sm text-ink-muted">Atribut produk (dulu "gaya") — berlaku untuk semua cabang.</p>
         </div>
         <x-button wire:click="create" size="sm" class="shrink-0 self-start whitespace-nowrap sm:self-auto">Tambah frame</x-button>
     </div>
@@ -23,8 +22,16 @@
     @endif
 
     {{-- Pencarian --}}
-    <div class="mb-4">
-        <x-input wire:model.live.debounce.300ms="search" type="search" placeholder="Cari frame…" />
+    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div class="flex-1">
+            <x-input wire:model.live.debounce.300ms="search" type="search" placeholder="Cari frame…" />
+        </div>
+        <x-sort-select class="sm:w-64" :field="$sortField" :dir="$sortDir" :options="[
+            'nama|asc' => 'Nama A–Z',
+            'nama|desc' => 'Nama Z–A',
+            'produk|desc' => 'Produk terbanyak',
+            'produk|asc' => 'Produk tersedikit',
+        ]" />
     </div>
 
     {{-- Daftar --}}
@@ -47,6 +54,8 @@
             <div class="px-5 py-10 text-center text-sm text-ink-muted">Belum ada frame.</div>
         @endforelse
     </x-card>
+
+    <x-table-footer :paginator="$frame" />
 
     {{-- Modal form --}}
     @if ($showForm)

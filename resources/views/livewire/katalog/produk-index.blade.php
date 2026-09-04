@@ -20,8 +20,17 @@
         <div class="mb-4 rounded-lg border border-status-danger/20 bg-status-danger/10 px-4 py-3 text-sm text-status-danger">{{ $error }}</div>
     @endif
 
-    <div class="mb-4">
-        <x-input wire:model.live.debounce.300ms="search" type="search" placeholder="Cari produk…" />
+    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div class="flex-1">
+            <x-input wire:model.live.debounce.300ms="search" type="search" placeholder="Cari produk…" />
+        </div>
+        <x-sort-select class="sm:w-64" :field="$sortField" :dir="$sortDir" :options="[
+            'nama|asc' => 'Nama A–Z',
+            'nama|desc' => 'Nama Z–A',
+            'harga|asc' => 'Harga terendah',
+            'harga|desc' => 'Harga tertinggi',
+            'terbaru|desc' => 'Terbaru ditambahkan',
+        ]" />
     </div>
 
     <x-card padding="p-0">
@@ -29,7 +38,9 @@
             <div class="flex flex-col gap-2 border-b border-line px-5 py-3.5 last:border-b-0 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                 <div class="flex min-w-0 items-start gap-3">
                     @if ($item->foto)
-                        <img src="{{ asset('storage/'.$item->foto) }}" alt="" class="h-12 w-12 shrink-0 rounded-lg border border-line object-cover">
+                        <div class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line bg-page">
+                        <img src="{{ asset('storage/'.$item->foto) }}" alt="" loading="lazy" class="max-h-full max-w-full object-contain">
+                    </div>
                     @else
                         <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-line bg-page text-ink-muted">
                             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="{{ \App\Support\Icons::path('product') }}" /></svg>
@@ -57,4 +68,6 @@
             <div class="px-5 py-10 text-center text-sm text-ink-muted">Belum ada produk.</div>
         @endforelse
     </x-card>
+
+    <x-table-footer :paginator="$produk" />
 </div>

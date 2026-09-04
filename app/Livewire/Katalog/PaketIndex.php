@@ -2,15 +2,25 @@
 
 namespace App\Livewire\Katalog;
 
+use App\Livewire\Concerns\WithPerPage;
+use App\Livewire\Concerns\WithSorting;
 use App\Models\Paket;
 use App\Models\Produk;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 #[Layout('layouts.app')]
 class PaketIndex extends Component
 {
+    use WithPagination, WithPerPage, WithSorting;
+
+    protected function sortableColumns(): array
+    {
+        return ['nama' => 'nama', 'harga' => 'harga', 'item' => 'items_count'];
+    }
+
     public bool $showForm = false;
 
     public ?int $editingId = null;
@@ -180,13 +190,18 @@ class PaketIndex extends Component
         $this->resetErrorBag();
     }
 
+    public function updatedSearch(): void
+    {
+        $this->resetPage();
+    }
+
     public function render()
     {
         $paket = Paket::query()
             ->withCount('items')
-            ->when($this->search !== '', fn ($q) => $q->where('nama', 'ilike', '%'.$this->search.'%'))
-            ->orderBy('nama')
-            ->get();
+            ->when($this->search !== '', fn ($q) => $q->where('nama', 'ilike', '%'.$this->search.'%'));
+
+        $paket = $this->applySort($paket, 'nama', 'asc')->paginate($this->perPage());
 
         return view('livewire.katalog.paket-index', compact('paket'));
     }

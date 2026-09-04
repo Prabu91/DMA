@@ -65,7 +65,8 @@ class RoleMenu
                 ['Produk', 'product', 'produk.index', 'produk.*'],
                 ['Frame', 'photo', 'frame.index', 'frame.*'],
                 ['Paket', 'cube', 'paket.index', 'paket.*'],
-                ['Desain', 'photo', 'desain.index', 'desain.*'],
+                // Disembunyikan: desain kini dikelola dari halaman Produk. Rutenya masih aktif.
+                // ['Desain', 'photo', 'desain.index', 'desain.*'],
                 ['Free sekolah', 'gift', 'aturan-free.index', 'aturan-free.*'],
                 ['Katalog', 'store', 'etalase.index', 'etalase.*'],
             ],
@@ -87,7 +88,8 @@ class RoleMenu
                 ['Produk', 'product', 'produk.index', 'produk.*'],
                 ['Frame', 'photo', 'frame.index', 'frame.*'],
                 ['Paket', 'cube', 'paket.index', 'paket.*'],
-                ['Desain', 'photo', 'desain.index', 'desain.*'],
+                // Disembunyikan: desain kini dikelola dari halaman Produk. Rutenya masih aktif.
+                // ['Desain', 'photo', 'desain.index', 'desain.*'],
                 ['Free sekolah', 'gift', 'aturan-free.index', 'aturan-free.*'],
                 ['Katalog', 'store', 'etalase.index', 'etalase.*'],
             ],

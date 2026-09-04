@@ -2,14 +2,24 @@
 
 namespace App\Livewire\Katalog;
 
+use App\Livewire\Concerns\WithPerPage;
+use App\Livewire\Concerns\WithSorting;
 use App\Models\Frame;
 use App\Models\Produk;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 #[Layout('layouts.app')]
 class FrameIndex extends Component
 {
+    use WithPagination, WithPerPage, WithSorting;
+
+    protected function sortableColumns(): array
+    {
+        return ['nama' => 'nama', 'produk' => 'produk_count'];
+    }
+
     public bool $showForm = false;
 
     public ?int $editingId = null;
@@ -117,13 +127,18 @@ class FrameIndex extends Component
         $this->resetErrorBag();
     }
 
+    public function updatedSearch(): void
+    {
+        $this->resetPage();
+    }
+
     public function render()
     {
         $frame = Frame::query()
             ->when($this->search !== '', fn ($q) => $q->where('nama', 'ilike', '%'.$this->search.'%'))
-            ->withCount('produk')
-            ->orderBy('nama')
-            ->get();
+            ->withCount('produk');
+
+        $frame = $this->applySort($frame, 'nama', 'asc')->paginate($this->perPage());
 
         return view('livewire.katalog.frame-index', compact('frame'));
     }

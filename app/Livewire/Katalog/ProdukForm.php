@@ -3,6 +3,7 @@
 namespace App\Livewire\Katalog;
 
 use App\Models\Desain;
+use App\Models\Frame;
 use App\Models\Kategori;
 use App\Models\Produk;
 use Illuminate\Support\Facades\Storage;
@@ -42,13 +43,25 @@ class ProdukForm extends Component
 
     public array $bonus = [];         // bonus_produk_id, qty
 
-    // Blok Desain (khusus produk yang sudah tersimpan) — kelola pivot desain↔produk.
+    /**
+     * Desain yang dipakai produk ini. Ditahan di memori (staging) dan baru ditulis
+     * ke pivot saat save() — jadi blok desain tetap hidup walau produk belum tersimpan.
+     * Item: ['id'=>?int,'kode'=>string,'foto'=>?string,'kategori'=>?string,'ukuran'=>string[]]
+     * id null = desain baru yang akan dibuat saat produk disimpan.
+     */
+    public array $desains = [];
+
+    public string $desainCari = '';   // pencarian pool desain (lintas kategori)
+
+    // Form "desain baru" inline.
     public $desainFoto = null;
+
     public string $desainKode = '';
+
     public ?string $desainOrientasi = null;
+
     public string $desainTahun = '';
-    public array $desainUkuran = [];   // ukuran dicentang utk desain baru ([] = semua)
-    public ?int $tempelDesainId = null; // desain existing utk ditempel
+
     public ?string $desainMsg = null;
 
     public function mount(?Produk $produk = null): void
@@ -81,6 +94,10 @@ class ProdukForm extends Component
                 'bonus_produk_id' => $b->bonus_produk_id,
                 'qty' => $b->qty,
             ])->values()->all();
+
+            $this->desains = $produk->desains()->with('kategori:id,nama')->orderBy('kode')->get()
+                ->map(fn ($d) => $this->rowDesain($d, self::normalUkuran($d->pivot->ukuran ?? null)))
+                ->values()->all();
         } else {
             $this->authorize('create', Produk::class);
         }
@@ -95,7 +112,7 @@ class ProdukForm extends Component
     #[Computed]
     public function frameOptions(): array
     {
-        return \App\Models\Frame::where('status', 'aktif')->orderBy('nama')->pluck('nama', 'nama')->all();
+        return Frame::where('status', 'aktif')->orderBy('nama')->pluck('nama', 'nama')->all();
     }
 
     #[Computed]
@@ -221,18 +238,42 @@ class ProdukForm extends Component
             ]);
         }
 
+        $this->simpanDesain($produk);
+
         session()->flash('success', $this->produkId ? 'Produk diperbarui.' : 'Produk ditambahkan.');
 
         return $this->redirectRoute('app.produk.index', navigate: true);
     }
 
-    // ========================= BLOK DESAIN (pivot desain↔produk) =========================
+    // ========================= BLOK DESAIN (staging → pivot desain↔produk) =========================
 
     private function tahunAjaranDefault(): string
     {
         $y = (int) now()->year;
 
         return now()->month >= 7 ? $y.'/'.($y + 1) : ($y - 1).'/'.$y;
+    }
+
+    /** Pivot `ukuran` bisa array (hasil cast) atau string JSON (insert manual) → selalu array. */
+    private static function normalUkuran($raw): array
+    {
+        if (is_array($raw)) {
+            return $raw;
+        }
+
+        return is_string($raw) ? (json_decode($raw, true) ?: []) : [];
+    }
+
+    /** Bentuk baris staging dari model Desain. */
+    private function rowDesain(Desain $d, array $ukuran = []): array
+    {
+        return [
+            'id' => $d->id,
+            'kode' => $d->kode,
+            'foto' => $d->foto_preview,
+            'kategori' => $d->kategori?->nama,
+            'ukuran' => $ukuran,
+        ];
     }
 
     /** Kategori produk ini memakai desain? */
@@ -242,7 +283,7 @@ class ProdukForm extends Component
         return (bool) (Kategori::find($this->kategori_id)?->pakai_desain);
     }
 
-    /** Nilai opsi ukuran dari FORM (reaktif) → jadi checkbox untuk desain. */
+    /** Nilai opsi ukuran dari FORM (reaktif) → jadi chip ukuran untuk tiap desain. */
     #[Computed]
     public function ukuranOpsiForm(): array
     {
@@ -253,109 +294,125 @@ class ProdukForm extends Component
             ->unique()->values()->all();
     }
 
-    /** Desain yang sudah ditempel ke produk ini (+ ukuran pivot). */
+    /**
+     * Pool desain untuk dipilih — LINTAS KATEGORI (desain adalah aset pakai-ulang);
+     * hanya membuang yang sudah ada di daftar produk ini.
+     */
     #[Computed]
-    public function attachedDesigns()
+    public function hasilCariDesain()
     {
-        if (! $this->produkId) {
-            return collect();
+        $dipakai = collect($this->desains)->pluck('id')->filter()->all();
+
+        return Desain::query()
+            ->where('status', 'aktif')
+            ->when($this->desainCari !== '', fn ($q) => $q->where('kode', 'ilike', '%'.$this->desainCari.'%'))
+            ->when($dipakai, fn ($q) => $q->whereNotIn('id', $dipakai))
+            ->with('kategori:id,nama')
+            ->orderByDesc('id')
+            ->limit(8)
+            ->get();
+    }
+
+    /** Ambil desain yang sudah ada ke daftar produk ini. */
+    public function pilihDesain(int $desainId): void
+    {
+        if (collect($this->desains)->contains(fn ($r) => ($r['id'] ?? null) === $desainId)) {
+            return;
         }
 
-        return Produk::find($this->produkId)->desains()->orderBy('kode')->get();
-    }
-
-    /** Desain existing (kategori sama) yang belum ditempel. */
-    #[Computed]
-    public function availableDesigns(): array
-    {
-        if (! $this->produkId || ! $this->kategori_id) {
-            return [];
+        $d = Desain::with('kategori:id,nama')->find($desainId);
+        if (! $d) {
+            return;
         }
 
-        $attached = $this->attachedDesigns->pluck('id')->all();
-
-        return Desain::where('kategori_id', $this->kategori_id)
-            ->whereNotIn('id', $attached)
-            ->orderBy('kode')
-            ->pluck('kode', 'id')
-            ->all();
+        $this->desains[] = $this->rowDesain($d);
+        $this->desainCari = '';
+        unset($this->hasilCariDesain);
+        $this->desainMsg = $d->kode.' ditambahkan ke daftar.';
     }
 
-    private function refreshDesigns(): void
+    /** Keluarkan desain dari daftar produk ini (aset desainnya tidak dihapus). */
+    public function hapusDesain(int $i): void
     {
-        unset($this->attachedDesigns, $this->availableDesigns);
+        unset($this->desains[$i]);
+        $this->desains = array_values($this->desains);
+        unset($this->hasilCariDesain);
     }
 
-    /** Buat desain baru + tempel ke produk ini dengan ukuran terpilih. */
+    /** Nyalakan/matikan satu ukuran untuk desain ke-$i ([] = berlaku semua ukuran). */
+    public function toggleUkuranDesain(int $i, string $ukuran): void
+    {
+        if (! isset($this->desains[$i])) {
+            return;
+        }
+
+        $set = $this->desains[$i]['ukuran'] ?? [];
+        $set = in_array($ukuran, $set, true)
+            ? array_diff($set, [$ukuran])
+            : array_merge($set, [$ukuran]);
+
+        $this->desains[$i]['ukuran'] = array_values(array_intersect($set, $this->ukuranOpsiForm));
+    }
+
+    /** Siapkan desain baru (fotonya langsung disimpan; barisnya dibuat saat produk disimpan). */
     public function tambahDesainBaru(): void
     {
-        abort_unless($this->produkId, 422);
-        $this->authorize('update', Produk::findOrFail($this->produkId));
-
         $this->validate([
             'desainKode' => ['required', 'string', 'max:100', Rule::unique('desain', 'kode')],
             'desainOrientasi' => ['nullable', 'in:'.implode(',', array_keys(Desain::ORIENTASI))],
             'desainTahun' => ['required', 'string', 'max:20'],
             'desainFoto' => ['nullable', 'image', 'max:2048'],
-            'desainUkuran' => ['array'],
-            'desainUkuran.*' => ['string', Rule::in($this->ukuranOpsiForm)],
         ]);
 
-        $path = $this->desainFoto ? $this->desainFoto->store('desain', 'public') : null;
+        // Bentrok dengan desain baru lain yang masih di daftar (belum masuk DB).
+        if (collect($this->desains)->contains(fn ($r) => strcasecmp((string) ($r['kode'] ?? ''), $this->desainKode) === 0)) {
+            $this->addError('desainKode', 'Kode desain sudah ada di daftar ini.');
 
-        $desain = Desain::create([
-            'kategori_id' => $this->kategori_id,
-            'kode' => $this->desainKode,
-            'orientasi' => $this->desainOrientasi,
-            'tahun_ajaran' => $this->desainTahun,
-            'status' => 'aktif',
-            'foto_preview' => $path,
-        ]);
-        $desain->products()->attach($this->produkId, ['ukuran' => $this->desainUkuran ?: null]);
-
-        $this->reset(['desainKode', 'desainOrientasi', 'desainFoto', 'desainUkuran']);
-        $this->desainTahun = $this->tahunAjaranDefault();
-        $this->refreshDesigns();
-        $this->desainMsg = 'Desain ditambahkan ke produk.';
-    }
-
-    /** Tempel desain yang sudah ada ke produk ini. */
-    public function tempelDesain(): void
-    {
-        abort_unless($this->produkId, 422);
-        $this->authorize('update', Produk::findOrFail($this->produkId));
-        if (! $this->tempelDesainId) {
             return;
         }
 
-        Produk::findOrFail($this->produkId)->desains()->syncWithoutDetaching([
-            $this->tempelDesainId => ['ukuran' => null],
-        ]);
-        $this->tempelDesainId = null;
-        $this->refreshDesigns();
-        $this->desainMsg = 'Desain ditempel ke produk.';
+        $this->desains[] = [
+            'id' => null,
+            'kode' => $this->desainKode,
+            'foto' => $this->desainFoto ? $this->desainFoto->store('desain', 'public') : null,
+            'kategori' => Kategori::find($this->kategori_id)?->nama,
+            'orientasi' => $this->desainOrientasi,
+            'tahun' => $this->desainTahun,
+            'ukuran' => [],
+        ];
+
+        $this->reset(['desainKode', 'desainOrientasi', 'desainFoto']);
+        $this->desainTahun = $this->tahunAjaranDefault();
+        unset($this->hasilCariDesain);
+        $this->desainMsg = 'Desain baru disiapkan — dibuat saat produk disimpan.';
     }
 
-    /** Lepas desain dari produk (tidak menghapus asetnya). */
-    public function lepasDesain(int $desainId): void
+    /** Tulis staging ke pivot: desain baru dibuat dulu, lalu sync beserta ukurannya. */
+    private function simpanDesain(Produk $produk): void
     {
-        abort_unless($this->produkId, 422);
-        $this->authorize('update', Produk::findOrFail($this->produkId));
-        Produk::findOrFail($this->produkId)->desains()->detach($desainId);
-        $this->refreshDesigns();
-        $this->desainMsg = 'Desain dilepas dari produk.';
-    }
+        if (! $this->pakaiDesain) {
+            return;
+        }
 
-    /** Set ukuran berlaku untuk sebuah desain yang ditempel ([] = semua ukuran). */
-    public function setUkuranDesain(int $desainId, array $ukuran): void
-    {
-        abort_unless($this->produkId, 422);
-        $this->authorize('update', Produk::findOrFail($this->produkId));
-        $valid = array_values(array_intersect($ukuran, $this->ukuranOpsiForm));
-        Produk::findOrFail($this->produkId)->desains()->updateExistingPivot($desainId, [
-            'ukuran' => $valid ?: null,
-        ]);
-        $this->refreshDesigns();
+        $sync = [];
+        foreach ($this->desains as $row) {
+            $id = $row['id'] ?? null;
+
+            if (! $id) {
+                $id = Desain::create([
+                    'kategori_id' => $this->kategori_id,
+                    'kode' => $row['kode'],
+                    'orientasi' => $row['orientasi'] ?? null,
+                    'tahun_ajaran' => $row['tahun'] ?? $this->tahunAjaranDefault(),
+                    'status' => 'aktif',
+                    'foto_preview' => $row['foto'] ?? null,
+                ])->id;
+            }
+
+            $sync[$id] = ['ukuran' => ($row['ukuran'] ?? []) ?: null];
+        }
+
+        $produk->desains()->sync($sync);
     }
 
     public function render()

@@ -2,16 +2,20 @@
 
 namespace App\Livewire\Katalog;
 
+use App\Livewire\Concerns\WithPerPage;
 use App\Models\AturanFreeSekolah;
 use App\Models\Paket;
 use App\Models\Produk;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 #[Layout('layouts.app')]
 class AturanFreeIndex extends Component
 {
+    use WithPagination, WithPerPage;
+
     public bool $showForm = false;
 
     public ?int $editingId = null;
@@ -138,6 +142,11 @@ class AturanFreeIndex extends Component
         $this->resetErrorBag();
     }
 
+    public function updatedFilterPaket(): void
+    {
+        $this->resetPage();
+    }
+
     public function render()
     {
         $aturan = AturanFreeSekolah::query()
@@ -145,7 +154,7 @@ class AturanFreeIndex extends Component
             ->when($this->filterPaket, fn ($q) => $q->where('paket_id', $this->filterPaket))
             ->orderBy('paket_id')
             ->orderBy('nilai')
-            ->get();
+            ->paginate($this->perPage());
 
         return view('livewire.katalog.aturan-free-index', compact('aturan'));
     }

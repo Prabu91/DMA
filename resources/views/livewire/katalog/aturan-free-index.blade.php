@@ -46,6 +46,8 @@
         @endforelse
     </x-card>
 
+    <x-table-footer :paginator="$aturan" />
+
     {{-- Modal --}}
     @if ($showForm)
         <div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center" wire:key="aturan-modal">

@@ -49,7 +49,7 @@
                             class="flex w-24 shrink-0 flex-col items-center gap-2 rounded-xl border bg-card p-2.5 text-center transition">
                         <span class="grid h-16 w-full place-items-center overflow-hidden rounded-lg bg-page">
                             @if ($thumb)
-                                <img src="{{ asset('storage/'.$thumb) }}" alt="" class="h-full w-full object-cover">
+                                <img src="{{ asset('storage/'.$thumb) }}" alt="" class="max-h-full max-w-full object-contain">
                             @else
                                 <svg class="h-7 w-7 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="{{ \App\Support\Icons::path('product') }}" /></svg>
                             @endif
@@ -86,9 +86,9 @@
                            x-show="q === '' ? tab === {{ $kategori->id }} : $el.dataset.name.includes(q.toLowerCase())"
                            href="{{ $this->detailUrl('produk', $produk->id) }}" wire:navigate
                            class="flex flex-col overflow-hidden rounded-xl border border-line bg-card transition-colors hover:border-brand/40">
-                            <div class="aspect-square w-full bg-page">
+                            <div class="flex aspect-square w-full items-center justify-center overflow-hidden bg-page">
                                 @if ($produk->foto)
-                                    <img src="{{ asset('storage/'.$produk->foto) }}" alt="" class="h-full w-full object-cover">
+                                    <img src="{{ asset('storage/'.$produk->foto) }}" alt="" class="max-h-full max-w-full object-contain">
                                 @else
                                     <div class="flex h-full w-full items-center justify-center text-ink-muted">
                                         <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="{{ \App\Support\Icons::path('product') }}" /></svg>

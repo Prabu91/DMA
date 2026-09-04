@@ -23,8 +23,16 @@
     @endif
 
     {{-- Pencarian --}}
-    <div class="mb-4">
-        <x-input wire:model.live.debounce.300ms="search" type="search" placeholder="Cari kategori…" />
+    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div class="flex-1">
+            <x-input wire:model.live.debounce.300ms="search" type="search" placeholder="Cari kategori…" />
+        </div>
+        <x-sort-select class="sm:w-64" :field="$sortField" :dir="$sortDir" :options="[
+            'nama|asc' => 'Nama A–Z',
+            'nama|desc' => 'Nama Z–A',
+            'produk|desc' => 'Produk terbanyak',
+            'produk|asc' => 'Produk tersedikit',
+        ]" />
     </div>
 
     {{-- Daftar --}}
@@ -52,6 +60,8 @@
             <div class="px-5 py-10 text-center text-sm text-ink-muted">Belum ada kategori.</div>
         @endforelse
     </x-card>
+
+    <x-table-footer :paginator="$kategori" />
 
     {{-- Modal form --}}
     @if ($showForm)

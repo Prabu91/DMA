@@ -2,19 +2,22 @@
 
 namespace App\Livewire\Sekolah;
 
+use App\Livewire\Concerns\WithPerPage;
 use App\Livewire\Concerns\WithSorting;
 use App\Models\Cabang;
 use App\Models\Kecamatan;
 use App\Models\Sekolah;
+use App\Support\OrderStatus;
 use Illuminate\Validation\Rules\Password;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 #[Layout('layouts.app')]
 class SekolahIndex extends Component
 {
-    use WithSorting;
+    use WithPagination, WithPerPage, WithSorting;
 
     protected function sortableColumns(): array
     {
@@ -303,9 +306,24 @@ class SekolahIndex extends Component
         $this->resetErrorBag();
     }
 
+    public function updatedSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterCabang(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterKategori(): void
+    {
+        $this->resetPage();
+    }
+
     public function render()
     {
-        $selesai = fn ($q) => $q->where('event_status', \App\Support\OrderStatus::EVENT_SELESAI);
+        $selesai = fn ($q) => $q->where('event_status', OrderStatus::EVENT_SELESAI);
 
         $sekolah = Sekolah::query()
             ->with(['cabang', 'kecamatan'])
@@ -323,7 +341,7 @@ class SekolahIndex extends Component
             ->when($this->filterKategori === Sekolah::KATEGORI_NRS, fn ($q) => $q->whereHas('orders', $selesai, '>=', 1)->whereHas('orders', $selesai, '<=', 2))
             ->when($this->filterKategori === Sekolah::KATEGORI_SR, fn ($q) => $q->whereHas('orders', $selesai, '>=', Sekolah::KATEGORI_AMBANG_SR));
 
-        $sekolah = $this->applySort($sekolah, 'nama', 'asc')->get();
+        $sekolah = $this->applySort($sekolah, 'nama', 'asc')->paginate($this->perPage());
 
         return view('livewire.sekolah.sekolah-index', compact('sekolah'));
     }

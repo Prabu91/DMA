@@ -2,8 +2,10 @@
 
 namespace App\Livewire\Katalog;
 
+use App\Livewire\Concerns\WithPerPage;
 use App\Models\Desain;
 use App\Models\Kategori;
+use App\Models\OrderItem;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
@@ -15,7 +17,7 @@ use Livewire\WithPagination;
 #[Layout('layouts.app')]
 class DesainIndex extends Component
 {
-    use WithFileUploads, WithPagination;
+    use WithFileUploads, WithPagination, WithPerPage;
 
     // Filter daftar
     public ?int $filterKategori = null;
@@ -82,7 +84,6 @@ class DesainIndex extends Component
     {
         return $this->kategoriDesainOptions();
     }
-
 
     #[Computed]
     public function tahunOptions(): array
@@ -206,7 +207,7 @@ class DesainIndex extends Component
         $desain = Desain::findOrFail($id);
         $this->authorize('delete', $desain);
 
-        $dipakai = \App\Models\OrderItem::where('desain_id', $desain->id)->update(['desain_id' => null]);
+        $dipakai = OrderItem::where('desain_id', $desain->id)->update(['desain_id' => null]);
 
         if ($desain->foto_preview) {
             Storage::disk('public')->delete($desain->foto_preview);
@@ -215,7 +216,7 @@ class DesainIndex extends Component
         $this->success = "Desain dihapus paksa. {$dipakai} item order melepas referensi desain ini.";
     }
 
-    #[\Livewire\Attributes\Computed]
+    #[Computed]
     public function isSuperAdmin(): bool
     {
         return auth()->user()?->hasRole('super_admin') ?? false;
@@ -237,7 +238,7 @@ class DesainIndex extends Component
             ->when($this->filterTahun, fn ($q) => $q->where('tahun_ajaran', $this->filterTahun))
             ->when($this->search !== '', fn ($q) => $q->where('kode', 'ilike', '%'.$this->search.'%'))
             ->orderBy('kode')
-            ->paginate(24);
+            ->paginate($this->perPage());
 
         return view('livewire.katalog.desain-index', compact('desain'));
     }

@@ -20,8 +20,17 @@
         <div class="mb-4 rounded-lg border border-status-danger/20 bg-status-danger/10 px-4 py-3 text-sm text-status-danger">{{ $error }}</div>
     @endif
 
-    <div class="mb-4">
-        <x-input wire:model.live.debounce.300ms="search" type="search" placeholder="Cari paket…" />
+    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div class="flex-1">
+            <x-input wire:model.live.debounce.300ms="search" type="search" placeholder="Cari paket…" />
+        </div>
+        <x-sort-select class="sm:w-64" :field="$sortField" :dir="$sortDir" :options="[
+            'nama|asc' => 'Nama A–Z',
+            'nama|desc' => 'Nama Z–A',
+            'harga|asc' => 'Harga terendah',
+            'harga|desc' => 'Harga tertinggi',
+            'item|desc' => 'Item terbanyak',
+        ]" />
     </div>
 
     <x-card padding="p-0">
@@ -45,6 +54,8 @@
             <div class="px-5 py-10 text-center text-sm text-ink-muted">Belum ada paket.</div>
         @endforelse
     </x-card>
+
+    <x-table-footer :paginator="$paket" />
 
     {{-- Modal --}}
     @if ($showForm)
