@@ -19,12 +19,7 @@
         <x-button wire:click="create" size="sm">Tambah sekolah</x-button>
     </div>
 
-    @if ($success)
-        <div class="mb-4 rounded-lg border border-status-success/20 bg-status-success/10 px-4 py-3 text-sm text-status-success">{{ $success }}</div>
-    @endif
-    @if ($error)
-        <div class="mb-4 rounded-lg border border-status-danger/20 bg-status-danger/10 px-4 py-3 text-sm text-status-danger">{{ $error }}</div>
-    @endif
+    <x-toast :success="$success" :error="$error" />
 
     <div class="mb-4 flex flex-wrap items-center gap-2">
         <div class="min-w-[200px] flex-1">
@@ -75,7 +70,8 @@
                 <div class="mt-3 flex flex-wrap gap-2">
                     <x-button wire:click="edit({{ $item->id }})" variant="secondary" size="sm">Ubah</x-button>
                     <x-button wire:click="openResetPassword({{ $item->id }})" variant="ghost" size="sm">Reset sandi</x-button>
-                    <x-button wire:click="delete({{ $item->id }})" wire:confirm="Hapus sekolah {{ $item->nama }}?" variant="ghost" size="sm">Hapus</x-button>
+                    <x-confirm action="delete" :arg="$item->id" variant="ghost" size="sm" confirm-variant="danger" confirm-label="Ya, hapus"
+                        title="Hapus sekolah" message="Sekolah {{ $item->nama }} akan dihapus permanen. Lanjutkan?">Hapus</x-confirm>
                 </div>
             </div>
         @empty
@@ -131,7 +127,8 @@
                 <x-table.td align="right" nowrap>
                     <x-button wire:click="edit({{ $item->id }})" variant="secondary" size="sm">Ubah</x-button>
                     <x-button wire:click="openResetPassword({{ $item->id }})" variant="ghost" size="sm">Reset sandi</x-button>
-                    <x-button wire:click="delete({{ $item->id }})" wire:confirm="Hapus sekolah {{ $item->nama }}?" variant="ghost" size="sm">Hapus</x-button>
+                    <x-confirm action="delete" :arg="$item->id" variant="ghost" size="sm" confirm-variant="danger" confirm-label="Ya, hapus"
+                        title="Hapus sekolah" message="Sekolah {{ $item->nama }} akan dihapus permanen. Lanjutkan?">Hapus</x-confirm>
                 </x-table.td>
             </x-table.tr>
         @empty

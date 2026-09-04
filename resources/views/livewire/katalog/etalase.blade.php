@@ -31,7 +31,7 @@
 
         @if ($paketAda || $kategoriAda)
             {{-- Tab kategori (sembunyi saat mencari) --}}
-            <div x-show="q === ''" class="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <x-slider x-show="q === ''">
                 @if ($paketAda)
                     <button type="button" @click="tab = 'paket'"
                             :class="tab === 'paket' ? 'border-brand ring-2 ring-brand/25' : 'border-line hover:border-brand/40'"
@@ -57,7 +57,7 @@
                         <span class="line-clamp-2 text-[11px] font-bold leading-tight text-ink">{{ $kategori->nama }}</span>
                     </button>
                 @endforeach
-            </div>
+            </x-slider>
 
             {{-- Judul hasil pencarian --}}
             <p x-show="q !== ''" x-cloak class="text-sm text-ink-muted">Hasil pencarian untuk “<span class="font-semibold text-ink" x-text="q"></span>”</p>

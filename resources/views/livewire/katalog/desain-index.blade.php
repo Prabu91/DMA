@@ -13,12 +13,7 @@
         <x-button wire:click="create" size="sm" class="shrink-0 self-start whitespace-nowrap sm:self-auto">Tambah desain</x-button>
     </div>
 
-    @if ($success)
-        <div class="mb-4 rounded-lg border border-status-success/20 bg-status-success/10 px-4 py-3 text-sm text-status-success">{{ $success }}</div>
-    @endif
-    @if ($error)
-        <div class="mb-4 rounded-lg border border-status-danger/20 bg-status-danger/10 px-4 py-3 text-sm text-status-danger">{{ $error }}</div>
-    @endif
+    <x-toast :success="$success" :error="$error" />
 
     {{-- Filter --}}
     <div class="mb-4 grid gap-3 sm:grid-cols-3">

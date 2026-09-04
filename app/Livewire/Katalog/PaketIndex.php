@@ -169,6 +169,8 @@ class PaketIndex extends Component
 
     public function delete(int $id): void
     {
+        $this->reset(['success', 'error']);
+
         $paket = Paket::findOrFail($id);
         $this->authorize('delete', $paket);
 

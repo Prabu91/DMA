@@ -51,7 +51,7 @@
                 </div>
 
                 {{-- Tab kategori (thumbnail) --}}
-                <div class="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <x-slider>
                     @foreach ($kategoriList as $kategori)
                         @php $thumb = optional($kategori->produk->first())->foto; @endphp
                         <button type="button" @click="tab = {{ $kategori->id }}"
@@ -67,7 +67,7 @@
                             <span class="line-clamp-2 text-[11px] font-bold leading-tight text-ink">{{ $kategori->nama }}</span>
                         </button>
                     @endforeach
-                </div>
+                </x-slider>
 
                 {{-- Produk kategori terpilih --}}
                 @foreach ($kategoriList as $kategori)

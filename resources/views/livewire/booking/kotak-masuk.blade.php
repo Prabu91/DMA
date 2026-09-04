@@ -9,12 +9,7 @@
         <p class="text-sm text-ink-muted">Order booking mandiri sekolah yang menunggu penugasan marketing.</p>
     </div>
 
-    @if ($success)
-        <div class="mb-4 rounded-lg border border-status-success/20 bg-status-success/10 px-4 py-3 text-sm text-status-success">{{ $success }}</div>
-    @endif
-    @if ($error)
-        <div class="mb-4 rounded-lg border border-status-danger/20 bg-status-danger/10 px-4 py-3 text-sm text-status-danger">{{ $error }}</div>
-    @endif
+    <x-toast :success="$success" :error="$error" />
 
     {{-- Tab --}}
     <div class="mb-4 inline-flex rounded-lg border border-line bg-card p-1 text-sm">
@@ -78,7 +73,7 @@
                 <div class="mt-3 flex flex-wrap items-center gap-2">
                     <x-button wire:click="lihatDetail({{ $order->id }})" variant="ghost" size="sm">Detail</x-button>
                     @if ($tampil === 'baru' && $this->isMarketing)
-                        <x-button wire:click="ambil({{ $order->id }})" wire:confirm="Ambil order ini untuk Anda?" size="sm">Ambil</x-button>
+                        <x-confirm action="ambil" :arg="$order->id" size="sm" title="Ambil order" message="Order ini akan ditugaskan ke Anda. Lanjutkan?" confirm-label="Ya, ambil">Ambil</x-confirm>
                     @endif
                     @if ($this->isAdmin)
                         @php $opsi = $this->marketingByCabang[$order->cabang_id] ?? []; @endphp
@@ -88,9 +83,9 @@
                             @foreach ($opsi as $uid => $nama)<option value="{{ $uid }}">{{ $nama }}</option>@endforeach
                         </select>
                         @if ($tampil === 'baru')
-                            <x-button wire:click="tugaskan({{ $order->id }})" wire:confirm="Tugaskan order ini ke marketing terpilih?" variant="secondary" size="sm">Tugaskan</x-button>
+                            <x-confirm action="tugaskan" :arg="$order->id" variant="secondary" size="sm" title="Tugaskan order" message="Order ini akan ditugaskan ke marketing yang dipilih. Lanjutkan?" confirm-label="Ya, tugaskan">Tugaskan</x-confirm>
                         @else
-                            <x-button wire:click="reassign({{ $order->id }})" wire:confirm="Ubah penugasan marketing order ini?" variant="secondary" size="sm">Ubah</x-button>
+                            <x-confirm action="reassign" :arg="$order->id" variant="secondary" size="sm" title="Ubah penugasan" message="Penugasan marketing untuk order ini akan diubah. Lanjutkan?" confirm-label="Ya, ubah">Ubah</x-confirm>
                         @endif
                     @endif
                 </div>
@@ -134,7 +129,7 @@
                         <x-button wire:click="lihatDetail({{ $order->id }})" variant="ghost" size="sm">Detail</x-button>
 
                         @if ($tampil === 'baru' && $this->isMarketing)
-                            <x-button wire:click="ambil({{ $order->id }})" wire:confirm="Ambil order ini untuk Anda?" size="sm">Ambil</x-button>
+                            <x-confirm action="ambil" :arg="$order->id" size="sm" title="Ambil order" message="Order ini akan ditugaskan ke Anda. Lanjutkan?" confirm-label="Ya, ambil">Ambil</x-confirm>
                         @endif
 
                         @if ($this->isAdmin)
@@ -147,9 +142,9 @@
                                 @endforeach
                             </select>
                             @if ($tampil === 'baru')
-                                <x-button wire:click="tugaskan({{ $order->id }})" wire:confirm="Tugaskan order ini ke marketing terpilih?" variant="secondary" size="sm">Tugaskan</x-button>
+                                <x-confirm action="tugaskan" :arg="$order->id" variant="secondary" size="sm" title="Tugaskan order" message="Order ini akan ditugaskan ke marketing yang dipilih. Lanjutkan?" confirm-label="Ya, tugaskan">Tugaskan</x-confirm>
                             @else
-                                <x-button wire:click="reassign({{ $order->id }})" wire:confirm="Ubah penugasan marketing order ini?" variant="secondary" size="sm">Ubah</x-button>
+                                <x-confirm action="reassign" :arg="$order->id" variant="secondary" size="sm" title="Ubah penugasan" message="Penugasan marketing untuk order ini akan diubah. Lanjutkan?" confirm-label="Ya, ubah">Ubah</x-confirm>
                             @endif
                         @endif
                     </div>
@@ -242,7 +237,7 @@
                 {{-- Footer --}}
                 <div class="flex justify-end gap-2 border-t border-line bg-page/40 px-5 py-3">
                     @if ($tampil === 'baru' && $this->isMarketing)
-                        <x-button wire:click="ambil({{ $d->id }})" wire:confirm="Ambil order ini untuk Anda?" size="sm">Ambil order ini</x-button>
+                        <x-confirm action="ambil" :arg="$d->id" size="sm" title="Ambil order" message="Order ini akan ditugaskan ke Anda. Lanjutkan?" confirm-label="Ya, ambil">Ambil order ini</x-confirm>
                     @endif
                     <x-button wire:click="tutupDetail" variant="ghost" size="sm">Tutup</x-button>
                 </div>

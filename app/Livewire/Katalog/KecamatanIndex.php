@@ -116,6 +116,8 @@ class KecamatanIndex extends Component
 
     public function delete(int $id): void
     {
+        $this->reset(['success', 'error']);
+
         $kecamatan = Kecamatan::withCount(['sekolah', 'users'])->findOrFail($id);
 
         if ($kecamatan->sekolah_count > 0 || $kecamatan->users_count > 0) {

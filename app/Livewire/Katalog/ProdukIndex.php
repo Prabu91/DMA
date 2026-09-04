@@ -35,6 +35,8 @@ class ProdukIndex extends Component
 
     public function delete(int $id): void
     {
+        $this->reset(['success', 'error']);
+
         $produk = Produk::findOrFail($id);
         $this->authorize('delete', $produk);
 

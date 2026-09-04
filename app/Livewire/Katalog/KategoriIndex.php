@@ -96,6 +96,8 @@ class KategoriIndex extends Component
 
     public function delete(int $id): void
     {
+        $this->reset(['success', 'error']);
+
         $kategori = Kategori::findOrFail($id);
         $this->authorize('delete', $kategori);
 

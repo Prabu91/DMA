@@ -236,6 +236,8 @@ class SekolahIndex extends Component
 
     public function delete(int $id): void
     {
+        $this->reset(['success', 'error']);
+
         $sekolah = Sekolah::findOrFail($id);
         $this->authorize('delete', $sekolah);
 

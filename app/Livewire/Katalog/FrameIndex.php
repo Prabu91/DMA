@@ -107,6 +107,8 @@ class FrameIndex extends Component
 
     public function delete(int $id): void
     {
+        $this->reset(['success', 'error']);
+
         $frame = Frame::findOrFail($id);
         $this->authorize('delete', $frame);
 

@@ -128,6 +128,8 @@ class AturanFreeIndex extends Component
 
     public function delete(int $id): void
     {
+        $this->reset(['success', 'error']);
+
         $aturan = AturanFreeSekolah::findOrFail($id);
         $this->authorize('delete', $aturan);
         $aturan->delete();

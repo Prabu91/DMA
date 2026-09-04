@@ -181,6 +181,8 @@ class DesainIndex extends Component
 
     public function delete(int $id): void
     {
+        $this->reset(['success', 'error']);
+
         $desain = Desain::findOrFail($id);
         $this->authorize('delete', $desain);
 
@@ -203,6 +205,8 @@ class DesainIndex extends Component
      */
     public function forceDelete(int $id): void
     {
+        $this->reset(['success', 'error']);
+
         abort_unless(auth()->user()?->hasRole('super_admin'), 403);
         $desain = Desain::findOrFail($id);
         $this->authorize('delete', $desain);

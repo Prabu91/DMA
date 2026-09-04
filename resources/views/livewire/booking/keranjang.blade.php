@@ -93,7 +93,9 @@
                     @endif
 
                     @if (! app(\App\Support\Cart::class)->isEmpty())
-                        <button type="button" wire:click="kosongkan" wire:confirm="Kosongkan keranjang?" class="w-full text-center text-xs text-ink-muted hover:text-status-danger">Kosongkan keranjang</button>
+                        <x-confirm action="kosongkan" block variant="ghost" size="sm" confirm-variant="danger" confirm-label="Ya, kosongkan"
+                                   title="Kosongkan keranjang" message="Semua item di keranjang akan dihapus. Lanjutkan?"
+                                   trigger-class="w-full text-xs text-ink-muted hover:text-status-danger">Kosongkan keranjang</x-confirm>
                     @endif
                 </div>
             </x-card>

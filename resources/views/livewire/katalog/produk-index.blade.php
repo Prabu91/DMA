@@ -13,12 +13,7 @@
         <x-button :href="route('app.produk.create')" size="sm" wire:navigate class="shrink-0 self-start whitespace-nowrap sm:self-auto">Tambah produk</x-button>
     </div>
 
-    @if ($success)
-        <div class="mb-4 rounded-lg border border-status-success/20 bg-status-success/10 px-4 py-3 text-sm text-status-success">{{ $success }}</div>
-    @endif
-    @if ($error)
-        <div class="mb-4 rounded-lg border border-status-danger/20 bg-status-danger/10 px-4 py-3 text-sm text-status-danger">{{ $error }}</div>
-    @endif
+    <x-toast :success="$success" :error="$error" />
 
     <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
         <div class="flex-1">
@@ -61,7 +56,8 @@
                 </div>
                 <div class="flex shrink-0 items-center gap-2 pl-[3.75rem] sm:pl-0">
                     <x-button :href="route('app.produk.edit', $item)" variant="secondary" size="sm" wire:navigate>Ubah</x-button>
-                    <x-button wire:click="delete({{ $item->id }})" wire:confirm="Hapus produk {{ $item->nama }}?" variant="ghost" size="sm">Hapus</x-button>
+                    <x-confirm action="delete" :arg="$item->id" variant="ghost" size="sm" confirm-variant="danger" confirm-label="Ya, hapus"
+                            title="Hapus produk" message="Produk {{ $item->nama }} akan dihapus permanen. Lanjutkan?">Hapus</x-confirm>
                 </div>
             </div>
         @empty
