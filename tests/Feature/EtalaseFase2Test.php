@@ -132,13 +132,13 @@ class EtalaseFase2Test extends TestCase
         $comp = Livewire::test(EtalaseDetail::class, ['konteks' => 'staf', 'tipe' => 'produk', 'id' => $produk->id]);
 
         // Pilih 8R → hanya desain 8R + desain tanpa label ukuran.
-        $comp->set('selectedUkuran', '8R')
+        $comp->set('pilihan.ukuran', '8R')
             ->assertSee('SINGLE-8R')
             ->assertSee('UMUM')
             ->assertDontSee('KOLASE-10R');
 
         // Ganti ke 10R → hanya desain 10R + tanpa label.
-        $comp->set('selectedUkuran', '10R')
+        $comp->set('pilihan.ukuran', '10R')
             ->assertSee('KOLASE-10R')
             ->assertSee('UMUM')
             ->assertDontSee('SINGLE-8R');
@@ -177,9 +177,9 @@ class EtalaseFase2Test extends TestCase
         $this->desain($kategori, 'KOLASE-10R', [$produk->id => ['10R']]);
 
         Livewire::test(EtalaseDetail::class, ['konteks' => 'staf', 'tipe' => 'produk', 'id' => $produk->id])
-            ->set('selectedUkuran', '8R')
+            ->set('pilihan.ukuran', '8R')
             ->set('selectedDesain', $d8->id)
-            ->set('selectedUkuran', '10R')      // desain 8R tak lagi cocok
+            ->set('pilihan.ukuran', '10R')      // desain 8R tak lagi cocok
             ->assertSet('selectedDesain', null);
     }
 

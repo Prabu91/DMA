@@ -36,6 +36,9 @@ class Cart
             'produk_id' => $data['produk_id'] ?? null,
             'paket_id' => $data['paket_id'] ?? null,
             'desain_id' => $data['desain_id'] ?? null,
+            // Pilihan per tipe varian: ['box' => 'TANPA BOX', 'ukuran' => '10RP'].
+            'opsi' => $data['opsi'] ?? [],
+            // Ringkasan untuk ditampilkan & disimpan sbg snapshot di order_items.
             'opsi_ukuran' => $data['opsi_ukuran'] ?? null,
             'qty' => max(1, (int) ($data['qty'] ?? 1)),
         ];
@@ -113,6 +116,7 @@ class Cart
             $line['paket_id'] ?? '',
             $line['desain_id'] ?? '',
             $line['opsi_ukuran'] ?? '',
+            json_encode($line['opsi'] ?? []),
         ]));
     }
 }

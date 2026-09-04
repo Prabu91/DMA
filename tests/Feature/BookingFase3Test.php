@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Livewire\Booking\Keranjang;
 use App\Livewire\Katalog\EtalaseDetail;
 use App\Models\Cabang;
+use App\Models\Desain;
 use App\Models\Kategori;
 use App\Models\Produk;
 use App\Models\Sekolah;
@@ -49,12 +50,12 @@ class BookingFase3Test extends TestCase
         $kategori = Kategori::create(['nama' => 'Wisuda', 'pakai_desain' => true]);
         $produk = Produk::create(['kategori_id' => $kategori->id, 'nama' => 'Foto Wisuda', 'harga' => 50000, 'status' => 'aktif']);
         $produk->opsi()->create(['tipe_opsi' => 'ukuran', 'nilai_opsi' => '10RP', 'is_wajib' => true]);
-        $desain = \App\Models\Desain::create(['kategori_id' => $kategori->id, 'kode' => 'ERP-001', 'tahun_ajaran' => '2026/2027', 'status' => 'aktif']);
+        $desain = Desain::create(['kategori_id' => $kategori->id, 'kode' => 'ERP-001', 'tahun_ajaran' => '2026/2027', 'status' => 'aktif']);
         $desain->products()->attach($produk->id, ['ukuran' => null]); // ditempel ke produk (semua ukuran)
 
         Livewire::test(EtalaseDetail::class, ['konteks' => 'staf', 'tipe' => 'produk', 'id' => $produk->id])
             ->call('tambah')
-            ->assertHasErrors(['selectedDesain', 'selectedUkuran']);
+            ->assertHasErrors(['selectedDesain', 'pilihan.ukuran']);
 
         $this->assertSame(0, app(Cart::class)->count());
     }
@@ -64,17 +65,47 @@ class BookingFase3Test extends TestCase
         $kategori = Kategori::create(['nama' => 'Wisuda', 'pakai_desain' => true]);
         $produk = Produk::create(['kategori_id' => $kategori->id, 'nama' => 'Foto Wisuda', 'harga' => 50000, 'status' => 'aktif']);
         $produk->opsi()->create(['tipe_opsi' => 'ukuran', 'nilai_opsi' => '10RP', 'is_wajib' => true]);
-        $desain = \App\Models\Desain::create(['kategori_id' => $kategori->id, 'kode' => 'ERP-001', 'tahun_ajaran' => '2026/2027', 'status' => 'aktif']);
+        $desain = Desain::create(['kategori_id' => $kategori->id, 'kode' => 'ERP-001', 'tahun_ajaran' => '2026/2027', 'status' => 'aktif']);
 
         Livewire::test(EtalaseDetail::class, ['konteks' => 'staf', 'tipe' => 'produk', 'id' => $produk->id])
             ->set('selectedDesain', $desain->id)
-            ->set('selectedUkuran', '10RP')
+            ->set('pilihan.ukuran', '10RP')
             ->set('qty', 3)
             ->call('tambah')
             ->assertHasNoErrors()
             ->assertSet('justAdded', true);
 
         $this->assertSame(3, app(Cart::class)->count());
+    }
+
+    public function test_dua_tipe_varian_dipilih_terpisah_dan_tersimpan_di_cart(): void
+    {
+        $kategori = Kategori::create(['nama' => 'Souvenir', 'pakai_desain' => false]);
+        $produk = Produk::create(['kategori_id' => $kategori->id, 'nama' => 'Foto Manasik', 'harga' => 20000, 'status' => 'aktif']);
+        $produk->opsi()->create(['tipe_opsi' => 'box', 'nilai_opsi' => 'TANPA BOX', 'is_wajib' => true]);
+        $produk->opsi()->create(['tipe_opsi' => 'box', 'nilai_opsi' => 'DEPAN BELAKANG', 'is_wajib' => true, 'harga_override' => 35000]);
+        $produk->opsi()->create(['tipe_opsi' => 'ukuran', 'nilai_opsi' => '10RP', 'is_wajib' => true]);
+
+        $comp = Livewire::test(EtalaseDetail::class, ['konteks' => 'staf', 'tipe' => 'produk', 'id' => $produk->id]);
+
+        // Tiap tipe varian tampil sebagai kartu sendiri, judulnya ikut nama varian.
+        $comp->assertSee('Opsi Box')->assertSee('Opsi Ukuran');
+
+        // Keduanya wajib -> harus dipilih sendiri-sendiri.
+        $comp->call('tambah')->assertHasErrors(['pilihan.box', 'pilihan.ukuran']);
+        $this->assertSame(0, app(Cart::class)->count());
+
+        // Baru satu yang dipilih -> yang lain tetap diprotes.
+        $comp->set('pilihan.box', 'DEPAN BELAKANG')
+            ->call('tambah')
+            ->assertHasErrors(['pilihan.ukuran'])
+            ->assertHasNoErrors(['pilihan.box']);
+
+        $comp->set('pilihan.ukuran', '10RP')->call('tambah')->assertHasNoErrors();
+
+        $item = collect(app(Cart::class)->items())->first();
+        $this->assertSame(['box' => 'DEPAN BELAKANG', 'ukuran' => '10RP'], $item['opsi']);
+        $this->assertSame('DEPAN BELAKANG · 10RP', $item['opsi_ukuran']); // snapshot utk order
     }
 
     // ---------- Keranjang: harga efektif & subtotal ----------

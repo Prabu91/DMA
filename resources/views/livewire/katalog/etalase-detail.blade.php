@@ -59,18 +59,28 @@
     @else
         @php $produk = $this->produk; @endphp
         <div class="grid gap-6 lg:grid-cols-3">
-            {{-- Media --}}
+            {{-- Media: begitu desain dipilih, pratinjaunya menggantikan foto produk
+                 supaya desainnya terlihat besar sebelum dipesan. --}}
+            @php
+                $desainTerpilih = $selectedDesain ? $this->desainPool->firstWhere('id', $selectedDesain) : null;
+                $fotoPratinjau = $desainTerpilih?->foto_preview ?: $produk->foto;
+            @endphp
             <div>
                 <div class="flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl border border-line bg-page p-2">
-                    @if ($produk->foto)
+                    @if ($fotoPratinjau)
                         {{-- object-contain: tampil utuh mengikuti orientasi asli (potret/lanskap), tak dipotong --}}
-                        <img src="{{ asset('storage/'.$produk->foto) }}" alt="" class="max-h-full max-w-full object-contain">
+                        <img src="{{ asset('storage/'.$fotoPratinjau) }}" alt="" class="max-h-full max-w-full object-contain">
                     @else
                         <div class="flex h-full w-full items-center justify-center text-ink-muted">
                             <svg class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="{{ \App\Support\Icons::path('product') }}" /></svg>
                         </div>
                     @endif
                 </div>
+                @if ($desainTerpilih)
+                    <p class="mt-2 text-center text-xs text-ink-muted">
+                        Pratinjau desain <span class="font-medium text-ink">{{ $desainTerpilih->kode }}</span>
+                    </p>
+                @endif
             </div>
 
             {{-- Info + pilihan --}}
@@ -90,34 +100,38 @@
                     </div>
                 </x-card>
 
-                {{-- Opsi ukuran --}}
-                @if ($produk->opsi->isNotEmpty())
-                    <x-card title="Opsi ukuran">
+                {{-- Satu kartu per tipe varian: judulnya ikut nama varian (Opsi Box, Opsi Ukuran, ...) --}}
+                @foreach ($this->variantGroups as $tipeVarian => $nilaiVarian)
+                    <x-card wire:key="varian-{{ $loop->index }}" title="Opsi {{ \App\Livewire\Katalog\EtalaseDetail::labelVarian($tipeVarian) }}">
                         <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                            @foreach ($produk->opsi as $opsi)
+                            @foreach ($nilaiVarian as $opsi)
+                                @php $terpilih = ($pilihan[$tipeVarian] ?? null) === $opsi->nilai_opsi; @endphp
                                 <label @class([
                                     'flex cursor-pointer items-center justify-between gap-2 rounded-lg border px-3 py-2.5 text-sm',
-                                    'border-brand bg-brand/5' => $selectedUkuran === $opsi->nilai_opsi,
-                                    'border-line hover:bg-page' => $selectedUkuran !== $opsi->nilai_opsi,
+                                    'border-brand bg-brand/5' => $terpilih,
+                                    'border-line hover:bg-page' => ! $terpilih,
                                 ])>
                                     <span class="flex items-center gap-2">
-                                        <input type="radio" wire:model.live="selectedUkuran" value="{{ $opsi->nilai_opsi }}" class="text-brand focus:ring-brand/30">
+                                        <input type="radio" wire:model.live="pilihan.{{ $tipeVarian }}" value="{{ $opsi->nilai_opsi }}" class="text-brand focus:ring-brand/30">
                                         <span class="text-ink">{{ $opsi->nilai_opsi }}</span>
                                     </span>
                                     @if ($opsi->is_wajib)<x-badge variant="danger">Wajib</x-badge>@endif
                                 </label>
                             @endforeach
                         </div>
-                        @if ($produk->opsi->firstWhere('is_wajib', true))
+                        @error('pilihan.'.$tipeVarian)
+                            <p class="mt-2 text-sm text-status-danger">{{ $message }}</p>
+                        @enderror
+                        @if ($nilaiVarian->firstWhere('is_wajib', true))
                             <p class="mt-2 text-xs text-ink-muted">Opsi bertanda “Wajib” harus dipilih saat booking.</p>
                         @endif
                     </x-card>
-                @endif
+                @endforeach
 
                 {{-- Pool desain --}}
                 @if ($this->pakaiDesain)
                     <x-card>
-                        <x-slot name="title">Pilih desain @if ($selectedUkuran)<span class="text-sm font-normal text-ink-muted">· untuk ukuran {{ $selectedUkuran }}</span>@endif</x-slot>
+                        <x-slot name="title">Pilih desain @if ($this->selectedUkuran)<span class="text-sm font-normal text-ink-muted">· untuk ukuran {{ $this->selectedUkuran }}</span>@endif</x-slot>
                         <x-slot name="actions">
                             @if (count($this->tahunOptions) > 0)
                                 <x-select wire:model.live="tahunAjaran" :options="$this->tahunOptions" :selected="$tahunAjaran" class="min-w-[10rem]" />
@@ -149,8 +163,8 @@
                             </div>
                         @else
                             <p class="text-sm text-ink-muted">
-                                @if ($selectedUkuran)
-                                    Belum ada desain untuk ukuran {{ $selectedUkuran }} pada tahun ajaran terpilih.
+                                @if ($this->selectedUkuran)
+                                    Belum ada desain untuk ukuran {{ $this->selectedUkuran }} pada tahun ajaran terpilih.
                                 @else
                                     Belum ada desain aktif untuk kategori ini pada tahun ajaran terpilih.
                                 @endif
@@ -161,7 +175,6 @@
 
                 <x-card :title="$sf ? 'Pesan' : null">
                     @error('selectedDesain')<p class="mb-2 text-sm text-status-danger">{{ $message }}</p>@enderror
-                    @error('selectedUkuran')<p class="mb-2 text-sm text-status-danger">{{ $message }}</p>@enderror
 
                     <div class="flex flex-wrap items-end gap-3">
                         <div class="w-32">
