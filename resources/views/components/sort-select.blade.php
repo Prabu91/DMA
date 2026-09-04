@@ -14,7 +14,7 @@
 <label {{ $attributes->merge(['class' => 'flex items-center gap-2']) }}>
     <span class="shrink-0 text-sm text-ink-muted">Urutkan</span>
     <select wire:change="setSort($event.target.value)"
-            class="min-h-[44px] w-full rounded-lg border border-line bg-card px-3 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+            class="min-h-[44px] w-full rounded-lg border border-line bg-card py-2 pl-3 pr-9 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
         @foreach ($options as $value => $label)
             <option value="{{ $value }}" @selected($current === $value)>{{ $label }}</option>
         @endforeach

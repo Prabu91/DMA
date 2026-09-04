@@ -16,7 +16,7 @@
             <label class="flex items-center gap-2 text-xs text-ink-muted">
                 <span class="shrink-0">Baris per halaman</span>
                 <select wire:model.live="perPage"
-                        class="min-h-[36px] rounded-lg border border-line bg-card px-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+                        class="min-h-[36px] rounded-lg border border-line bg-card py-1 pl-3 pr-9 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
                     @foreach (\App\Support\Tabel::PER_PAGE as $n)
                         <option value="{{ $n }}">{{ $n }}</option>
                     @endforeach
