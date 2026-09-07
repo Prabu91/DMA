@@ -114,6 +114,8 @@ Route::prefix('app')->name('app.')->middleware(['auth', 'verified'])->group(func
     // Aktivitas (audit lintas order) — admin & area (area ter-scope cabang).
     Route::middleware('role:super_admin|operasional|admin_sales')->group(function () {
         Route::get('/aktivitas', \App\Livewire\ActivityIndex::class)->name('aktivitas');
+        // Saklar aplikasi — berlaku semua cabang, jadi dibatasi admin pusat.
+        Route::get('/pengaturan', \App\Livewire\PengaturanIndex::class)->name('pengaturan');
     });
 
     // Finance — super_admin + admin_sales (admin area = admin sales = admin finance).

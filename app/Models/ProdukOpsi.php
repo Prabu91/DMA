@@ -14,12 +14,14 @@ class ProdukOpsi extends Model
         'tipe_opsi',
         'nilai_opsi',
         'harga_override',
+        'is_tambahan',
         'is_wajib',
     ];
 
     protected function casts(): array
     {
         return [
+            'is_tambahan' => 'boolean',
             'is_wajib' => 'boolean',
         ];
     }

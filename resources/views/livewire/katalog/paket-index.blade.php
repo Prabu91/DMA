@@ -83,10 +83,7 @@
                                     <x-input type="number" min="0" label="Harga/satuan" wire:model="items.{{ $i }}.harga" :error="$errors->first('items.'.$i.'.harga')" />
                                 </div>
                                 <div class="mt-2 flex items-center justify-between">
-                                    <label class="flex items-center gap-2 text-sm text-ink">
-                                        <input type="checkbox" wire:model="items.{{ $i }}.is_free" class="h-4 w-4 rounded border-line text-brand focus:ring-2 focus:ring-brand/30">
-                                        Free (bonus, harga 0)
-                                    </label>
+                                    <x-toggle wire:model="items.{{ $i }}.is_free" label="Free (bonus, harga 0)" />
                                     <x-button type="button" wire:click="removeItem({{ $i }})" variant="ghost" size="sm">Hapus</x-button>
                                 </div>
                             </div>

@@ -18,8 +18,7 @@
                         <p class="mt-2 text-sm text-ink-muted">{{ $paket->deskripsi }}</p>
                     @endif
                     <div class="mt-4 flex items-baseline gap-2">
-                        <span class="{{ $sf ? 'text-3xl font-extrabold text-navy' : 'text-xl font-bold text-ink' }}">Rp{{ number_format($paket->harga, 0, ',', '.') }}</span>
-                        @if ($sf)<span class="text-xs text-ink-muted">/ paket</span>@endif
+                        <x-harga :nilai="$paket->harga" :satuan="$sf ? '/ paket' : null" class="{{ $sf ? 'text-3xl font-extrabold text-navy' : 'text-xl font-bold text-ink' }}" />
                     </div>
 
                     <div class="mt-5">
@@ -94,11 +93,67 @@
                     @if ($produk->deskripsi)
                         <p class="mt-2 text-sm text-ink-muted">{{ $produk->deskripsi }}</p>
                     @endif
-                    <div class="mt-4 flex items-baseline gap-2">
-                        <span class="{{ $sf ? 'text-3xl font-extrabold text-navy' : 'text-xl font-bold text-ink' }}">Rp{{ number_format($produk->harga, 0, ',', '.') }}</span>
-                        <span class="text-xs text-ink-muted">/ item</span>
+                    {{-- Harga ikut pilihan varian, bukan harga dasar — angkanya sama
+                         dengan yang dihitung keranjang & order. --}}
+                    <div class="mt-4 flex flex-wrap items-baseline gap-2">
+                        <x-harga :nilai="$this->hargaEfektif" satuan="/ item" class="{{ $sf ? 'text-3xl font-extrabold text-navy' : 'text-xl font-bold text-ink' }}" />
+                        {{-- Harga coret hanya bila harga memang boleh dilihat, agar tidak bocor. --}}
+                        @if ($this->hargaEfektif !== (int) $produk->harga && \App\Support\Pengaturan::bolehLihatHarga())
+                            <span class="text-xs text-ink-muted line-through">Rp{{ number_format($produk->harga, 0, ',', '.') }}</span>
+                            <span class="text-xs text-ink-muted">· mengikuti pilihan varian</span>
+                        @endif
                     </div>
                 </x-card>
+
+                {{-- Mode Pas Foto: satu harga, jatah pcs dibagi ke beberapa ukuran. --}}
+                @if ($this->pakaiKomposisi)
+                    <x-card>
+                        <x-slot name="title">Ukuran</x-slot>
+                        <x-slot name="subtitle">Bagi jatah maksimal {{ $this->maksPcs() }} pcs ke ukuran yang diinginkan. Harganya tetap sama.</x-slot>
+
+                        <ul class="divide-y divide-line overflow-hidden rounded-xl border border-line">
+                            @foreach ($this->ukuranKomposisi as $ukuran)
+                                @php $jumlah = (int) ($komposisi[$ukuran] ?? 0); @endphp
+                                <li wire:key="pcs-{{ $loop->index }}" class="flex items-center justify-between gap-3 p-3">
+                                    <span class="text-sm font-medium text-ink">{{ $ukuran }}</span>
+                                    <span class="flex items-center gap-2">
+                                        <button type="button" wire:click="ubahPcs(@js($ukuran), -1)" @disabled($jumlah < 1) aria-label="Kurangi {{ $ukuran }}"
+                                                class="grid h-9 w-9 place-items-center rounded-lg border border-line text-ink transition hover:border-brand/60 disabled:opacity-40">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" d="M5 12h14" /></svg>
+                                        </button>
+                                        <input type="number" min="0" max="{{ $this->maksPcs() }}" wire:model.live.debounce.400ms="komposisi.{{ $ukuran }}"
+                                               class="h-9 w-16 rounded-lg border border-line bg-card text-center text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
+                                        <button type="button" wire:click="ubahPcs(@js($ukuran), 1)" @disabled($this->totalPcs >= $this->maksPcs()) aria-label="Tambah {{ $ukuran }}"
+                                                class="grid h-9 w-9 place-items-center rounded-lg border border-line text-ink transition hover:border-brand/60 disabled:opacity-40">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" d="M12 5v14M5 12h14" /></svg>
+                                        </button>
+                                    </span>
+                                </li>
+                            @endforeach
+                        </ul>
+
+                        <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
+                            <p class="text-sm {{ $this->totalPcs > $this->maksPcs() ? 'text-status-danger' : 'text-ink-muted' }}">
+                                <span class="font-semibold text-ink">{{ $this->totalPcs }}</span> / {{ $this->maksPcs() }} pcs terpakai
+                            </p>
+                            @if ($this->totalPcs > 0)
+                                @php
+                                    // Dirangkai di PHP: $loop->last ikut menghitung ukuran
+                                    // yang jatahnya 0, sehingga separatornya menggantung.
+                                    $ringkas = [];
+                                    foreach ($this->ukuranKomposisi as $u) {
+                                        if (! empty($komposisi[$u])) {
+                                            $ringkas[] = $u.' ×'.$komposisi[$u];
+                                        }
+                                    }
+                                @endphp
+                                <p class="text-xs text-ink-muted">{{ implode(' · ', $ringkas) }}</p>
+                            @endif
+                        </div>
+
+                        @error('komposisi')<p class="mt-2 text-sm text-status-danger">{{ $message }}</p>@enderror
+                    </x-card>
+                @endif
 
                 {{-- Satu kartu per tipe varian: judulnya ikut nama varian (Opsi Box, Opsi Ukuran, ...) --}}
                 @foreach ($this->variantGroups as $tipeVarian => $nilaiVarian)

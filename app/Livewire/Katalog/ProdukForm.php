@@ -8,6 +8,7 @@ use App\Models\Kategori;
 use App\Models\Produk;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -26,6 +27,11 @@ class ProdukForm extends Component
     public string $nama = '';
 
     public ?string $frame = null;
+
+    // Mode komposisi ukuran (Pas Foto): ukuran dibagi jatah pcs, bukan pilih satu.
+    public bool $komposisiUkuran = false;
+
+    public ?int $maksPcs = Produk::MAKS_PCS_DEFAULT;
 
     public ?string $deskripsi = null;
 
@@ -64,6 +70,9 @@ class ProdukForm extends Component
 
     public ?string $desainMsg = null;
 
+    /** Pesan gagal simpan — ditampilkan sbg notifikasi melayang, lihat <x-toast>. */
+    public ?string $error = null;
+
     public function mount(?Produk $produk = null): void
     {
         $this->desainTahun = $this->tahunAjaranDefault();
@@ -74,6 +83,8 @@ class ProdukForm extends Component
             $this->kategori_id = $produk->kategori_id;
             $this->nama = $produk->nama;
             $this->frame = $produk->frame;
+            $this->komposisiUkuran = (bool) $produk->komposisi_ukuran;
+            $this->maksPcs = $produk->maks_pcs ?: Produk::MAKS_PCS_DEFAULT;
             $this->deskripsi = $produk->deskripsi;
             $this->harga = (int) $produk->harga;
             $this->status = $produk->status ?: 'aktif';
@@ -84,6 +95,7 @@ class ProdukForm extends Component
                 ->map(fn ($rows, $tipe) => [
                     'tipe' => $tipe,
                     'is_wajib' => (bool) $rows->contains(fn ($r) => $r->is_wajib),
+                    'is_tambahan' => (bool) $rows->contains(fn ($r) => $r->is_tambahan),
                     'values' => $rows->map(fn ($r) => [
                         'nilai' => $r->nilai_opsi,
                         'harga_override' => $r->harga_override,
@@ -133,7 +145,7 @@ class ProdukForm extends Component
 
     public function addVariant(): void
     {
-        $this->variants[] = ['tipe' => 'ukuran', 'is_wajib' => false, 'values' => [['nilai' => '', 'harga_override' => null]]];
+        $this->variants[] = ['tipe' => 'ukuran', 'is_wajib' => false, 'is_tambahan' => false, 'values' => [['nilai' => '', 'harga_override' => null]]];
     }
 
     public function removeVariant(int $vi): void
@@ -170,14 +182,17 @@ class ProdukForm extends Component
             'kategori_id' => ['required', 'exists:kategori,id'],
             'nama' => ['required', 'string', 'max:255'],
             'frame' => ['nullable', 'string', 'exists:frame,nama'],
+            'komposisiUkuran' => ['boolean'],
+            'maksPcs' => ['nullable', 'integer', 'min:1', 'max:999'],
             'deskripsi' => ['nullable', 'string', 'max:1000'],
             'harga' => ['required', 'integer', 'min:0'],
             'status' => ['required', 'in:'.implode(',', array_keys(Produk::STATUS))],
-            'foto' => ['nullable', 'image', 'max:2048'],
+            'foto' => ['nullable', 'image', 'max:4096'],
 
             'variants' => ['array'],
             'variants.*.tipe' => ['required', 'string', 'max:50'],
             'variants.*.is_wajib' => ['boolean'],
+            'variants.*.is_tambahan' => ['boolean'],
             'variants.*.values' => ['array', 'min:1'],
             'variants.*.values.*.nilai' => ['required', 'string', 'max:100'],
             'variants.*.values.*.harga_override' => ['nullable', 'integer', 'min:0'],
@@ -188,14 +203,45 @@ class ProdukForm extends Component
         ];
     }
 
+    /** Nama field yang ramah dibaca untuk pesan gagal simpan. */
+    protected function validationAttributes(): array
+    {
+        return [
+            'kategori_id' => 'Kategori',
+            'nama' => 'Nama produk',
+            'frame' => 'Frame',
+            'deskripsi' => 'Deskripsi',
+            'harga' => 'Harga',
+            'maksPcs' => 'Maks pcs',
+            'status' => 'Status',
+            'foto' => 'Foto produk',
+        ];
+    }
+
     public function save()
     {
-        $this->validate();
+        $this->error = null;
+
+        // Galat per-field muncul di sebelah isiannya, yang bisa jauh di atas
+        // tombol Simpan pada form panjang — tanpa ringkasan ini, gagal simpan
+        // terlihat seperti tombolnya tidak berfungsi.
+        try {
+            $this->validate();
+        } catch (ValidationException $e) {
+            $this->error = 'Produk belum tersimpan. Periksa: '.implode(', ', array_unique(array_map(
+                fn ($field) => $this->namaFieldGagal($field),
+                array_keys($e->errors()),
+            ))).'.';
+
+            throw $e;
+        }
 
         $data = [
             'kategori_id' => $this->kategori_id,
             'nama' => $this->nama,
             'frame' => $this->frame,
+            'komposisi_ukuran' => $this->komposisiUkuran,
+            'maks_pcs' => $this->komposisiUkuran ? ($this->maksPcs ?: Produk::MAKS_PCS_DEFAULT) : null,
             'deskripsi' => $this->deskripsi,
             'harga' => $this->harga,
             'status' => $this->status,
@@ -225,6 +271,7 @@ class ProdukForm extends Component
                     'tipe_opsi' => $v['tipe'] ?: 'ukuran',
                     'nilai_opsi' => $val['nilai'],
                     'harga_override' => ($val['harga_override'] ?? '') !== '' ? $val['harga_override'] : null,
+                    'is_tambahan' => (bool) ($v['is_tambahan'] ?? false),
                     'is_wajib' => (bool) ($v['is_wajib'] ?? false),
                 ]);
             }
@@ -243,6 +290,24 @@ class ProdukForm extends Component
         session()->flash('success', $this->produkId ? 'Produk diperbarui.' : 'Produk ditambahkan.');
 
         return $this->redirectRoute('app.produk.index', navigate: true);
+    }
+
+    /** Ubah kunci galat (mis. "variants.0.values.2.nilai") jadi keterangan yang dimengerti. */
+    private function namaFieldGagal(string $field): string
+    {
+        if (preg_match('/^variants\.(\d+)\.values\.\d+\.nilai$/', $field, $m)) {
+            return 'nilai varian '.($this->variants[$m[1]]['tipe'] ?? 'ke-'.($m[1] + 1));
+        }
+
+        if (preg_match('/^variants\.(\d+)\./', $field, $m)) {
+            return 'varian '.($this->variants[$m[1]]['tipe'] ?? 'ke-'.($m[1] + 1));
+        }
+
+        if (str_starts_with($field, 'bonus.')) {
+            return 'bonus tetap';
+        }
+
+        return $this->validationAttributes()[$field] ?? $field;
     }
 
     // ========================= BLOK DESAIN (staging → pivot desain↔produk) =========================
@@ -361,7 +426,7 @@ class ProdukForm extends Component
             'desainKode' => ['required', 'string', 'max:100', Rule::unique('desain', 'kode')],
             'desainOrientasi' => ['nullable', 'in:'.implode(',', array_keys(Desain::ORIENTASI))],
             'desainTahun' => ['required', 'string', 'max:20'],
-            'desainFoto' => ['nullable', 'image', 'max:2048'],
+            'desainFoto' => ['nullable', 'image', 'max:4096'],
         ]);
 
         // Bentrok dengan desain baru lain yang masih di daftar (belum masuk DB).

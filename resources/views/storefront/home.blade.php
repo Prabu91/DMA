@@ -89,7 +89,7 @@
                                         <span class="truncate text-sm font-semibold text-ink">{{ $produk->nama }}</span>
                                         @if ($produk->frame)<span class="rounded bg-page px-1.5 py-0.5 text-[9px] font-bold text-ink-muted">{{ $produk->frame }}</span>@endif
                                     </div>
-                                    <div class="mt-1 text-sm font-extrabold text-navy">Rp{{ number_format($produk->harga, 0, ',', '.') }}</div>
+                                    <x-harga :nilai="$produk->harga" class="mt-1 block text-sm font-extrabold text-navy" />
                                 </div>
                             </a>
                         @endforeach
@@ -135,7 +135,7 @@
                                 <div class="text-sm font-extrabold text-ink">{{ $paket->nama }}</div>
                                 <div class="mt-0.5 line-clamp-2 text-xs text-ink-muted">{{ $paket->deskripsi ?: $paket->produk_count.' produk' }}</div>
                                 <div class="mt-3 flex items-baseline justify-between">
-                                    <span class="text-base font-extrabold text-navy">Rp{{ number_format($paket->harga, 0, ',', '.') }}</span>
+                                    <x-harga :nilai="$paket->harga" class="text-base font-extrabold text-navy" />
                                     <span class="text-[10px] font-extrabold text-brand">BOOKING →</span>
                                 </div>
                             </div>

@@ -50,22 +50,12 @@ class BookingService
                 if (! $produk) {
                     continue;
                 }
-                $unit = (int) $produk->harga;
-
-                // Produk bisa punya beberapa tipe varian (mis. box + ukuran). Setiap
-                // nilai varian yang punya harga_override menimpa harga satuan; bila
-                // lebih dari satu menimpa, yang terakhir (urutan varian) yang dipakai.
                 // Baris lama hanya menyimpan opsi_ukuran tunggal, jadi tetap didukung.
                 $dipilih = ! empty($it['opsi'])
                     ? array_values($it['opsi'])
                     : array_filter([$it['opsi_ukuran'] ?? null]);
 
-                foreach ($dipilih as $nilai) {
-                    $opsi = $produk->opsi->firstWhere('nilai_opsi', $nilai);
-                    if ($opsi && $opsi->harga_override !== null) {
-                        $unit = (int) $opsi->harga_override;
-                    }
-                }
+                $unit = $produk->hargaSatuan($dipilih);
                 $lines[] = [
                     'key' => $key, 'tipe' => 'produk',
                     'produk_id' => $produk->id, 'paket_id' => null,

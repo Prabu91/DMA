@@ -18,6 +18,8 @@ class Produk extends Model
         'kategori_id',
         'nama',
         'frame',
+        'komposisi_ukuran',
+        'maks_pcs',
         'deskripsi',
         'foto',
         'harga',
@@ -26,7 +28,26 @@ class Produk extends Model
 
     protected $casts = [
         'harga' => 'integer',
+        'komposisi_ukuran' => 'boolean',
+        'maks_pcs' => 'integer',
     ];
+
+    /** Batas pcs bila mode komposisi menyala (0 = tak dibatasi). */
+    public const MAKS_PCS_DEFAULT = 20;
+
+    /**
+     * Mode komposisi ukuran aktif? Butuh saklar menyala DAN ada nilai varian
+     * bertipe "ukuran" untuk dibagi jatahnya.
+     */
+    public function pakaiKomposisiUkuran(): bool
+    {
+        return $this->komposisi_ukuran && count($this->ukuranOpsi()) > 0;
+    }
+
+    public function maksPcs(): int
+    {
+        return $this->maks_pcs > 0 ? (int) $this->maks_pcs : self::MAKS_PCS_DEFAULT;
+    }
 
     public function kategori(): BelongsTo
     {
@@ -45,6 +66,41 @@ class Produk extends Model
             ->using(DesainProduk::class)
             ->withPivot('ukuran')
             ->withTimestamps();
+    }
+
+    /**
+     * Harga satuan setelah memperhitungkan nilai varian yang dipilih.
+     *
+     * $dipilih = daftar nilai_opsi terpilih (mis. ['60 HALAMAN', 'BOX']).
+     * Aturannya:
+     *   - varian penentu harga (is_tambahan = false) MENGGANTI harga produk;
+     *   - varian tambahan (is_tambahan = true) DITAMBAHKAN di atasnya.
+     * Nilai tanpa harga_override tidak mengubah apa pun.
+     *
+     * Satu-satunya sumber kebenaran harga: dipakai keranjang, order, dan
+     * tampilan katalog supaya angkanya tidak pernah berbeda.
+     *
+     * @param  array<int, string>  $dipilih
+     */
+    public function hargaSatuan(array $dipilih = []): int
+    {
+        $unit = (int) $this->harga;
+        $tambahan = 0;
+
+        foreach (array_filter($dipilih, fn ($n) => $n !== null && $n !== '') as $nilai) {
+            $opsi = $this->opsi->firstWhere('nilai_opsi', $nilai);
+            if (! $opsi || $opsi->harga_override === null) {
+                continue;
+            }
+
+            if ($opsi->is_tambahan) {
+                $tambahan += (int) $opsi->harga_override;
+            } else {
+                $unit = (int) $opsi->harga_override;
+            }
+        }
+
+        return max(0, $unit + $tambahan);
     }
 
     /** Nilai opsi ukuran produk ini (untuk checkbox ukuran pada desain). */

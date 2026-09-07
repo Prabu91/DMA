@@ -7,6 +7,8 @@
         <h1 class="text-lg font-medium text-ink">{{ $produkId ? 'Ubah produk' : 'Tambah produk' }}</h1>
     </div>
 
+    <x-toast :error="$error" />
+
     <form wire:submit="save" class="space-y-6">
         {{-- Informasi produk --}}
         <x-card title="Informasi produk">
@@ -35,7 +37,7 @@
                             <input type="file" wire:model="foto" accept="image/*"
                                    class="block w-full text-sm text-ink-muted file:mr-3 file:rounded-lg file:border file:border-line file:bg-card file:px-3 file:py-2 file:text-sm file:text-ink hover:file:bg-page">
                             <div wire:loading wire:target="foto" class="mt-1 text-xs text-ink-muted">Mengunggah…</div>
-                            <p class="mt-1 text-xs text-ink-muted">JPG/PNG, maks 2 MB.</p>
+                            <p class="mt-1 text-xs text-ink-muted">JPG/PNG, maks 4 MB.</p>
                             @error('foto')<p class="mt-1 text-xs text-status-danger">{{ $message }}</p>@enderror
                         </div>
                     </div>
@@ -53,16 +55,28 @@
 
             <datalist id="varian-tipe"><option value="ukuran"></option><option value="box"></option><option value="warna"></option><option value="bahan"></option></datalist>
 
+            {{-- Mode Pas Foto: ukuran dibagi jatah pcs, bukan pilih salah satu. --}}
+            <div class="mb-4 rounded-xl border border-line bg-page/50 p-3">
+                <x-toggle wire:model.live="komposisiUkuran" align="start"
+                          label="Komposisi ukuran (Pas Foto)"
+                          hint="Pembeli membagi jatah pcs ke beberapa ukuran sekaligus (mis. 2x3 4 pcs + 3x4 2 pcs) dengan satu harga produk. Nilai varian bertipe ukuran dipakai sebagai daftar ukurannya; harga override pada ukuran diabaikan." />
+
+                @if ($komposisiUkuran)
+                    <div class="mt-3 w-48">
+                        <x-input label="Maks pcs" type="number" min="1" wire:model="maksPcs" :error="$errors->first('maksPcs')" />
+                    </div>
+                @endif
+            </div>
+
             @forelse ($variants as $vi => $v)
                 <div wire:key="var-{{ $vi }}" class="mb-3 rounded-xl border border-line p-3 last:mb-0">
                     <div class="flex flex-wrap items-end gap-3 border-b border-line pb-3">
                         <div class="w-44">
                             <x-input label="Tipe varian" wire:model.live.debounce.500ms="variants.{{ $vi }}.tipe" list="varian-tipe" placeholder="ukuran / box / warna" :error="$errors->first('variants.'.$vi.'.tipe')" />
                         </div>
-                        <label class="flex min-h-[44px] items-center gap-2">
-                            <input type="checkbox" wire:model="variants.{{ $vi }}.is_wajib" class="h-4 w-4 rounded border-line text-brand focus:ring-2 focus:ring-brand/30">
-                            <span class="text-sm text-ink">Wajib dipilih</span>
-                        </label>
+                        <x-toggle wire:model="variants.{{ $vi }}.is_wajib" label="Wajib dipilih" class="min-h-[44px]" />
+                        <x-toggle wire:model.live="variants.{{ $vi }}.is_tambahan" label="Penambahan harga" class="min-h-[44px]"
+                                  title="Mis. varian Box yang menambah Rp40.000 di atas harga halaman yang sudah dipilih." />
                         <x-button type="button" wire:click="removeVariant({{ $vi }})" variant="ghost" size="sm" class="ml-auto text-status-danger">Hapus varian</x-button>
                     </div>
 
@@ -74,7 +88,11 @@
                                     <x-input :label="$ki === 0 ? 'Nilai' : null" wire:model.live.debounce.500ms="variants.{{ $vi }}.values.{{ $ki }}.nilai" placeholder="mis. 8R" :error="$errors->first('variants.'.$vi.'.values.'.$ki.'.nilai')" />
                                 </div>
                                 <div class="w-44">
-                                    <x-input :label="$ki === 0 ? 'Harga override' : null" type="number" min="0" wire:model="variants.{{ $vi }}.values.{{ $ki }}.harga_override" placeholder="Ikut harga produk" />
+                                    @php $tambahan = (bool) ($v['is_tambahan'] ?? false); @endphp
+                                    <x-input :label="$ki === 0 ? ($tambahan ? 'Tambahan harga' : 'Harga override') : null"
+                                             type="number" min="0"
+                                             wire:model="variants.{{ $vi }}.values.{{ $ki }}.harga_override"
+                                             :placeholder="$tambahan ? 'Tidak menambah' : 'Ikut harga produk'" />
                                 </div>
                                 <button type="button" wire:click="removeValue({{ $vi }}, {{ $ki }})" class="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-line text-ink-muted transition hover:border-status-danger/50 hover:text-status-danger" title="Hapus nilai">
                                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -84,7 +102,13 @@
 
                         <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
                             <x-button type="button" wire:click="addValue({{ $vi }})" variant="ghost" size="sm">+ Tambah nilai</x-button>
-                            <p class="text-xs text-ink-muted">Harga override kosong = memakai harga produk.</p>
+                            <p class="text-xs text-ink-muted">
+                                @if ((bool) ($v['is_tambahan'] ?? false))
+                                    Nilai varian ini <span class="font-medium">menambah</span> harga yang sudah terbentuk. Kosong = tidak menambah.
+                                @else
+                                    Nilai varian ini <span class="font-medium">mengganti</span> harga produk. Kosong = memakai harga produk.
+                                @endif
+                            </p>
                         </div>
                     </div>
                 </div>

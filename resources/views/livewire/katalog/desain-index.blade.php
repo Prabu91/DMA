@@ -105,7 +105,7 @@
                                 <input type="file" wire:model="foto_preview" accept="image/*"
                                        class="block w-full text-sm text-ink-muted file:mr-3 file:rounded-lg file:border file:border-line file:bg-card file:px-3 file:py-2 file:text-sm file:text-ink hover:file:bg-page">
                                 <div wire:loading wire:target="foto_preview" class="mt-1 text-xs text-ink-muted">Mengunggah…</div>
-                                <p class="mt-1 text-xs text-ink-muted">JPG/PNG, maks 2 MB.</p>
+                                <p class="mt-1 text-xs text-ink-muted">JPG/PNG, maks 4 MB.</p>
                                 @error('foto_preview')<p class="mt-1 text-xs text-status-danger">{{ $message }}</p>@enderror
                             </div>
                         </div>

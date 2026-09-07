@@ -38,6 +38,8 @@ class Cart
             'desain_id' => $data['desain_id'] ?? null,
             // Pilihan per tipe varian: ['box' => 'TANPA BOX', 'ukuran' => '10RP'].
             'opsi' => $data['opsi'] ?? [],
+            // Mode komposisi (Pas Foto): jumlah pcs per ukuran, mis. ['2X3' => 4].
+            'komposisi' => $data['komposisi'] ?? [],
             // Ringkasan untuk ditampilkan & disimpan sbg snapshot di order_items.
             'opsi_ukuran' => $data['opsi_ukuran'] ?? null,
             'qty' => max(1, (int) ($data['qty'] ?? 1)),
@@ -117,6 +119,7 @@ class Cart
             $line['desain_id'] ?? '',
             $line['opsi_ukuran'] ?? '',
             json_encode($line['opsi'] ?? []),
+            json_encode($line['komposisi'] ?? []),
         ]));
     }
 }

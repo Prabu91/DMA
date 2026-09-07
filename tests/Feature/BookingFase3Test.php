@@ -130,6 +130,97 @@ class BookingFase3Test extends TestCase
         $this->assertSame(50, app(Cart::class)->jumlahSiswa());
     }
 
+    public function test_varian_tambahan_menambah_harga_bukan_mengganti(): void
+    {
+        // Kasus Yearbook: varian "halaman" menentukan harga (mengganti),
+        // varian "box" menambah di atasnya.
+        $kategori = Kategori::create(['nama' => 'Yearbook', 'pakai_desain' => false]);
+        $produk = Produk::create(['kategori_id' => $kategori->id, 'nama' => 'Yearbook', 'harga' => 160000, 'status' => 'aktif']);
+        $produk->opsi()->create(['tipe_opsi' => 'halaman', 'nilai_opsi' => '30 HALAMAN', 'harga_override' => 160000, 'is_wajib' => true]);
+        $produk->opsi()->create(['tipe_opsi' => 'halaman', 'nilai_opsi' => '60 HALAMAN', 'harga_override' => 320000, 'is_wajib' => true]);
+        $produk->opsi()->create(['tipe_opsi' => 'box', 'nilai_opsi' => 'BOX', 'harga_override' => 40000, 'is_tambahan' => true]);
+        $produk->opsi()->create(['tipe_opsi' => 'box', 'nilai_opsi' => 'POP-UP', 'harga_override' => 30000, 'is_tambahan' => true]);
+        $produk->refresh();
+
+        $this->assertSame(160000, $produk->hargaSatuan([]));                          // harga dasar
+        $this->assertSame(320000, $produk->hargaSatuan(['60 HALAMAN']));              // mengganti
+        $this->assertSame(360000, $produk->hargaSatuan(['60 HALAMAN', 'BOX']));       // 320rb + 40rb
+        $this->assertSame(350000, $produk->hargaSatuan(['60 HALAMAN', 'POP-UP']));    // 320rb + 30rb
+        $this->assertSame(200000, $produk->hargaSatuan(['BOX']));                     // 160rb + 40rb
+
+        // Katalog menampilkan angka yang sama dengan yang akan ditagih.
+        Livewire::test(EtalaseDetail::class, ['konteks' => 'staf', 'tipe' => 'produk', 'id' => $produk->id])
+            ->assertSee('Rp160.000')
+            ->set('pilihan.halaman', '60 HALAMAN')
+            ->set('pilihan.box', 'BOX')
+            ->assertSee('Rp360.000')
+            ->call('tambah')
+            ->assertHasNoErrors();
+
+        // ... dan keranjang menghitung angka yang sama.
+        Livewire::test(Keranjang::class, ['konteks' => 'staf'])->assertSee('360.000');
+    }
+
+    public function test_pas_foto_membagi_jatah_pcs_ke_beberapa_ukuran(): void
+    {
+        // Satu harga per siswa; yang dikustom hanya pembagian pcs antar ukuran.
+        $kategori = Kategori::create(['nama' => 'Pas Foto', 'pakai_desain' => false]);
+        $produk = Produk::create([
+            'kategori_id' => $kategori->id,
+            'nama' => 'Pas Foto SD/SMP/SMA',
+            'harga' => 20000,
+            'status' => 'aktif',
+            'komposisi_ukuran' => true,
+            'maks_pcs' => 20,
+        ]);
+        foreach (['2X3', '3X4', '4X6'] as $u) {
+            $produk->opsi()->create(['tipe_opsi' => 'ukuran', 'nilai_opsi' => $u, 'is_wajib' => false]);
+        }
+
+        $comp = Livewire::test(EtalaseDetail::class, ['konteks' => 'publik', 'tipe' => 'produk', 'id' => $produk->id]);
+
+        // Ukuran tidak lagi tampil sebagai "pilih salah satu".
+        $comp->assertSee('Bagi jatah maksimal 20 pcs')->assertDontSee('Opsi Ukuran');
+
+        // Tanpa pcs sama sekali → ditolak.
+        $comp->call('tambah')->assertHasErrors('komposisi');
+        $this->assertSame(0, app(Cart::class)->count());
+
+        $comp->call('ubahPcs', '2X3', 4)
+            ->call('ubahPcs', '3X4', 2)
+            ->assertSet('totalPcs', 6)
+            ->call('tambah')
+            ->assertHasNoErrors();
+
+        $item = collect(app(Cart::class)->items())->first();
+        $this->assertSame(['2X3' => 4, '3X4' => 2], $item['komposisi']);
+        $this->assertSame('2X3 ×4 · 3X4 ×2', $item['opsi_ukuran']);
+
+        // Harga tetap harga produk — komposisi tidak mengubahnya.
+        $this->assertSame(20000, $produk->fresh()->hargaSatuan([]));
+        Livewire::test(Keranjang::class, ['konteks' => 'publik'])->assertSee('20.000');
+    }
+
+    public function test_pas_foto_menolak_pcs_melebihi_jatah(): void
+    {
+        $kategori = Kategori::create(['nama' => 'Pas Foto', 'pakai_desain' => false]);
+        $produk = Produk::create([
+            'kategori_id' => $kategori->id, 'nama' => 'Pas Foto', 'harga' => 20000,
+            'status' => 'aktif', 'komposisi_ukuran' => true, 'maks_pcs' => 5,
+        ]);
+        $produk->opsi()->create(['tipe_opsi' => 'ukuran', 'nilai_opsi' => '2X3', 'is_wajib' => false]);
+        $produk->opsi()->create(['tipe_opsi' => 'ukuran', 'nilai_opsi' => '3X4', 'is_wajib' => false]);
+
+        $comp = Livewire::test(EtalaseDetail::class, ['konteks' => 'publik', 'tipe' => 'produk', 'id' => $produk->id]);
+
+        // Tombol tambah berhenti tepat di batas, tidak melebihi.
+        $comp->call('ubahPcs', '2X3', 10)->assertSet('totalPcs', 5);
+        $comp->call('ubahPcs', '3X4', 3)->assertSet('totalPcs', 5);
+
+        // Isian manual yang kelewat batas juga dipangkas.
+        $comp->set('komposisi.2X3', 99)->assertSet('totalPcs', 5);
+    }
+
     // ---------- Jalur ----------
 
     public function test_marketing_hanya_lihat_sekolah_cabangnya(): void

@@ -71,11 +71,8 @@
 
                     <x-select label="Grup laporan (Finance)" wire:model="grup" :options="\App\Models\Kategori::GRUP" :selected="$grup" :error="$errors->first('grup')" hint="Menentukan bucket di laporan sales: Reguler/OB/YB/Souvenir." />
 
-                    <label class="flex items-center gap-2">
-                        <input type="checkbox" wire:model="pakai_desain" class="h-4 w-4 rounded border-line text-brand focus:ring-2 focus:ring-brand/30">
-                        <span class="text-sm text-ink">Pakai desain</span>
-                    </label>
-                    <p class="text-xs text-ink-muted">Aktifkan untuk kategori seperti wisuda, manasik, pas foto, kalender, bersama, angkatan.</p>
+                    <x-toggle wire:model="pakai_desain" align="start" label="Pakai desain"
+                              hint="Aktifkan untuk kategori seperti wisuda, manasik, pas foto, kalender, bersama, angkatan." />
 
                     <div class="flex items-center gap-3 pt-2">
                         <x-button type="submit">

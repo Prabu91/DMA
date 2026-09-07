@@ -47,7 +47,7 @@
                             <div class="mt-0.5 text-xs text-ink-muted">
                                 @if ($line['desain']) Desain {{ $line['desain'] }} · @endif
                                 @if ($line['ukuran']) Ukuran {{ $line['ukuran'] }} · @endif
-                                Rp{{ number_format($line['unit'], 0, ',', '.') }}/item
+                                <x-harga :nilai="$line['unit']" satuan="/item" />
                             </div>
                         </div>
                         <div class="flex items-center justify-between gap-3 sm:shrink-0 sm:justify-end">
@@ -56,7 +56,7 @@
                                 <span class="w-8 text-center text-sm text-ink">{{ $line['qty'] }}</span>
                                 <button type="button" wire:click="ubahQty('{{ $line['key'] }}', {{ $line['qty'] + 1 }})" class="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-ink hover:bg-page">+</button>
                             </div>
-                            <div class="text-right text-sm font-medium text-ink sm:w-24">Rp{{ number_format($line['total'], 0, ',', '.') }}</div>
+                            <x-harga :nilai="$line['total']" class="block text-right text-sm font-medium text-ink sm:w-24" />
                             <button type="button" wire:click="hapus('{{ $line['key'] }}')" class="shrink-0 text-ink-muted hover:text-status-danger" title="Hapus">
                                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
@@ -81,7 +81,7 @@
 
                     <div @class(['flex items-baseline justify-between', 'border-t border-line pt-4' => $konteks !== 'publik'])>
                         <span class="text-sm text-ink-muted">Subtotal</span>
-                        <span class="{{ $sf ? 'text-xl font-extrabold text-navy' : 'text-sm font-medium text-ink' }}">Rp{{ number_format($this->subtotal, 0, ',', '.') }}</span>
+                        <x-harga :nilai="$this->subtotal" class="{{ $sf ? 'text-xl font-extrabold text-navy' : 'text-sm font-medium text-ink' }}" />
                     </div>
                     <p class="text-xs text-ink-muted">Item free &amp; total akhir dihitung pada tahap review.</p>
 

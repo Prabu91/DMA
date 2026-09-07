@@ -75,7 +75,7 @@
                         </div>
                         <div class="p-3">
                             <div class="truncate text-sm font-bold text-ink">{{ $paket->nama }}</div>
-                            <div class="mt-1 text-sm font-extrabold text-navy">Rp{{ number_format($paket->harga, 0, ',', '.') }}</div>
+                            <x-harga :nilai="$paket->harga" class="mt-1 block text-sm font-extrabold text-navy" />
                         </div>
                     </a>
                 @endforeach
@@ -98,7 +98,7 @@
                             <div class="flex flex-1 flex-col p-3">
                                 <div class="text-sm font-semibold leading-snug text-ink">{{ $produk->nama }}</div>
                                 <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
-                                    <span class="text-sm font-extrabold text-navy">Rp{{ number_format($produk->harga, 0, ',', '.') }}</span>
+                                    <x-harga :nilai="$produk->harga" class="text-sm font-extrabold text-navy" />
                                     @if ($produk->frame)<span class="rounded bg-page px-1.5 py-0.5 text-[9px] font-bold text-ink-muted">{{ $produk->frame }}</span>@endif
                                 </div>
                             </div>

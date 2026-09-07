@@ -117,7 +117,7 @@ class DesainIndex extends Component
             'orientasi' => ['nullable', 'in:'.implode(',', array_keys(Desain::ORIENTASI))],
             'tahun_ajaran' => ['required', 'string', 'max:20'],
             'status' => ['required', 'in:'.implode(',', array_keys(Desain::STATUS))],
-            'foto_preview' => ['nullable', 'image', 'max:2048'],
+            'foto_preview' => ['nullable', 'image', 'max:4096'],
         ];
     }
 
