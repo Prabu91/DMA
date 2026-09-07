@@ -5,7 +5,7 @@ namespace App\Livewire;
 use App\Livewire\Concerns\WithSorting;
 use App\Models\Cabang;
 use App\Models\Produk;
-use Illuminate\Support\Facades\DB;
+use App\Services\ReportOrderQuery;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -82,58 +82,34 @@ class ReportOrder extends Component
             || $this->jenis !== '' || $this->dari !== '' || $this->sampai !== '';
     }
 
-    /** Builder dasar (join + filter), tanpa select/order/paginate. */
-    private function baseQuery()
+    /** Query dibagi dengan API report — lihat ReportOrderQuery. */
+    private function query(): ReportOrderQuery
     {
-        return DB::table('order_items as oi')
-            ->join('orders as o', 'o.id', '=', 'oi.order_id')
-            ->join('sekolah as s', 's.id', '=', 'o.sekolah_id')
-            ->join('users as m', 'm.id', '=', 'o.marketing_id') // hanya order yang SUDAH ditugaskan marketing
-            ->leftJoin('produk as p', 'p.id', '=', 'oi.produk_id')
-            ->leftJoin('paket as pk', 'pk.id', '=', 'oi.paket_id')
-            ->when($this->cabangId !== '', fn ($x) => $x->where('o.cabang_id', $this->cabangId))
-            ->when($this->produkId !== '', fn ($x) => $x->where('oi.produk_id', $this->produkId))
-            ->when($this->jenis === 'berbayar', fn ($x) => $x->where('oi.is_free', false))
-            ->when($this->jenis === 'free', fn ($x) => $x->where('oi.is_free', true))
-            ->when($this->dari !== '', fn ($x) => $x->whereDate('o.tanggal_booking', '>=', $this->dari))
-            ->when($this->sampai !== '', fn ($x) => $x->whereDate('o.tanggal_booking', '<=', $this->sampai))
-            ->when(trim($this->q) !== '', function ($x) {
-                $t = '%'.trim($this->q).'%';
-                $x->where(fn ($w) => $w->where('p.nama', 'ilike', $t)
-                    ->orWhere('pk.nama', 'ilike', $t)
-                    ->orWhere('s.nama', 'ilike', $t)
-                    ->orWhere('s.id_sekolah', 'ilike', $t)
-                    ->orWhere('o.booking_code', 'ilike', $t));
-            });
+        return new ReportOrderQuery([
+            'q' => $this->q,
+            'cabang_id' => $this->cabangId,
+            'produk_id' => $this->produkId,
+            'jenis' => $this->jenis,
+            'dari' => $this->dari,
+            'sampai' => $this->sampai,
+        ]);
     }
 
     public function render()
     {
-        $rowsQuery = (clone $this->baseQuery())
-            ->select([
-                'oi.id', 'oi.qty', 'oi.is_free', 'oi.tipe_item', 'oi.harga', 'oi.diskon',
-                'o.id as order_id', 'o.booking_code', 'o.tanggal_booking',
-                DB::raw('coalesce(m.nama, m.name) as marketing_nama'),
-                's.id_sekolah', 's.nama as sekolah_nama', 's.alamat as sekolah_alamat',
-                DB::raw('coalesce(p.nama, pk.nama) as item_nama'),
-                DB::raw('(oi.harga - oi.diskon) * oi.qty as nominal'), // nominal setelah diskon
-                'o.deleted_at', // penanda order dihapus (query mentah tak kena SoftDeletes)
-            ]);
+        $q = $this->query();
 
-        $rows = $this->applySort($rowsQuery, 'o.tanggal_booking', 'desc')
+        $rows = $this->applySort($q->baris(), 'o.tanggal_booking', 'desc')
             ->orderBy('oi.id')
             ->paginate($this->perPage);
 
-        $totalBaris = $rows->total(); // semua baris (termasuk yang dihapus, ditandai di tabel)
-        // Qty & Nominal HANYA order tidak dihapus → angka uang tak terpengaruh order terhapus.
-        $totalQty = (int) (clone $this->baseQuery())->whereNull('o.deleted_at')->sum('oi.qty');
-        $totalNominal = (int) (clone $this->baseQuery())->whereNull('o.deleted_at')->sum(DB::raw('(oi.harga - oi.diskon) * oi.qty'));
+        $ringkasan = $q->ringkasan();
 
         return view('livewire.report-order', [
             'rows' => $rows,
-            'totalBaris' => $totalBaris,
-            'totalQty' => $totalQty,
-            'totalNominal' => $totalNominal,
+            'totalBaris' => $ringkasan['baris'],
+            'totalQty' => $ringkasan['qty'],
+            'totalNominal' => $ringkasan['nominal'],
             'cabangOptions' => Cabang::orderBy('nama')->pluck('nama', 'id')->all(),
             'produkOptions' => Produk::orderBy('nama')->pluck('nama', 'id')->all(),
         ]);
