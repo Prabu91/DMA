@@ -303,7 +303,6 @@ class OrderManajemenO2Test extends TestCase
     public function test_konfirmasi_milestone_h7_oleh_admin_sales(): void
     {
         $order = $this->order($this->jkt);
-        // DP sudah masuk → H-7 boleh dikonfirmasi (berurutan).
         $order->update(['tanggal_event' => now()->addDays(10)->toDateString(), 'status' => 'dp']);
 
         // H-7 kini wewenang admin sales (area), bukan marketing.
@@ -314,6 +313,27 @@ class OrderManajemenO2Test extends TestCase
         $this->assertNotNull($order->refresh()->konfirmasi_h7_at);
         $states = collect($order->milestones())->keyBy('key');
         $this->assertSame('confirmed', $states['h7']['state']);
+    }
+
+    public function test_h7_bisa_dikonfirmasi_walau_dp_belum_masuk(): void
+    {
+        // DP kerap baru dibayar di lokasi saat hari event, jadi DP tidak boleh
+        // menggembok rangkaian konfirmasi H-7 → H-2 → Hari-H.
+        $order = $this->order($this->jkt);
+        $order->update(['tanggal_event' => now()->addDays(10)->toDateString(), 'status' => 'baru']);
+
+        $this->assertFalse($order->sudahDp());
+        $this->assertTrue($order->milestoneTerbuka('h7'));
+
+        Livewire::actingAs($this->area($this->jkt))
+            ->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
+            ->call('konfirmasiMilestone', 'h7');
+
+        $this->assertNotNull($order->refresh()->konfirmasi_h7_at);
+
+        // Urutan sesudahnya tetap berlaku: H-2 baru terbuka setelah H-7.
+        $this->assertTrue($order->milestoneTerbuka('h2'));
+        $this->assertFalse($order->milestoneTerbuka('hh'));
     }
 
     public function test_marketing_tak_bisa_konfirmasi_milestone(): void
@@ -350,7 +370,7 @@ class OrderManajemenO2Test extends TestCase
         $order->update(['tanggal_event' => now()->addDays(5)->toDateString(), 'status' => 'dp']);
 
         $ms = collect($order->milestones())->keyBy('key');
-        $this->assertSame('overdue', $ms['h7']['state']);  // due = event-7 = -2 hari, DP beres → terbuka
+        $this->assertSame('overdue', $ms['h7']['state']);  // due = event-7 = -2 hari
         $this->assertSame('locked', $ms['h2']['state']);   // H-7 belum → terkunci
         $this->assertSame('locked', $ms['hh']['state']);   // H-2 belum → terkunci
 

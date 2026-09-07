@@ -3,7 +3,12 @@
 namespace App\Livewire\Booking;
 
 use App\Models\Order;
+use App\Models\OrderPembayaran;
 use App\Models\User;
+use App\Support\OrderStatus;
+use App\Support\Qr;
+use App\Support\WaPesan;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -131,7 +136,7 @@ class OrderDetail extends Component
         $this->authorize('update', $this->order);
 
         $current = $this->order->status ?: 'baru';
-        $izin = $current === \App\Support\OrderStatus::BATAL ? ['baru'] : ['batal'];
+        $izin = $current === OrderStatus::BATAL ? ['baru'] : ['batal'];
         abort_unless(in_array($to, $izin, true), 422);
 
         $this->order->update(['status' => $to]);
@@ -149,7 +154,7 @@ class OrderDetail extends Component
     {
         abort_unless($this->konteks === 'staf', 403);
         $this->authorize('update', $this->order);
-        abort_if($this->order->status === \App\Support\OrderStatus::BATAL, 422);
+        abort_if($this->order->status === OrderStatus::BATAL, 422);
 
         // Nominal tak boleh melebihi sisa tagihan (yang belum disetujui-bayar).
         $sisa = $this->order->outstanding();
@@ -171,7 +176,7 @@ class OrderDetail extends Component
         $this->order->pembayaran()->create([
             'jenis' => $this->bayarJenis,
             'jumlah' => $this->bayarJumlah,
-            'status' => \App\Models\OrderPembayaran::STATUS_PENDING, // menunggu approval admin sales
+            'status' => OrderPembayaran::STATUS_PENDING, // menunggu approval admin sales
             'tanggal_bayar' => $this->bayarTanggal,
             'dicatat_oleh' => auth('web')->id(),
             'bukti_path' => $path,
@@ -192,7 +197,7 @@ class OrderDetail extends Component
 
         $bayar = $this->order->pembayaran()->findOrFail($pembayaranId);
         $bayar->update([
-            'status' => \App\Models\OrderPembayaran::STATUS_APPROVED,
+            'status' => OrderPembayaran::STATUS_APPROVED,
             'disetujui_oleh' => auth('web')->id(),
             'disetujui_at' => now(),
         ]);
@@ -211,7 +216,7 @@ class OrderDetail extends Component
 
         $bayar = $this->order->pembayaran()->findOrFail($pembayaranId);
         $bayar->update([
-            'status' => \App\Models\OrderPembayaran::STATUS_DITOLAK,
+            'status' => OrderPembayaran::STATUS_DITOLAK,
             'disetujui_oleh' => auth('web')->id(),
             'disetujui_at' => now(),
         ]);
@@ -263,7 +268,7 @@ class OrderDetail extends Component
             'jenis' => $this->editJenis,
             'jumlah' => $this->editJumlah,
             'tanggal_bayar' => $this->editTanggal,
-            'status' => \App\Models\OrderPembayaran::STATUS_PENDING, // edit → approve ulang
+            'status' => OrderPembayaran::STATUS_PENDING, // edit → approve ulang
             'disetujui_oleh' => null,
             'disetujui_at' => null,
         ];
@@ -271,7 +276,7 @@ class OrderDetail extends Component
             $lama = $bayar->bukti_path;
             $data['bukti_path'] = $this->editBukti->store('bukti-bayar', 'public');
             if ($lama) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($lama);
+                Storage::disk('public')->delete($lama);
             }
         }
         $bayar->update($data);
@@ -304,7 +309,7 @@ class OrderDetail extends Component
         foreach ($this->diskonItemValid() as $itemId => $nominal) {
             $this->order->items()->whereKey($itemId)->update(['diskon_diajukan' => $nominal]);
         }
-        $this->order->update(['diskon_status' => \App\Models\Order::DISKON_DIAJUKAN]);
+        $this->order->update(['diskon_status' => Order::DISKON_DIAJUKAN]);
         $this->order->catat('diskon_diajukan', 'diskon per item');
 
         unset($this->order);
@@ -320,7 +325,7 @@ class OrderDetail extends Component
         foreach ($this->diskonItemValid() as $itemId => $nominal) {
             $this->order->items()->whereKey($itemId)->update(['diskon' => $nominal]);
         }
-        $this->order->update(['diskon_status' => \App\Models\Order::DISKON_DISETUJUI]);
+        $this->order->update(['diskon_status' => Order::DISKON_DISETUJUI]);
         unset($this->order); // refresh: computed muat ulang items dgn diskon baru
 
         $this->order->recalcStatusPembayaran(); // status ikut totalSetelahDiskon baru
@@ -336,7 +341,7 @@ class OrderDetail extends Component
         abort_unless($this->konteks === 'staf', 403);
         abort_unless(auth('web')->user()?->isAdminSales(), 403);
 
-        $this->order->update(['diskon_status' => \App\Models\Order::DISKON_DITOLAK]);
+        $this->order->update(['diskon_status' => Order::DISKON_DITOLAK]);
         $this->order->catat('diskon_ditolak');
 
         unset($this->order);
@@ -392,8 +397,8 @@ class OrderDetail extends Component
         // Notifikasi WA konfirmasi (H-7/H-2) — ditahan via saklar; OTP tetap jalan.
         if (config('services.fonnte.kirim_konfirmasi')) {
             $this->order->kirimWa($key === 'h7'
-                ? \App\Support\WaPesan::h7($this->order)
-                : \App\Support\WaPesan::h2($this->order));
+                ? WaPesan::h7($this->order)
+                : WaPesan::h2($this->order));
         }
 
         unset($this->order);
@@ -418,7 +423,8 @@ class OrderDetail extends Component
     #[Computed]
     public function bisaLihatOtp(): bool
     {
-        return auth('web')->user()?->hasAnyRole(['super_admin', 'admin_sales']) ?? false;
+        // Semua admin (admin_sales, operasional, super_admin) — bukan hanya super admin.
+        return auth('web')->user()?->isAdminSales() ?? false;
     }
 
     /** Marketing/area/operasional/super_admin ubah tanggal & jam event. */
@@ -491,7 +497,7 @@ class OrderDetail extends Component
     public function qrSvg(): ?string
     {
         return $this->order->booking_code
-            ? \App\Support\Qr::svg(route('storefront.cek', $this->order->booking_code), 150)
+            ? Qr::svg(route('storefront.cek', $this->order->booking_code), 150)
             : null;
     }
 

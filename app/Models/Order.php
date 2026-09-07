@@ -3,12 +3,17 @@
 namespace App\Models;
 
 use App\Models\Scopes\CabangScope;
+use App\Services\Notifications\FonnteService;
+use App\Support\OrderStatus;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 #[ScopedBy(CabangScope::class)]
 class Order extends Model
@@ -93,7 +98,7 @@ class Order extends Model
      * Milestone event (H-7 / H-2 / Hari-H) beserta status:
      * confirmed | overdue (jatuh tempo lewat, belum konfirmasi) | upcoming.
      *
-     * @return array<int, array{key:string, label:string, due:\Carbon\CarbonInterface, confirmedAt:?\Carbon\CarbonInterface, state:string}>
+     * @return array<int, array{key:string, label:string, due:CarbonInterface, confirmedAt:?CarbonInterface, state:string}>
      */
     public function milestones(): array
     {
@@ -143,17 +148,20 @@ class Order extends Model
     /** Ada pembayaran DP yang sudah disetujui → langkah DP terpenuhi. */
     public function sudahDp(): bool
     {
-        return in_array($this->status, [\App\Support\OrderStatus::DP, \App\Support\OrderStatus::LUNAS], true);
+        return in_array($this->status, [OrderStatus::DP, OrderStatus::LUNAS], true);
     }
 
     /**
-     * Gating berurutan: DP → H-7 → H-2 → Hari-H.
-     * Sebuah milestone hanya boleh dikonfirmasi bila prasyaratnya selesai.
+     * Gating berurutan: H-7 → H-2 → Hari-H.
+     *
+     * DP sengaja TIDAK menjadi prasyarat H-7: di lapangan DP kerap baru dibayar
+     * saat hari event, sehingga menggembok H-7 di DP membuat seluruh rangkaian
+     * konfirmasi tidak bisa dijalankan. Status pembayaran tetap dilacak sendiri.
      */
     public function milestoneTerbuka(string $key): bool
     {
         return match ($key) {
-            'h7' => $this->sudahDp(),
+            'h7' => true,
             'h2' => $this->konfirmasi_h7_at !== null,
             'hh' => $this->konfirmasi_h2_at !== null,
             default => false,
@@ -187,7 +195,7 @@ class Order extends Model
     public function isLocked(): bool
     {
         return $this->konfirmasi_hh_at !== null
-            || $this->event_status === \App\Support\OrderStatus::EVENT_SELESAI;
+            || $this->event_status === OrderStatus::EVENT_SELESAI;
     }
 
     /**
@@ -222,11 +230,11 @@ class Order extends Model
      */
     public function statusLabel(): string
     {
-        if ($this->status === \App\Support\OrderStatus::BARU && $this->adaPembayaranPending()) {
+        if ($this->status === OrderStatus::BARU && $this->adaPembayaranPending()) {
             return 'Menunggu approval DP';
         }
 
-        return \App\Support\OrderStatus::label($this->status);
+        return OrderStatus::label($this->status);
     }
 
     /** Masa berlaku OTP penyelesaian event (menit). */
@@ -301,7 +309,7 @@ class Order extends Model
      */
     public function kirimWa(string $message): bool
     {
-        return app(\App\Services\Notifications\FonnteService::class)
+        return app(FonnteService::class)
             ->send($this->nomorWa(), $message);
     }
 
@@ -400,7 +408,7 @@ class Order extends Model
      */
     public function recalcStatusPembayaran(): void
     {
-        if ($this->status === \App\Support\OrderStatus::BATAL) {
+        if ($this->status === OrderStatus::BATAL) {
             return;
         }
 
@@ -408,9 +416,9 @@ class Order extends Model
         $tagihan = $this->totalSetelahDiskon();
 
         $status = match (true) {
-            $tagihan > 0 && $dibayar >= $tagihan => \App\Support\OrderStatus::LUNAS,
-            $dibayar > 0 => \App\Support\OrderStatus::DP,
-            default => \App\Support\OrderStatus::BARU,
+            $tagihan > 0 && $dibayar >= $tagihan => OrderStatus::LUNAS,
+            $dibayar > 0 => OrderStatus::DP,
+            default => OrderStatus::BARU,
         };
 
         if ($this->status !== $status) {
@@ -422,14 +430,14 @@ class Order extends Model
      * Simpan foto bukti DP (1 foto): simpan yang baru, hapus yang lama, catat.
      * Dipakai bersama OrderDetail (staf) & EventDetail (tim event).
      */
-    public function gantiBuktiDp(\Illuminate\Http\UploadedFile $file): void
+    public function gantiBuktiDp(UploadedFile $file): void
     {
         $lama = $this->bukti_dp_path;
         $path = $file->store('bukti-bayar', 'public');
         $this->update(['bukti_dp_path' => $path]);
 
         if ($lama && $lama !== $path) {
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($lama);
+            Storage::disk('public')->delete($lama);
         }
 
         $this->catat('bukti_dp', 'unggah bukti DP');
