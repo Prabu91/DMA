@@ -15,7 +15,9 @@ use Illuminate\Support\Facades\Auth;
  *   perintah artisan & seeding tetap bisa mengakses semua data.
  * - super_admin & operasional (User::seesAllCabang()) => TIDAK difilter,
  *   mereka melihat semua cabang.
- * - Selain itu => hanya baris dengan cabang_id = cabang user.
+ * - Selain itu => hanya baris yang cabang_id-nya termasuk cabang user.
+ *   User bisa memegang beberapa cabang sekaligus (sederajat, tanpa cabang utama);
+ *   user tanpa cabang sama sekali tidak melihat apa pun.
  *
  * Global scope ini berlaku untuk SEMUA query Eloquent model terkait,
  * termasuk find($id), sehingga akses lintas-cabang lewat id langsung
@@ -35,7 +37,22 @@ class CabangScope implements Scope
             return;
         }
 
+        // Guard `sekolah` juga melewati scope ini, dan model Sekolah tidak punya
+        // cabangIds() — hanya kolom cabang_id-nya sendiri. Tanpa cadangan ini,
+        // portal sekolah kehilangan seluruh datanya.
+        $cabangIds = method_exists($user, 'cabangIds')
+            ? $user->cabangIds()
+            : array_values(array_filter([$user->cabang_id ?? null], fn ($id) => $id !== null));
+
+        // Tanpa cabang = tidak melihat apa pun. Ini menjaga perilaku lama, saat
+        // cabang_id null membuat pembandingan tak pernah cocok.
+        if ($cabangIds === []) {
+            $builder->whereRaw('1 = 0');
+
+            return;
+        }
+
         // Kualifikasikan nama kolom agar aman saat query memakai join.
-        $builder->where($model->getTable().'.cabang_id', $user->cabang_id);
+        $builder->whereIn($model->getTable().'.cabang_id', $cabangIds);
     }
 }

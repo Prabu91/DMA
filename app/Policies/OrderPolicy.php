@@ -71,7 +71,6 @@ class OrderPolicy
             return true;
         }
 
-        return $user->cabang_id !== null
-            && $user->cabang_id === $order->cabang_id;
+        return $user->dalamCabang($order->cabang_id);
     }
 }

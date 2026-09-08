@@ -3,6 +3,7 @@
 namespace App\Livewire\Finance;
 
 use App\Models\Order;
+use App\Models\OrderPembayaran;
 use App\Support\OrderStatus;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -54,7 +55,7 @@ class TransaksiEventHarian extends Component
         $order->pembayaran()->create([
             'jenis' => 'dp',
             'jumlah' => $jumlah,
-            'status' => \App\Models\OrderPembayaran::STATUS_APPROVED,
+            'status' => OrderPembayaran::STATUS_APPROVED,
             'tanggal_bayar' => $this->tanggal, // = tanggal event → transaksi hari-H
             'dicatat_oleh' => auth()->id(),
             'disetujui_oleh' => auth()->id(),
@@ -75,7 +76,7 @@ class TransaksiEventHarian extends Component
             ->whereDate('tanggal_event', $this->tanggal)
             ->whereNotNull('marketing_id')
             ->where('status', '!=', OrderStatus::BATAL)
-            ->when(! $user->seesAllCabang(), fn ($x) => $x->where('cabang_id', $user->cabang_id))
+            ->when(! $user->seesAllCabang(), fn ($x) => $x->whereIn('cabang_id', $user->cabangIds()))
             ->with(['sekolah', 'marketing', 'pembayaran'])
             ->orderBy('id')
             ->get();

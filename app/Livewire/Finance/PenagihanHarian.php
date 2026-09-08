@@ -37,7 +37,7 @@ class PenagihanHarian extends Component
                 $w->whereNull('orders.tanggal_event')
                     ->orWhereColumn('order_pembayaran.tanggal_bayar', '!=', 'orders.tanggal_event');
             })
-            ->when(! $user->seesAllCabang(), fn ($x) => $x->where('orders.cabang_id', $user->cabang_id))
+            ->when(! $user->seesAllCabang(), fn ($x) => $x->whereIn('orders.cabang_id', $user->cabangIds()))
             ->with(['order.sekolah', 'order.marketing', 'order.pembayaran', 'pencatat'])
             ->orderBy('order_pembayaran.created_at')
             ->get();

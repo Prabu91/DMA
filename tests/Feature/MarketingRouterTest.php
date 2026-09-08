@@ -11,6 +11,7 @@ use App\Models\Produk;
 use App\Models\Sekolah;
 use App\Models\User;
 use App\Services\BookingService;
+use App\Services\MarketingRouter;
 use App\Support\Cart;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -131,5 +132,33 @@ class MarketingRouterTest extends TestCase
         $order = $this->buatOrderSekolah($sekolah);
 
         $this->assertNull($order->marketing_id); // beda cabang → tak dipilih
+    }
+
+    public function test_marketing_dua_cabang_tetap_ter_assign_di_cabang_keduanya(): void
+    {
+        // Marketing memegang cabang A & B; kolom lama users.cabang_id hanya A.
+        // Tanpa pencocokan pivot, order di cabang B tak pernah ter-assign.
+        $a = Cabang::create(['nama' => 'DMA A', 'kode_area' => 'A']);
+        $b = Cabang::create(['nama' => 'DMA B', 'kode_area' => 'B']);
+
+        $kotaB = Kota::create(['nama' => 'Kota B', 'cabang_id' => $b->id]);
+        $kecB = Kecamatan::create(['nama' => 'Kec B', 'kota_id' => $kotaB->id]);
+
+        $marketing = User::factory()->create(['cabang_id' => $a->id]);
+        $marketing->assignRole('marketing');
+        $marketing->cabangs()->sync([$a->id, $b->id]);
+        $marketing->kecamatan()->sync([$kecB->id]);
+
+        $sekolah = Sekolah::create([
+            'id_sekolah' => 'SKL-B-0002',
+            'nama' => 'SD Cabang B',
+            'cabang_id' => $b->id,
+            'kecamatan_id' => $kecB->id,
+        ]);
+
+        $terpilih = app(MarketingRouter::class)->forSekolah($sekolah);
+
+        $this->assertNotNull($terpilih, 'Marketing multi-cabang harus tetap ditemukan di cabang keduanya');
+        $this->assertSame($marketing->id, $terpilih->id);
     }
 }

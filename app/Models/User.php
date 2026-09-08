@@ -26,6 +26,9 @@ class User extends Authenticatable
      * super_admin, operasional, admin_sales & editor bekerja lintas cabang;
      * hanya marketing & tim_event yang terikat satu cabang.
      */
+    /** @var array<int, int>|null */
+    private ?array $cabangIdsCache = null;
+
     public const ROLES_LINTAS_CABANG = ['super_admin', 'operasional', 'admin_sales', 'editor'];
 
     /**
@@ -61,9 +64,60 @@ class User extends Authenticatable
         ];
     }
 
+    /**
+     * Cabang lama (kolom users.cabang_id). Masih dipakai sebagai salah satu
+     * cabang user — bukan cabang utama. Sumber kebenaran: cabangIds().
+     */
     public function cabang(): BelongsTo
     {
         return $this->belongsTo(Cabang::class);
+    }
+
+    /** Cabang yang dipegang user ini, sederajat (tanpa cabang utama). */
+    public function cabangs(): BelongsToMany
+    {
+        return $this->belongsToMany(Cabang::class, 'cabang_user')->withTimestamps();
+    }
+
+    /**
+     * Semua id cabang yang boleh diakses user ini — GABUNGAN pivot dan kolom
+     * lama users.cabang_id, supaya data yang belum dipindah tetap terbaca.
+     * Dipakai CabangScope & policy, jadi dihafal per-instance agar tidak
+     * memukul database berulang kali dalam satu request.
+     *
+     * @return array<int, int>
+     */
+    public function cabangIds(): array
+    {
+        if ($this->cabangIdsCache === null) {
+            $dariPivot = $this->relationLoaded('cabangs')
+                ? $this->cabangs->pluck('id')->all()
+                : $this->cabangs()->pluck('cabang.id')->all();
+
+            $this->cabangIdsCache = array_values(array_unique(array_filter(
+                array_merge($dariPivot, [$this->cabang_id]),
+                fn ($id) => $id !== null,
+            )));
+        }
+
+        return $this->cabangIdsCache;
+    }
+
+    /** Buang hafalan cabangIds() setelah penugasan cabang diubah. */
+    public function lupakanCabangIds(): void
+    {
+        $this->cabangIdsCache = null;
+        $this->unsetRelation('cabangs');
+    }
+
+    /** User ini berhak atas cabang tersebut? (admin lintas cabang selalu berhak) */
+    public function dalamCabang(?int $cabangId): bool
+    {
+        if ($this->seesAllCabang()) {
+            return true;
+        }
+
+        return $cabangId !== null && in_array($cabangId, $this->cabangIds(), true);
     }
 
     /**

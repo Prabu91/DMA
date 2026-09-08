@@ -19,7 +19,7 @@ class BuktiBayarController extends Controller
         $user = auth('web')->user();
         // Boleh dilihat siapa pun yang bisa mengakses order (lintas cabang / secabang).
         abort_unless(
-            $user && ($user->seesAllCabang() || $user->cabang_id === $pembayaran->order->cabang_id),
+            $user && $user->dalamCabang($pembayaran->order->cabang_id),
             403
         );
 

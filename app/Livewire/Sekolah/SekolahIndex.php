@@ -75,23 +75,40 @@ class SekolahIndex extends Component
         $this->authorize('viewAny', Sekolah::class);
     }
 
-    /** super_admin & operasional boleh memilih cabang; selain itu terkunci ke cabang user. */
+    /**
+     * Boleh memilih cabang bila admin lintas cabang, ATAU bila user memegang
+     * lebih dari satu cabang — karena tanpa cabang utama, sistem tidak bisa
+     * menebak sekolah baru ini masuk cabang yang mana.
+     */
     #[Computed]
     public function canChooseCabang(): bool
     {
-        return auth()->user()->seesAllCabang();
+        return auth()->user()->seesAllCabang() || count(auth()->user()->cabangIds()) > 1;
     }
 
+    /** Admin melihat semua cabang; selain itu hanya cabang yang ia pegang. */
     #[Computed]
     public function cabangOptions(): array
     {
-        return Cabang::orderBy('nama')->pluck('nama', 'id')->all();
+        return Cabang::query()
+            ->when(! auth()->user()->seesAllCabang(), fn ($q) => $q->whereIn('id', auth()->user()->cabangIds()))
+            ->orderBy('nama')
+            ->pluck('nama', 'id')
+            ->all();
     }
 
-    /** Cabang efektif form (admin: pilihan; selain itu: cabang user). */
+    /** Cabang bawaan bila user hanya memegang satu cabang. */
+    private function cabangTunggal(): ?int
+    {
+        $ids = auth()->user()->cabangIds();
+
+        return count($ids) === 1 ? $ids[0] : null;
+    }
+
+    /** Cabang efektif form (bisa memilih: pilihannya; selain itu: satu-satunya cabang). */
     private function effectiveCabangId(): ?int
     {
-        return $this->canChooseCabang() ? $this->cabang_id : auth()->user()->cabang_id;
+        return $this->canChooseCabang() ? $this->cabang_id : $this->cabangTunggal();
     }
 
     /** Kecamatan dalam cabang form ([id => "Kecamatan — Kota"]). Reaktif thd cabang_id. */
@@ -136,7 +153,7 @@ class SekolahIndex extends Component
         $this->error = null;
 
         if (! $this->canChooseCabang()) {
-            $this->cabang_id = auth()->user()->cabang_id;
+            $this->cabang_id = $this->cabangTunggal();
         }
 
         $this->showForm = true;
@@ -214,7 +231,7 @@ class SekolahIndex extends Component
         } else {
             $this->authorize('create', Sekolah::class);
 
-            $cabangId = $this->canChooseCabang() ? $this->cabang_id : auth()->user()->cabang_id;
+            $cabangId = $this->effectiveCabangId();
             if (! $cabangId) {
                 $this->error = 'Anda belum terhubung ke cabang. Hubungi admin.';
 

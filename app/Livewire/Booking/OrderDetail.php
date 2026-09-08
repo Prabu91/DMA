@@ -98,7 +98,10 @@ class OrderDetail extends Component
     public function timEventOptions()
     {
         return User::role('tim_event')
-            ->where('cabang_id', $this->order->cabang_id)
+            // Anggota tim bisa memegang beberapa cabang; cocokkan pivot & kolom lama.
+            ->where(fn ($q) => $q
+                ->whereHas('cabangs', fn ($c) => $c->where('cabang.id', $this->order->cabang_id))
+                ->orWhere('cabang_id', $this->order->cabang_id))
             ->orderBy('nama')
             ->get(['id', 'nama', 'name']);
     }
@@ -112,8 +115,12 @@ class OrderDetail extends Component
         abort_if($this->order->terkunciUntuk(auth('web')->user()), 423);
 
         $ids = array_map('intval', $this->timEventTerpilih);
+        // Penyaring harus sama dengan timEventOptions(), kalau tidak anggota
+        // multi-cabang muncul di daftar tapi terbuang diam-diam saat disimpan.
         $valid = User::role('tim_event')
-            ->where('cabang_id', $this->order->cabang_id)
+            ->where(fn ($q) => $q
+                ->whereHas('cabangs', fn ($c) => $c->where('cabang.id', $this->order->cabang_id))
+                ->orWhere('cabang_id', $this->order->cabang_id))
             ->whereIn('id', $ids)
             ->pluck('id')
             ->all();

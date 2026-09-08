@@ -52,7 +52,6 @@ class SekolahPolicy
             return true;
         }
 
-        return $user->cabang_id !== null
-            && $user->cabang_id === $sekolah->cabang_id;
+        return $user->dalamCabang($sekolah->cabang_id);
     }
 }

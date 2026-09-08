@@ -25,7 +25,12 @@ class MarketingRouter
         }
 
         return User::role('marketing')
-            ->where('cabang_id', $sekolah->cabang_id)
+            // Marketing bisa memegang beberapa cabang: cocokkan pivot maupun
+            // kolom lama, kalau tidak order di cabang keduanya tak pernah
+            // ter-assign dan diam-diam menumpuk di kotak masuk.
+            ->where(fn ($q) => $q
+                ->whereHas('cabangs', fn ($c) => $c->where('cabang.id', $sekolah->cabang_id))
+                ->orWhere('cabang_id', $sekolah->cabang_id))
             ->whereHas('kecamatan', fn ($q) => $q->whereKey($sekolah->kecamatan_id))
             ->withCount(['ordersAsMarketing as beban_aktif' => fn ($q) => $q->whereIn('status', ['baru', 'dp'])])
             ->orderBy('beban_aktif')

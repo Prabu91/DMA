@@ -92,7 +92,7 @@ class AdminDashboard extends Component
 
         // ---- Per cabang (filtered) ----
         $cabangList = Cabang::query()
-            ->when(! $this->isAdmin(), fn ($q) => $q->where('id', auth()->user()->cabang_id))
+            ->when(! $this->isAdmin(), fn ($q) => $q->whereIn('id', auth()->user()->cabangIds()))
             ->when($this->cabangId !== '', fn ($q) => $q->where('id', $this->cabangId))
             ->orderBy('nama')->get();
 

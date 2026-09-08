@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Booking;
 
+use App\Models\Cabang;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\CodeGenerator;
@@ -117,7 +118,7 @@ class KotakMasuk extends Component
     #[Computed]
     public function cabangList()
     {
-        return $this->isAdmin ? \App\Models\Cabang::orderBy('nama')->get() : collect();
+        return $this->isAdmin ? Cabang::orderBy('nama')->get() : collect();
     }
 
     public function resetFilter(): void
@@ -129,10 +130,17 @@ class KotakMasuk extends Component
     #[Computed]
     public function marketingByCabang(): array
     {
-        return User::role('marketing')->get(['id', 'nama', 'name', 'cabang_id'])
-            ->groupBy('cabang_id')
-            ->map(fn ($g) => $g->mapWithKeys(fn ($u) => [$u->id => $u->nama ?? $u->name])->all())
-            ->all();
+        // Satu marketing bisa memegang beberapa cabang, jadi ia muncul di tiap
+        // cabang yang dipegangnya — bukan hanya di kolom cabang_id lamanya.
+        $hasil = [];
+
+        foreach (User::role('marketing')->with('cabangs')->get(['id', 'nama', 'name', 'cabang_id']) as $u) {
+            foreach ($u->cabangIds() as $cabangId) {
+                $hasil[$cabangId][$u->id] = $u->nama ?? $u->name;
+            }
+        }
+
+        return $hasil;
     }
 
     /** Klaim atomik oleh marketing (WHERE marketing_id IS NULL). */
@@ -226,7 +234,7 @@ class KotakMasuk extends Component
         $order = Order::find($orderId); // ter-scope cabang
         $marketing = User::role('marketing')->find($marketingId);
 
-        return $order && $marketing && $marketing->cabang_id === $order->cabang_id;
+        return $order && $marketing && in_array($order->cabang_id, $marketing->cabangIds(), true);
     }
 
     public function render()
