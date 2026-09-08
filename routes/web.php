@@ -76,7 +76,7 @@ Route::prefix('app')->name('app.')->middleware(['auth', 'verified'])->group(func
     // Master data — khusus super_admin.
     Route::middleware('role:super_admin')->group(function () {
         Route::resource('cabang', CabangController::class)->parameters(['cabang' => 'cabang'])->except('show');
-        Route::resource('pengguna', PenggunaController::class)->parameters(['pengguna' => 'pengguna'])->except('show');
+        Route::get('/pengguna', \App\Livewire\PenggunaIndex::class)->name('pengguna.index');
         Route::get('/kecamatan', \App\Livewire\Katalog\KecamatanIndex::class)->name('kecamatan.index');
         Route::get('/report-order', \App\Livewire\ReportOrder::class)->name('report-order');
     });
