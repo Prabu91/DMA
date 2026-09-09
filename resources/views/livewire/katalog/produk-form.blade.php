@@ -202,9 +202,10 @@
                         @else
                             <ul class="divide-y divide-line overflow-hidden rounded-lg border border-line">
                                 @foreach ($this->hasilCariDesain as $opsi)
-                                    <li wire:key="pool-{{ $opsi->id }}">
+                                    @php $terpakai = $opsi->order_items_count + $opsi->products_count; @endphp
+                                    <li wire:key="pool-{{ $opsi->id }}" class="flex items-center gap-1 pr-2 hover:bg-page">
                                         <button type="button" wire:click="pilihDesain({{ $opsi->id }})"
-                                                class="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-page">
+                                                class="flex min-w-0 flex-1 items-center gap-3 px-3 py-2 text-left">
                                             <div class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-page">
                                                 @if ($opsi->foto_preview)
                                                     <img src="{{ asset('storage/'.$opsi->foto_preview) }}" loading="lazy" alt="" class="max-h-full max-w-full object-contain">
@@ -215,6 +216,20 @@
                                             <span class="truncate text-sm text-ink">{{ $opsi->kode }}</span>
                                             <span class="ml-auto shrink-0 text-xs text-ink-muted">{{ $opsi->kategori?->nama }}</span>
                                         </button>
+
+                                        {{-- Hapus permanen: hanya untuk desain yang benar-benar menganggur --}}
+                                        @if ($terpakai > 0)
+                                            <span class="shrink-0 px-1 text-[11px] text-ink-muted"
+                                                  title="Masih dipakai, jadi tidak bisa dihapus.">dipakai</span>
+                                        @else
+                                            {{-- Konfirmasinya modal terpisah di bawah, BUKAN di dalam
+                                                 dropdown ini — kalau bersarang, modalnya ikut
+                                                 tersembunyi saat dropdown menutup. --}}
+                                            <button type="button" wire:click="mintaHapusDesain({{ $opsi->id }})" title="Hapus desain {{ $opsi->kode }}"
+                                                    class="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-ink-muted transition hover:bg-status-danger/10 hover:text-status-danger">
+                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                                            </button>
+                                        @endif
                                     </li>
                                 @endforeach
                             </ul>
@@ -242,6 +257,33 @@
                     </div>
                 </div>
             </x-card>
+        @endif
+
+        {{-- Konfirmasi hapus desain permanen --}}
+        @if ($this->desainAkanDihapus)
+            <div class="fixed inset-0 z-[70] flex items-end justify-center p-4 sm:items-center" wire:key="hapus-desain-modal">
+                <div class="absolute inset-0 bg-navy-900/60 backdrop-blur-sm" wire:click="batalHapusDesain"></div>
+                <div class="relative z-10 w-full max-w-sm overflow-hidden rounded-2xl bg-card shadow-2xl ring-1 ring-black/5">
+                    <div class="p-5">
+                        <div class="flex gap-4">
+                            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-status-danger/10 text-status-danger">
+                                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+                            </span>
+                            <div class="min-w-0 pt-0.5">
+                                <h3 class="text-base font-bold text-ink">Hapus desain</h3>
+                                <p class="mt-1 text-sm leading-relaxed text-ink-muted">
+                                    Desain <span class="font-medium text-ink">{{ $this->desainAkanDihapus->kode }}</span>
+                                    akan dihapus permanen beserta fotonya. Tindakan ini tidak bisa dibatalkan.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col-reverse gap-2 border-t border-line bg-page/60 px-5 py-3 sm:flex-row sm:justify-end">
+                        <x-button type="button" variant="secondary" size="sm" class="w-full sm:w-auto" wire:click="batalHapusDesain">Batal</x-button>
+                        <x-button type="button" variant="danger" size="sm" class="w-full sm:w-auto" wire:click="hapusDesainPermanen">Ya, hapus</x-button>
+                    </div>
+                </div>
+            </div>
         @endif
 
         {{-- Bonus tetap (produk_bonus) --}}

@@ -118,6 +118,54 @@ class ProdukFase2Test extends TestCase
         $this->assertDatabaseHas('desain', ['kode' => 'SHARED-LOGO']);
     }
 
+    public function test_desain_menganggur_bisa_dihapus_permanen_dari_pemilih(): void
+    {
+        Storage::fake('public');
+        Livewire::actingAs($this->admin());
+
+        $kat = Kategori::create(['nama' => 'Souvenir', 'pakai_desain' => true]);
+        $produk = Produk::create(['kategori_id' => $kat->id, 'nama' => 'Plakat', 'harga' => 50000, 'status' => 'aktif']);
+
+        $foto = UploadedFile::fake()->image('d.jpg')->store('desain', 'public');
+        $desain = Desain::create([
+            'kategori_id' => $kat->id, 'kode' => 'NGANGGUR-01',
+            'tahun_ajaran' => '2026/2027', 'status' => 'aktif', 'foto_preview' => $foto,
+        ]);
+
+        Storage::disk('public')->assertExists($foto);
+
+        Livewire::test(ProdukForm::class, ['produk' => $produk])
+            ->assertSee('NGANGGUR-01')
+            ->call('mintaHapusDesain', $desain->id)
+            ->call('hapusDesainPermanen')
+            ->assertSet('desainMsg', fn ($v) => is_string($v) && str_contains($v, 'dihapus permanen'));
+
+        $this->assertDatabaseMissing('desain', ['id' => $desain->id]);
+        Storage::disk('public')->assertMissing($foto); // fotonya ikut dibersihkan
+    }
+
+    public function test_desain_yang_masih_menempel_produk_lain_tidak_bisa_dihapus(): void
+    {
+        Livewire::actingAs($this->admin());
+
+        $kat = Kategori::create(['nama' => 'Souvenir', 'pakai_desain' => true]);
+        $produk = Produk::create(['kategori_id' => $kat->id, 'nama' => 'Plakat', 'harga' => 50000, 'status' => 'aktif']);
+        $lain = Produk::create(['kategori_id' => $kat->id, 'nama' => 'Medali', 'harga' => 20000, 'status' => 'aktif']);
+
+        $desain = Desain::create([
+            'kategori_id' => $kat->id, 'kode' => 'DIPAKAI-01',
+            'tahun_ajaran' => '2026/2027', 'status' => 'aktif',
+        ]);
+        $desain->products()->attach($lain->id, ['ukuran' => null]);
+
+        Livewire::test(ProdukForm::class, ['produk' => $produk])
+            ->call('mintaHapusDesain', $desain->id)
+            ->call('hapusDesainPermanen')
+            ->assertSet('error', fn ($v) => is_string($v) && str_contains($v, 'masih menempel'));
+
+        $this->assertDatabaseHas('desain', ['id' => $desain->id]);
+    }
+
     public function test_marketing_ditolak_akses_produk(): void
     {
         $m = User::factory()->create();

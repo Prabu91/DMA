@@ -73,6 +73,9 @@ class ProdukForm extends Component
     /** Pesan gagal simpan — ditampilkan sbg notifikasi melayang, lihat <x-toast>. */
     public ?string $error = null;
 
+    /** Desain yang sedang dikonfirmasi untuk dihapus permanen (null = tidak ada). */
+    public ?int $desainHapusId = null;
+
     public function mount(?Produk $produk = null): void
     {
         $this->desainTahun = $this->tahunAjaranDefault();
@@ -373,6 +376,7 @@ class ProdukForm extends Component
             ->when($this->desainCari !== '', fn ($q) => $q->where('kode', 'ilike', '%'.$this->desainCari.'%'))
             ->when($dipakai, fn ($q) => $q->whereNotIn('id', $dipakai))
             ->with('kategori:id,nama')
+            ->withCount(['orderItems', 'products'])
             ->orderByDesc('id')
             ->limit(8)
             ->get();
@@ -394,6 +398,75 @@ class ProdukForm extends Component
         $this->desainCari = '';
         unset($this->hasilCariDesain);
         $this->desainMsg = $d->kode.' ditambahkan ke daftar.';
+    }
+
+    /**
+     * Hapus desain dari katalog secara permanen, beserta berkas fotonya —
+     * untuk membersihkan desain yang sudah tidak terpakai.
+     *
+     * Berbeda dengan hapusDesain() yang cuma mengeluarkan desain dari daftar
+     * produk ini. Ditolak bila desainnya masih dipakai order atau masih
+     * menempel di produk lain, karena menghapusnya akan melubangi data itu.
+     */
+    /** Buka konfirmasi hapus permanen untuk satu desain. */
+    public function mintaHapusDesain(int $desainId): void
+    {
+        $this->desainHapusId = $desainId;
+    }
+
+    public function batalHapusDesain(): void
+    {
+        $this->desainHapusId = null;
+    }
+
+    /** Desain yang sedang dikonfirmasi, untuk ditampilkan di modal. */
+    #[Computed]
+    public function desainAkanDihapus(): ?Desain
+    {
+        return $this->desainHapusId ? Desain::find($this->desainHapusId) : null;
+    }
+
+    public function hapusDesainPermanen(): void
+    {
+        $this->desainMsg = null;
+        $desainId = $this->desainHapusId;
+        $this->desainHapusId = null;
+
+        $desain = $desainId ? Desain::withCount(['orderItems', 'products'])->find($desainId) : null;
+        if (! $desain) {
+            return;
+        }
+
+        $this->authorize('delete', $desain);
+
+        if ($desain->order_items_count > 0) {
+            $this->error = 'Desain '.$desain->kode.' tidak bisa dihapus karena sudah dipakai di order.';
+
+            return;
+        }
+
+        if ($desain->products_count > 0) {
+            $this->error = 'Desain '.$desain->kode.' masih menempel di '.$desain->products_count
+                .' produk lain. Lepas dulu dari produk itu sebelum menghapusnya.';
+
+            return;
+        }
+
+        if ($desain->foto_preview) {
+            Storage::disk('public')->delete($desain->foto_preview);
+        }
+
+        $kode = $desain->kode;
+        $desain->delete();
+
+        // Buang juga dari daftar staging bila kebetulan sedang dipilih.
+        $this->desains = array_values(array_filter(
+            $this->desains,
+            fn ($r) => ($r['id'] ?? null) !== $desainId,
+        ));
+
+        unset($this->hasilCariDesain, $this->desainAkanDihapus);
+        $this->desainMsg = 'Desain '.$kode.' dihapus permanen.';
     }
 
     /** Keluarkan desain dari daftar produk ini (aset desainnya tidak dihapus). */
