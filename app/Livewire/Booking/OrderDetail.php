@@ -65,6 +65,11 @@ class OrderDetail extends Component
 
     public ?string $buktiMsg = null;
 
+    // Catatan staf pada order (utas).
+    public string $catatanBaru = '';
+
+    public ?string $catatanMsg = null;
+
     // Assign tim event (konteks staf).
     public array $timEventTerpilih = [];
 
@@ -91,6 +96,64 @@ class OrderDetail extends Component
     public function activities()
     {
         return $this->order->activities()->with('user')->limit(50)->get();
+    }
+
+    /** Catatan staf pada order ini, terlama di atas. */
+    #[Computed]
+    public function catatan()
+    {
+        return $this->order->catatan()->with('penulis:id,nama,name')->get();
+    }
+
+    /**
+     * Tambah catatan. Sengaja TIDAK ikut terkunci saat order dikunci —
+     * penguncian melindungi data order, sementara catatan justru paling
+     * dibutuhkan saat ada persoalan di akhir.
+     */
+    public function tambahCatatan(): void
+    {
+        abort_unless($this->konteks === 'staf', 403);
+        $this->authorize('view', $this->order);
+
+        $this->validate(
+            ['catatanBaru' => ['required', 'string', 'max:2000']],
+            [
+                'catatanBaru.required' => 'Catatan tidak boleh kosong.',
+                'catatanBaru.max' => 'Catatan maksimal 2000 karakter.',
+            ],
+        );
+
+        $this->order->catatan()->create([
+            'user_id' => auth('web')->id(),
+            'isi' => trim($this->catatanBaru),
+        ]);
+
+        $this->catatanBaru = '';
+        unset($this->catatan);
+        $this->catatanMsg = 'Catatan ditambahkan.';
+    }
+
+    /**
+     * Hapus catatan. Penulisnya sendiri boleh menghapus miliknya; super admin
+     * boleh menghapus milik siapa pun. Catatan tidak bisa diubah — kalau salah,
+     * hapus lalu tulis ulang, supaya isinya tak berubah diam-diam setelah
+     * dibaca orang lain.
+     */
+    public function hapusCatatan(int $catatanId): void
+    {
+        abort_unless($this->konteks === 'staf', 403);
+
+        $catatan = $this->order->catatan()->findOrFail($catatanId);
+        $user = auth('web')->user();
+
+        abort_unless(
+            $user && ($user->hasRole('super_admin') || $catatan->user_id === $user->id),
+            403,
+        );
+
+        $catatan->delete();
+        unset($this->catatan);
+        $this->catatanMsg = 'Catatan dihapus.';
     }
 
     /** Anggota tim event di cabang order (untuk di-assign). */

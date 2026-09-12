@@ -168,6 +168,12 @@ class Order extends Model
         };
     }
 
+    /** Catatan staf pada order ini (utas, terbaru di bawah). */
+    public function catatan(): HasMany
+    {
+        return $this->hasMany(OrderCatatan::class)->orderBy('created_at');
+    }
+
     public function konfirmasiLokasiOleh(): BelongsTo
     {
         return $this->belongsTo(User::class, 'konfirmasi_lokasi_oleh');

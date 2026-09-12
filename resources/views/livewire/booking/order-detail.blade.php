@@ -490,6 +490,51 @@
                 </x-card>
             @endunless
 
+            {{-- Catatan staf (utas) — internal, tidak terlihat sekolah --}}
+            @unless ($sf)
+                <x-card>
+                    <x-slot name="title">Catatan</x-slot>
+                    <x-slot name="subtitle">Catatan internal antar staf untuk order ini. Tidak terlihat oleh sekolah.</x-slot>
+
+                    @if ($catatanMsg)
+                        <p class="mb-3 text-sm font-medium text-status-success">{{ $catatanMsg }}</p>
+                    @endif
+
+                    @if ($this->catatan->isEmpty())
+                        <p class="text-sm text-ink-muted">Belum ada catatan.</p>
+                    @else
+                        <ul class="mb-4 space-y-3">
+                            @foreach ($this->catatan as $c)
+                                @php $milikSendiri = $c->user_id === auth('web')->id(); @endphp
+                                <li wire:key="catatan-{{ $c->id }}" class="rounded-xl border border-line bg-page/50 p-3">
+                                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                        <span class="text-sm font-medium text-ink">{{ $c->namaPenulis() }}</span>
+                                        <span class="text-xs text-ink-muted">{{ $c->created_at->translatedFormat('d M Y H:i') }}</span>
+                                        @if ($milikSendiri || auth('web')->user()?->hasRole('super_admin'))
+                                            <x-confirm action="hapusCatatan" :arg="$c->id" variant="ghost" size="sm"
+                                                       confirm-variant="danger" confirm-label="Ya, hapus"
+                                                       class="ml-auto"
+                                                       title="Hapus catatan" message="Catatan ini akan dihapus permanen. Lanjutkan?">Hapus</x-confirm>
+                                        @endif
+                                    </div>
+                                    <p class="mt-1 whitespace-pre-line text-sm text-ink">{{ $c->isi }}</p>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
+
+                    <div class="space-y-2">
+                        <textarea wire:model="catatanBaru" rows="3" placeholder="Tulis catatan untuk order ini…"
+                                  class="block w-full rounded-lg border border-line bg-card px-3 py-2 text-sm text-ink placeholder:text-ink-muted/60 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30"></textarea>
+                        @error('catatanBaru')<p class="text-xs text-status-danger">{{ $message }}</p>@enderror
+                        <x-button wire:click="tambahCatatan" variant="secondary" size="sm">
+                            <span wire:loading.remove wire:target="tambahCatatan">Tambah catatan</span>
+                            <span wire:loading wire:target="tambahCatatan">Menyimpan…</span>
+                        </x-button>
+                    </div>
+                </x-card>
+            @endunless
+
             {{-- Riwayat aktivitas + pihak terlibat (staf) --}}
             @unless ($sf)
                 @include('booking.partials.activity-timeline', ['order' => $order, 'activities' => $this->activities])
