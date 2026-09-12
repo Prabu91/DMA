@@ -62,14 +62,26 @@
                             <div class="space-y-3">
                                 @foreach ($order->items as $item)
                                     @if (isset($this->desainOptionsPerItem[$item->id]))
-                                        <div>
-                                            <x-select
-                                                :label="$item->produk?->nama"
-                                                wire:model="itemDesain.{{ $item->id }}"
-                                                :options="$this->desainOptionsPerItem[$item->id]"
-                                                :selected="$itemDesain[$item->id] ?? null"
-                                                placeholder="— Tanpa desain —"
-                                                :error="$errors->first('itemDesain.'.$item->id)" />
+                                        @php $terpilih = \App\Models\Desain::find($itemDesain[$item->id] ?? null); @endphp
+                                        <div class="flex items-end gap-3">
+                                            {{-- Pratinjau desain yang sedang terpilih, supaya salah pilih kelihatan --}}
+                                            <div class="flex h-[44px] w-[44px] shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line bg-page">
+                                                @if ($terpilih?->foto_preview)
+                                                    <img src="{{ asset('storage/'.$terpilih->foto_preview) }}" alt="Desain {{ $terpilih->kode }}"
+                                                         loading="lazy" class="max-h-full max-w-full object-contain">
+                                                @else
+                                                    <svg class="h-4 w-4 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="{{ \App\Support\Icons::path('photo') }}" /></svg>
+                                                @endif
+                                            </div>
+                                            <div class="min-w-0 flex-1">
+                                                <x-select
+                                                    :label="$item->produk?->nama"
+                                                    wire:model.live="itemDesain.{{ $item->id }}"
+                                                    :options="$this->desainOptionsPerItem[$item->id]"
+                                                    :selected="$itemDesain[$item->id] ?? null"
+                                                    placeholder="— Tanpa desain —"
+                                                    :error="$errors->first('itemDesain.'.$item->id)" />
+                                            </div>
                                         </div>
                                     @endif
                                 @endforeach
@@ -142,7 +154,13 @@
                     </x-slot>
                     @forelse ($order->items as $item)
                         <div class="flex items-center justify-between gap-3 border-b border-line px-5 py-3 last:border-b-0">
-                            <div class="min-w-0">
+                            @if ($item->desain?->foto_preview)
+                                <div class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line bg-page">
+                                    <img src="{{ asset('storage/'.$item->desain->foto_preview) }}" alt="Desain {{ $item->desain->kode }}"
+                                         loading="lazy" class="max-h-full max-w-full object-contain">
+                                </div>
+                            @endif
+                            <div class="min-w-0 flex-1">
                                 <div class="flex items-center gap-2">
                                     <x-badge :variant="$item->tipe_item === 'paket' ? 'brand' : 'neutral'">{{ ucfirst($item->tipe_item) }}</x-badge>
                                     <span class="truncate text-sm text-ink">{{ $item->produk?->nama ?? $item->paket?->nama }}</span>
@@ -211,6 +229,54 @@
                     @php $bolehHariH = $order->konfirmasi_lokasi_at && $order->konfirmasi_h2_at && $order->tanggal_event; @endphp
                     <x-card title="Konfirmasi Hari-H (final)">
                         <p class="text-sm text-ink-muted">Setelah semua data &amp; item benar, konfirmasi Hari-H. <span class="font-medium text-ink">Order akan dikunci</span> dan <span class="font-medium text-ink">event dinyatakan selesai</span> — tidak bisa diubah lagi.</p>
+
+                        {{-- Tinjau desain sebelum dikunci — ditampilkan sebagai gambar, bukan kode --}}
+                        @if ($this->itemBerdesain->isNotEmpty())
+                            <div class="mt-4 rounded-xl border border-line bg-page/50 p-3">
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <h3 class="text-sm font-medium text-ink">Desain yang akan dikunci</h3>
+                                    <span class="text-xs text-ink-muted">Cek dulu bersama guru sebelum konfirmasi.</span>
+                                </div>
+
+                                <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                                    @foreach ($this->itemBerdesain as $it)
+                                        <div class="flex items-start gap-3 rounded-lg border border-line bg-card p-2.5">
+                                            <div class="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line bg-page">
+                                                @if ($it->desain?->foto_preview)
+                                                    <img src="{{ asset('storage/'.$it->desain->foto_preview) }}" alt="Desain {{ $it->desain->kode }}"
+                                                         loading="lazy" class="max-h-full max-w-full object-contain">
+                                                @else
+                                                    <svg class="h-6 w-6 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="{{ \App\Support\Icons::path('photo') }}" /></svg>
+                                                @endif
+                                            </div>
+                                            <div class="min-w-0 flex-1">
+                                                <div class="truncate text-sm text-ink">{{ $it->produk?->nama }}</div>
+                                                @if ($it->desain)
+                                                    <div class="mt-0.5 text-xs text-ink-muted">
+                                                        <span class="font-medium text-ink">{{ $it->desain->kode }}</span>
+                                                        @if ($it->desain->seri) · {{ $it->desain->seri }} @endif
+                                                    </div>
+                                                    @if (! $it->desain->foto_preview)
+                                                        <div class="mt-0.5 text-xs text-ink-muted/80">Desain ini belum punya foto preview.</div>
+                                                    @endif
+                                                @else
+                                                    <div class="mt-0.5 text-xs text-status-danger">Desain belum dipilih.</div>
+                                                @endif
+                                                @if ($it->opsi_ukuran)<div class="mt-0.5 text-xs text-ink-muted">{{ $it->opsi_ukuran }}</div>@endif
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+
+                                @if ($this->itemTanpaDesain->isNotEmpty())
+                                    <p class="mt-3 text-xs text-status-danger">
+                                        {{ $this->itemTanpaDesain->count() }} item belum punya desain.
+                                        Pilih lewat <span class="font-medium">Revisi data sekolah/desain</span> di atas sebelum mengunci order.
+                                    </p>
+                                @endif
+                            </div>
+                        @endif
+
                         <div class="mt-3">
                             <x-confirm action="konfirmasiHariH" title="Konfirmasi Hari-H" message="Order akan FINAL &amp; terkunci, dan event dinyatakan SELESAI — tidak bisa diubah lagi. Lanjutkan?" confirm-label="Ya, kunci order" variant="primary" :disabled="! $bolehHariH">Konfirmasi Hari-H &amp; kunci order</x-confirm>
                         </div>

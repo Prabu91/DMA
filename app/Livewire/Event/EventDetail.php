@@ -4,6 +4,7 @@ namespace App\Livewire\Event;
 
 use App\Models\Desain;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\OrderPembayaran;
 use App\Models\Paket;
 use App\Models\Produk;
@@ -11,6 +12,7 @@ use App\Models\Sekolah;
 use App\Services\BookingService;
 use App\Support\OrderStatus;
 use App\Support\WaPesan;
+use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -151,6 +153,29 @@ class EventDetail extends Component
         return $out;
     }
 
+    /**
+     * Item berdesain beserta desain yang terpilih — untuk ditinjau tim event
+     * sebelum konfirmasi terakhir. Ditampilkan sebagai GAMBAR, bukan kode:
+     * kode desain tidak memberi tahu apa pun soal desain yang salah pilih,
+     * dan setelah Hari-H order terkunci.
+     *
+     * @return Collection<int, OrderItem>
+     */
+    #[Computed]
+    public function itemBerdesain()
+    {
+        $berdesain = array_keys($this->desainOptionsPerItem());
+
+        return $this->order()->items->whereIn('id', $berdesain)->values();
+    }
+
+    /** Item berdesain yang desainnya BELUM dipilih — jadi peringatan, bukan penghalang. */
+    #[Computed]
+    public function itemTanpaDesain()
+    {
+        return $this->itemBerdesain->filter(fn ($i) => $i->desain_id === null)->values();
+    }
+
     public function konfirmasiLokasi(): void
     {
         $order = $this->order();
@@ -250,7 +275,7 @@ class EventDetail extends Component
 
         $order->catat('revisi', 'sekolah & desain item');
         $this->revisiMode = false;
-        unset($this->order, $this->desainOptionsPerItem);
+        unset($this->order, $this->desainOptionsPerItem, $this->itemBerdesain, $this->itemTanpaDesain);
         session()->flash('event-flash', 'Revisi detail order tersimpan.');
     }
 
@@ -359,7 +384,8 @@ class EventDetail extends Component
 
         $this->reset(['tambahProdukId', 'tambahPaketId', 'tambahOpsi', 'tambahDesainId', 'tambahQty']);
         $this->tambahQty = 1;
-        unset($this->order, $this->desainOptionsPerItem, $this->opsiTambah, $this->desainTambah);
+        unset($this->order, $this->desainOptionsPerItem, $this->opsiTambah, $this->desainTambah,
+            $this->itemBerdesain, $this->itemTanpaDesain);
         session()->flash('event-flash', 'Item ditambahkan & total dihitung ulang.');
     }
 
@@ -377,7 +403,7 @@ class EventDetail extends Component
         app(BookingService::class)->rebuildOrder($order);
         $order->catat('item_qty', ($item->produk?->nama ?? $item->paket?->nama).' → '.max(1, $qty));
 
-        unset($this->order, $this->desainOptionsPerItem);
+        unset($this->order, $this->desainOptionsPerItem, $this->itemBerdesain, $this->itemTanpaDesain);
         session()->flash('event-flash', 'Jumlah item diperbarui.');
     }
 
@@ -396,7 +422,7 @@ class EventDetail extends Component
         app(BookingService::class)->rebuildOrder($order);
         $order->catat('item_hapus', $nama);
 
-        unset($this->order, $this->desainOptionsPerItem);
+        unset($this->order, $this->desainOptionsPerItem, $this->itemBerdesain, $this->itemTanpaDesain);
         session()->flash('event-flash', 'Item dihapus & total dihitung ulang.');
     }
 
