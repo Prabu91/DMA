@@ -6,6 +6,7 @@ use App\Livewire\Concerns\WithPerPage;
 use App\Livewire\Concerns\WithSorting;
 use App\Models\Paket;
 use App\Models\Produk;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -174,8 +175,39 @@ class PaketIndex extends Component
         $paket = Paket::findOrFail($id);
         $this->authorize('delete', $paket);
 
-        if ($paket->orderItems()->exists() || $paket->aturanFreeSekolah()->exists()) {
-            $this->error = 'Paket tidak bisa dihapus karena masih dipakai order atau aturan free sekolah.';
+        // order_items TIDAK ikut soft delete, jadi baris item order yang sudah
+        // dibuang ke sampah tetap terhitung "dipakai" — itulah sebabnya paket
+        // tak bisa dihapus padahal ordernya sudah dihapus. Dibedakan supaya
+        // alasannya jujur dan pengguna tahu harus berbuat apa.
+        //
+        // Query mentah dipakai agar order milik cabang lain ikut terhitung:
+        // penghapusan harus mempertimbangkan SELURUH data, bukan yang terlihat
+        // oleh pengguna yang sedang masuk.
+        $pakai = DB::table('order_items as oi')
+            ->join('orders as o', 'o.id', '=', 'oi.order_id')
+            ->where('oi.paket_id', $paket->id)
+            ->selectRaw('count(*) filter (where o.deleted_at is null) as aktif')
+            ->selectRaw('count(*) filter (where o.deleted_at is not null) as sampah')
+            ->first();
+
+        $aktif = (int) ($pakai->aktif ?? 0);
+        $diSampah = (int) ($pakai->sampah ?? 0);
+
+        if ($aktif > 0) {
+            $this->error = "Paket tidak bisa dihapus karena masih dipakai {$aktif} item order aktif.";
+
+            return;
+        }
+
+        if ($paket->aturanFreeSekolah()->exists()) {
+            $this->error = 'Paket tidak bisa dihapus karena masih dipakai aturan free sekolah.';
+
+            return;
+        }
+
+        if ($diSampah > 0) {
+            $this->error = "Paket ini hanya tersisa di {$diSampah} item order yang ada di sampah. "
+                .'Hapus permanen order tersebut dari halaman Order (filter Sampah) dulu, baru paketnya bisa dihapus.';
 
             return;
         }

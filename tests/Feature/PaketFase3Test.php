@@ -3,9 +3,13 @@
 namespace Tests\Feature;
 
 use App\Livewire\Katalog\PaketIndex;
+use App\Models\Cabang;
 use App\Models\Kategori;
+use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Paket;
 use App\Models\Produk;
+use App\Models\Sekolah;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -105,5 +109,82 @@ class PaketFase3Test extends TestCase
             ->assertSet('error', fn ($v) => is_string($v) && str_contains($v, 'tidak bisa dihapus'));
 
         $this->assertDatabaseHas('paket', ['id' => $paket->id]);
+    }
+
+    /** Paket + satu item order di dalamnya. */
+    private function paketDipakaiOrder(): array
+    {
+        $cabang = Cabang::create(['nama' => 'DMA Bandung', 'kode_area' => 'BDG']);
+        $sekolah = Sekolah::create(['id_sekolah' => 'SKL-BDG-0009', 'nama' => 'SD Uji', 'cabang_id' => $cabang->id]);
+        $marketing = User::factory()->create(['cabang_id' => $cabang->id]);
+        $marketing->assignRole('marketing');
+
+        $paket = Paket::create(['nama' => 'Paket Uji', 'harga' => 100000, 'status' => 'aktif']);
+
+        $order = Order::create([
+            'booking_code' => 'UJI-PKT-0001',
+            'sekolah_id' => $sekolah->id,
+            'marketing_id' => $marketing->id,
+            'cabang_id' => $cabang->id,
+            'status' => 'baru',
+            'tanggal_booking' => now(),
+        ]);
+
+        OrderItem::create([
+            'order_id' => $order->id,
+            'tipe_item' => 'paket',
+            'paket_id' => $paket->id,
+            'qty' => 1,
+            'harga' => 100000,
+            'diskon' => 0,
+            'is_free' => false,
+        ]);
+
+        return [$paket, $order];
+    }
+
+    public function test_paket_dipakai_order_aktif_tidak_bisa_dihapus(): void
+    {
+        [$paket] = $this->paketDipakaiOrder();
+
+        Livewire::actingAs($this->admin())
+            ->test(PaketIndex::class)
+            ->call('delete', $paket->id)
+            ->assertSet('error', fn ($v) => is_string($v) && str_contains($v, 'order aktif'));
+
+        $this->assertDatabaseHas('paket', ['id' => $paket->id]);
+    }
+
+    public function test_paket_yang_ordernya_di_sampah_diberi_alasan_yang_benar(): void
+    {
+        // order_items tidak ikut soft delete, jadi dulu paket ditolak dengan
+        // alasan "masih dipakai order" padahal ordernya sudah dibuang — dan
+        // pengguna tidak tahu harus berbuat apa.
+        [$paket, $order] = $this->paketDipakaiOrder();
+        $order->delete(); // ke sampah
+
+        Livewire::actingAs($this->admin())
+            ->test(PaketIndex::class)
+            ->call('delete', $paket->id)
+            ->assertSet('error', fn ($v) => is_string($v)
+                && str_contains($v, 'sampah')
+                && ! str_contains($v, 'order aktif'));
+
+        $this->assertDatabaseHas('paket', ['id' => $paket->id]);
+    }
+
+    public function test_paket_bisa_dihapus_setelah_order_di_sampah_dihapus_permanen(): void
+    {
+        [$paket, $order] = $this->paketDipakaiOrder();
+        $order->delete();
+        $order->items()->delete();
+        $order->forceDelete();
+
+        Livewire::actingAs($this->admin())
+            ->test(PaketIndex::class)
+            ->call('delete', $paket->id)
+            ->assertSet('success', fn ($v) => is_string($v) && str_contains($v, 'dihapus'));
+
+        $this->assertDatabaseMissing('paket', ['id' => $paket->id]);
     }
 }
