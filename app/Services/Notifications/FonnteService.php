@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
  *
  * Desain: NON-FATAL. Bila token belum diset, nomor kosong, atau API gagal —
  * method tidak melempar exception; cukup return false + log. Alur aplikasi
- * (mis. pembuatan OTP) tetap berjalan dan OTP masih tampil di portal sekolah.
+ * tetap berjalan; WhatsApp hanya pelengkap, bukan syarat.
  */
 class FonnteService
 {

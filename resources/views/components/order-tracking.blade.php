@@ -10,8 +10,9 @@
         ['label' => 'DP dibayar', 'done' => in_array($order->status, [\App\Support\OrderStatus::DP, \App\Support\OrderStatus::LUNAS], true), 'at' => null],
         ['label' => 'Konfirmasi H-7', 'done' => $order->konfirmasi_h7_at !== null, 'at' => $order->konfirmasi_h7_at],
         ['label' => 'Konfirmasi H-2 · STE terbit', 'done' => $order->konfirmasi_h2_at !== null, 'at' => $order->konfirmasi_h2_at],
-        ['label' => 'Hari-H (final)', 'done' => $order->konfirmasi_hh_at !== null, 'at' => $order->konfirmasi_hh_at],
-        ['label' => 'Event selesai', 'done' => $order->event_status === \App\Support\OrderStatus::EVENT_SELESAI, 'at' => $order->event_selesai_at],
+        // Hari-H = titik penyelesaian event, jadi satu tahap (bukan dua yang
+        // selalu menyala bersamaan).
+        ['label' => 'Hari-H (final) · event selesai', 'done' => $order->konfirmasi_hh_at !== null, 'at' => $order->konfirmasi_hh_at],
         ['label' => 'Tim sampai kantor', 'done' => $order->sampai_kantor_at !== null, 'at' => $order->sampai_kantor_at],
     ];
 

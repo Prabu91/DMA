@@ -11,7 +11,7 @@ use Illuminate\View\View;
 
 /**
  * Login sekolah pakai ID SEKOLAH (mis. SKL-000001) + password (storefront /masuk).
- * id_sekolah = kredensial login. Email hanya untuk notifikasi/OTP (future WA).
+ * id_sekolah = kredensial login. Email hanya untuk notifikasi & verifikasi.
  */
 class AuthController extends Controller
 {

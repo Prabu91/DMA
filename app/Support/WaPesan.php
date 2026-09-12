@@ -31,15 +31,6 @@ class WaPesan
             : '(tanggal menyusul)';
     }
 
-    /** OTP penyelesaian event — dibacakan guru ke tim event di lokasi. */
-    public static function otp(Order $order, string $code): string
-    {
-        return "*DMA — Kode OTP Penyelesaian Event*\n\n"
-            .'Halo '.self::pic($order).', kode OTP untuk menyelesaikan event foto '
-            .self::sekolah($order)." adalah:\n\n*{$code}*\n\n"
-            .'Berlaku '.Order::OTP_EXPIRY_MINUTES.' menit. Mohon bacakan kode ini kepada tim DMA di lokasi.';
-    }
-
     /** Pengingat H-7 (dikirim saat admin sales konfirmasi milestone H-7). */
     public static function h7(Order $order): string
     {

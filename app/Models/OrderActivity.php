@@ -44,7 +44,10 @@ class OrderActivity extends Model
         'tim_event' => 'Tim event ditugaskan',
         'konfirmasi_lokasi' => 'Detail dikonfirmasi di lokasi',
         'revisi' => 'Revisi detail order',
+        // Peninggalan alur OTP yang sudah dihapus — label dipertahankan agar
+        // entri log lama tetap terbaca, bukan tampil sebagai kode mentah.
         'otp_dibuat' => 'OTP penyelesaian dibuat',
+        'otp_wa_terkirim' => 'OTP dikirim via WhatsApp',
         'event_selesai' => 'Event selesai',
     ];
 

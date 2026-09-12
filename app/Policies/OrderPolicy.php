@@ -48,7 +48,7 @@ class OrderPolicy
     }
 
     /**
-     * Kelola pelaksanaan event (konfirmasi ulang, revisi, OTP, selesai).
+     * Kelola pelaksanaan event (konfirmasi ulang, revisi, Hari-H/selesai).
      * Hanya anggota tim event yang di-assign ke order ini — atau admin
      * lintas cabang (super_admin/operasional) sebagai jalur override.
      */

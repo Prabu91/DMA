@@ -32,8 +32,8 @@ class User extends Authenticatable
     public const ROLES_LINTAS_CABANG = ['super_admin', 'operasional', 'admin_sales', 'editor'];
 
     /**
-     * "Admin sales" — berwenang konfirmasi milestone H-7 & H-2 (bukan marketing)
-     * dan override penyelesaian event tanpa OTP. operasional & super_admin = admin pusat.
+     * "Admin sales" — berwenang konfirmasi milestone H-7 & H-2 (bukan marketing).
+     * operasional & super_admin = admin pusat.
      */
     public const ROLES_ADMIN_SALES = ['admin_sales', 'operasional', 'super_admin'];
 

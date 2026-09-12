@@ -4,11 +4,13 @@ namespace App\Livewire\Event;
 
 use App\Models\Desain;
 use App\Models\Order;
+use App\Models\OrderPembayaran;
 use App\Models\Paket;
 use App\Models\Produk;
+use App\Models\Sekolah;
 use App\Services\BookingService;
 use App\Support\OrderStatus;
-use Illuminate\Support\Facades\Auth;
+use App\Support\WaPesan;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -18,7 +20,8 @@ use Livewire\WithFileUploads;
  * Detail pelaksanaan event untuk tim event (berbasis STE).
  * TE1: tampil detail. TE2: konfirmasi ulang detail di lokasi + revisi
  * (edit data sekolah + desain + tambah/kurang item & jumlah). Konfirmasi
- * Hari-H = FINAL → order terkunci. OTP penyelesaian: TE3. Sampai kantor: TE4.
+ * Hari-H = FINAL → order terkunci SEKALIGUS event dinyatakan selesai.
+ * Sampai kantor: TE4.
  * Otorisasi: manageEvent (tim event ter-assign, atau admin lintas cabang).
  */
 #[Layout('layouts.app')]
@@ -69,9 +72,6 @@ class EventDetail extends Component
 
     public int $tambahQty = 1;
 
-    // Penyelesaian OTP (TE3)
-    public string $otpInput = '';
-
     public function mount(int $orderId): void
     {
         $this->orderId = $orderId;
@@ -104,7 +104,7 @@ class EventDetail extends Component
         $order->pembayaran()->create([
             'jenis' => $this->bayarJenis,
             'jumlah' => $this->bayarJumlah,
-            'status' => \App\Models\OrderPembayaran::STATUS_PENDING, // menunggu approval admin sales
+            'status' => OrderPembayaran::STATUS_PENDING, // menunggu approval admin sales
             'tanggal_bayar' => $this->bayarTanggal,
             'dicatat_oleh' => auth('web')->id(),
             'bukti_path' => $path,
@@ -217,7 +217,7 @@ class EventDetail extends Component
         }
 
         // Cegah duplikat sekolah (kombinasi nama+PIC+telp+alamat) — lintas cabang.
-        if ($order->sekolah && \App\Models\Sekolah::comboExists([
+        if ($order->sekolah && Sekolah::comboExists([
             'nama' => $this->namaSekolah,
             'pic_sekolah' => $this->picSekolah,
             'no_telp_pic' => $this->noTelpSekolah,
@@ -401,8 +401,9 @@ class EventDetail extends Component
     }
 
     /**
-     * Konfirmasi HARI-H (final) oleh tim event → order TERKUNCI.
-     * Sekaligus menandai konfirmasi lokasi bila belum, agar OTP bisa lanjut.
+     * Konfirmasi HARI-H (final) oleh tim event → order TERKUNCI sekaligus
+     * event DINYATAKAN SELESAI. Tidak ada langkah OTP lagi: konfirmasi Hari-H
+     * inilah titik penyelesaian event.
      */
     public function konfirmasiHariH(): void
     {
@@ -426,110 +427,20 @@ class EventDetail extends Component
         $order->update([
             'konfirmasi_hh_at' => now(),
             'konfirmasi_hh_oleh' => auth('web')->id(),
+            'event_status' => OrderStatus::EVENT_SELESAI,
+            'event_selesai_at' => now(),
         ]);
         $order->catat('milestone_hh', 'oleh tim event (final, order dikunci)');
+        $order->catat('event_selesai', 'via konfirmasi Hari-H');
 
-        // Notifikasi WA konfirmasi Hari-H — ditahan via saklar; OTP tetap jalan.
+        // Notifikasi WA konfirmasi Hari-H — ditahan via saklar.
         if (config('services.fonnte.kirim_konfirmasi')) {
-            $order->kirimWa(\App\Support\WaPesan::hariH($order));
+            $order->kirimWa(WaPesan::hariH($order));
         }
 
         $this->revisiMode = false;
         unset($this->order);
-        session()->flash('event-flash', 'Hari-H dikonfirmasi. Order final & terkunci. Lanjut ke penyelesaian (OTP).');
-    }
-
-    /**
-     * Generate OTP penyelesaian & kirim ke guru (portal sekolah + email).
-     * Hanya boleh setelah detail dikonfirmasi di lokasi. Kode TIDAK
-     * ditampilkan ke tim event — mereka mengetik ulang dari guru.
-     */
-    public function generateOtp(): void
-    {
-        $order = $this->order();
-        $this->authorize('manageEvent', $order);
-        abort_if($order->event_status === OrderStatus::EVENT_SELESAI, 422);
-
-        if (! $order->konfirmasi_lokasi_at || ! $order->konfirmasi_hh_at) {
-            $this->addError('otpInput', 'Konfirmasi data sekolah dan Hari-H dulu sebelum membuat OTP.');
-
-            return;
-        }
-
-        // Cooldown kirim-ulang (hanya berlaku bila OTP sudah pernah dibuat).
-        if (($sisa = $order->otpResendSecondsLeft()) > 0) {
-            $this->addError('otpInput', "Tunggu {$sisa} detik sebelum mengirim ulang OTP.");
-
-            return;
-        }
-
-        $code = $order->generateEventOtp();
-        $order->catat('otp_dibuat');
-
-        // Kirim OTP via WhatsApp (Fonnte) ke PIC sekolah. Bila WA belum
-        // dikonfigurasi/gagal, OTP tetap tampil di portal sekolah sebagai fallback.
-        if ($order->kirimWa(\App\Support\WaPesan::otp($order, $code))) {
-            $order->catat('otp_wa_terkirim');
-            session()->flash('event-flash', 'OTP dikirim via WhatsApp ke PIC sekolah & tampil di akun sekolah.');
-        } else {
-            session()->flash('event-flash', 'OTP dibuat & tampil di akun sekolah. Minta guru membacakan kodenya.');
-        }
-
-        unset($this->order);
-        $this->otpInput = '';
-    }
-
-    /** Tim event input OTP dari guru → validasi → event selesai. */
-    public function selesaikanDenganOtp(): void
-    {
-        $order = $this->order();
-        $this->authorize('manageEvent', $order);
-        abort_if($order->event_status === OrderStatus::EVENT_SELESAI, 422);
-
-        $this->validate(
-            ['otpInput' => ['required', 'digits:6']],
-            ['otpInput.required' => 'Masukkan kode OTP dari guru.', 'otpInput.digits' => 'OTP harus 6 digit.']
-        );
-
-        if (! $order->eventOtpMatches($this->otpInput)) {
-            $this->addError('otpInput', 'OTP salah atau sudah kedaluwarsa.');
-
-            return;
-        }
-
-        $order->update([
-            'event_status' => OrderStatus::EVENT_SELESAI,
-            'event_selesai_at' => now(),
-            'otp_code' => null,
-            'otp_expires' => null,
-        ]);
-        $order->catat('event_selesai', 'via OTP');
-
-        unset($this->order);
-        $this->otpInput = '';
-        session()->flash('event-flash', 'Event selesai. Terima kasih!');
-    }
-
-    /**
-     * Override admin sales/pusat: selesaikan tanpa OTP — mis. guru tidak di
-     * tempat. Untuk role terpusat (admin_sales, operasional, super_admin, editor).
-     */
-    public function selesaikanOverride(): void
-    {
-        $order = $this->order();
-        abort_unless(Auth::user()->seesAllCabang(), 403);
-        abort_if($order->event_status === OrderStatus::EVENT_SELESAI, 422);
-
-        $order->update([
-            'event_status' => OrderStatus::EVENT_SELESAI,
-            'event_selesai_at' => now(),
-            'otp_code' => null,
-            'otp_expires' => null,
-        ]);
-        $order->catat('event_selesai', 'override admin');
-
-        unset($this->order);
-        session()->flash('event-flash', 'Event diselesaikan (override admin, tanpa OTP).');
+        session()->flash('event-flash', 'Hari-H dikonfirmasi. Order final & terkunci, event dinyatakan selesai.');
     }
 
     /** Upload/ganti foto bukti bayar DP (tim event ter-assign). */
@@ -551,8 +462,8 @@ class EventDetail extends Component
     }
 
     /**
-     * Tim event klik "Sampai kantor" setelah event selesai (pasca-OTP) →
-     * catat waktu tiba kembali di kantor.
+     * Tim event klik "Sampai kantor" setelah event selesai → catat waktu
+     * tiba kembali di kantor.
      */
     public function sampaiKantor(): void
     {

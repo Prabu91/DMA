@@ -55,8 +55,6 @@ class Order extends Model
         'bukti_dp_path',
         'total',
         'diskon_status',
-        'otp_code',
-        'otp_expires',
         'tahun_ajaran',
         'tanggal_booking',
     ];
@@ -71,7 +69,6 @@ class Order extends Model
             'konfirmasi_lokasi_at' => 'datetime',
             'event_selesai_at' => 'datetime',
             'sampai_kantor_at' => 'datetime',
-            'otp_expires' => 'datetime',
             'tanggal_booking' => 'datetime',
         ];
     }
@@ -243,66 +240,13 @@ class Order extends Model
         return OrderStatus::label($this->status);
     }
 
-    /** Masa berlaku OTP penyelesaian event (menit). */
-    public const OTP_EXPIRY_MINUTES = 30;
-
-    /** Jeda minimum antar kirim-ulang OTP (detik). */
-    public const OTP_RESEND_COOLDOWN_SECONDS = 60;
-
-    /**
-     * Buat OTP penyelesaian event (6 digit) + masa berlaku. Kode dikirim ke
-     * guru (portal + email); tim event mengetik ulang kode dari guru.
-     */
-    public function generateEventOtp(?int $minutes = null): string
-    {
-        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        $this->update([
-            'otp_code' => $code,
-            'otp_expires' => now()->addMinutes($minutes ?? self::OTP_EXPIRY_MINUTES),
-        ]);
-
-        return $code;
-    }
-
-    /** OTP masih aktif (ada & belum kedaluwarsa). */
-    public function eventOtpActive(): bool
-    {
-        return $this->otp_code !== null
-            && $this->otp_expires !== null
-            && $this->otp_expires->isFuture();
-    }
-
-    /**
-     * Sisa detik cooldown sebelum boleh kirim-ulang OTP (0 = boleh sekarang).
-     * Waktu kirim terakhir diturunkan dari otp_expires - masa berlaku.
-     */
-    public function otpResendSecondsLeft(): int
-    {
-        if (! $this->otp_expires) {
-            return 0;
-        }
-
-        $bolehLagi = $this->otp_expires->copy()
-            ->subMinutes(self::OTP_EXPIRY_MINUTES)
-            ->addSeconds(self::OTP_RESEND_COOLDOWN_SECONDS);
-
-        return max(0, $bolehLagi->getTimestamp() - now()->getTimestamp());
-    }
-
-    /** Cocokkan input OTP dengan yang aktif (aman terhadap timing). */
-    public function eventOtpMatches(string $code): bool
-    {
-        return $this->eventOtpActive()
-            && hash_equals((string) $this->otp_code, trim($code));
-    }
-
     public function sekolah(): BelongsTo
     {
         return $this->belongsTo(Sekolah::class);
     }
 
     /**
-     * Nomor WhatsApp tujuan notifikasi/OTP = no. telp PIC sekolah.
+     * Nomor WhatsApp tujuan notifikasi = no. telp PIC sekolah.
      */
     public function nomorWa(): ?string
     {

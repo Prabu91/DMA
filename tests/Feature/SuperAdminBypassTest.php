@@ -3,12 +3,12 @@
 namespace Tests\Feature;
 
 use App\Livewire\Booking\OrderDetail;
+use App\Livewire\Booking\OrderIndex;
 use App\Livewire\Katalog\DesainIndex;
 use App\Models\Cabang;
 use App\Models\Desain;
 use App\Models\Kategori;
 use App\Models\Order;
-use App\Models\OrderItem;
 use App\Models\Sekolah;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -81,32 +81,6 @@ class SuperAdminBypassTest extends TestCase
             ->assertStatus(423);
     }
 
-    // ---------- C: OTP tampil di panel staf utk super_admin & admin_sales ----------
-
-    public function test_super_admin_lihat_kode_otp_di_panel_staf(): void
-    {
-        $order = $this->orderTerkunci();
-        $order->update(['otp_code' => '654321', 'otp_expires' => now()->addMinutes(20)]);
-
-        Livewire::actingAs($this->user('super_admin'))
-            ->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
-            ->assertSee('654321');
-
-        Livewire::actingAs($this->user('admin_sales'))
-            ->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
-            ->assertSee('654321');
-    }
-
-    public function test_marketing_tak_lihat_kode_otp(): void
-    {
-        $order = $this->orderTerkunci();
-        $order->update(['otp_code' => '654321', 'otp_expires' => now()->addMinutes(20), 'marketing_id' => $this->user('marketing')->id]);
-
-        Livewire::actingAs($this->user('marketing'))
-            ->test(OrderDetail::class, ['konteks' => 'staf', 'orderId' => $order->id])
-            ->assertDontSee('654321');
-    }
-
     // ---------- A: hapus order (soft delete) + pulihkan + purge ----------
 
     public function test_super_admin_soft_delete_order(): void
@@ -114,7 +88,7 @@ class SuperAdminBypassTest extends TestCase
         $order = $this->orderTerkunci();
 
         Livewire::actingAs($this->user('super_admin'))
-            ->test(\App\Livewire\Booking\OrderIndex::class)
+            ->test(OrderIndex::class)
             ->call('hapusOrder', $order->id);
 
         $this->assertSoftDeleted('orders', ['id' => $order->id]);
@@ -127,7 +101,7 @@ class SuperAdminBypassTest extends TestCase
         $order = $this->orderTerkunci();
 
         Livewire::actingAs($this->user('admin_sales'))
-            ->test(\App\Livewire\Booking\OrderIndex::class)
+            ->test(OrderIndex::class)
             ->call('hapusOrder', $order->id)
             ->assertStatus(403);
 
@@ -140,7 +114,7 @@ class SuperAdminBypassTest extends TestCase
         $order->delete();
 
         $comp = Livewire::actingAs($this->user('super_admin'))
-            ->test(\App\Livewire\Booking\OrderIndex::class);
+            ->test(OrderIndex::class);
 
         $comp->call('pulihkan', $order->id);
         $this->assertNotSoftDeleted('orders', ['id' => $order->id]);

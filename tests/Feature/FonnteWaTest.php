@@ -18,8 +18,8 @@ use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
- * #4: OTP & konfirmasi dikirim via WhatsApp (Fonnte, unofficial).
- * Non-fatal: tanpa token, WA dilewati & alur tetap jalan (fallback portal).
+ * #4: notifikasi konfirmasi dikirim via WhatsApp (Fonnte, unofficial).
+ * Non-fatal: tanpa token, WA dilewati & alur tetap jalan.
  */
 class FonnteWaTest extends TestCase
 {
@@ -75,15 +75,16 @@ class FonnteWaTest extends TestCase
             'event_status' => OrderStatus::EVENT_DIJADWALKAN,
             'tanggal_event' => now()->addDays(2)->toDateString(),
             'konfirmasi_lokasi_at' => now(),
-            'konfirmasi_hh_at' => now(), // OTP butuh data sekolah + Hari-H
+            'konfirmasi_h2_at' => now(), // Hari-H butuh data sekolah + H-2 beres
             'total' => 100000,
             'tanggal_booking' => now(),
         ]);
     }
 
-    public function test_otp_dikirim_via_wa_saat_token_diset(): void
+    public function test_konfirmasi_hari_h_kirim_wa_ke_sekolah(): void
     {
         config()->set('services.fonnte.token', 'test-token');
+        config()->set('services.fonnte.kirim_konfirmasi', true);
         Http::fake(['*' => Http::response(['status' => true, 'id' => ['x']], 200)]);
 
         $order = $this->eventOrder();
@@ -92,26 +93,20 @@ class FonnteWaTest extends TestCase
 
         Livewire::actingAs($tim)
             ->test(EventDetail::class, ['orderId' => $order->id])
-            ->call('generateOtp')
+            ->call('konfirmasiHariH')
             ->assertHasNoErrors();
 
-        $code = $order->refresh()->otp_code;
-        $this->assertNotNull($code);
+        $this->assertSame(OrderStatus::EVENT_SELESAI, $order->refresh()->event_status);
 
-        Http::assertSent(function ($request) use ($code) {
-            return str_contains($request->url(), 'fonnte.com')
-                && $request['target'] === '6281234567890'
-                && str_contains($request['message'], $code);
-        });
-
-        $this->assertDatabaseHas('order_activities', [
-            'order_id' => $order->id, 'action' => 'otp_wa_terkirim',
-        ]);
+        Http::assertSent(fn ($r) => str_contains($r->url(), 'fonnte.com')
+            && $r['target'] === '6281234567890'
+            && str_contains($r['message'], 'Hari-H'));
     }
 
     public function test_tanpa_token_wa_dilewati_alur_tetap_jalan(): void
     {
         config()->set('services.fonnte.token', null);
+        config()->set('services.fonnte.kirim_konfirmasi', true);
         Http::fake();
 
         $order = $this->eventOrder();
@@ -120,11 +115,11 @@ class FonnteWaTest extends TestCase
 
         Livewire::actingAs($tim)
             ->test(EventDetail::class, ['orderId' => $order->id])
-            ->call('generateOtp')
+            ->call('konfirmasiHariH')
             ->assertHasNoErrors();
 
-        // OTP tetap dibuat (fallback tampil di portal sekolah), tapi tak ada WA terkirim.
-        $this->assertNotNull($order->refresh()->otp_code);
+        // Event tetap selesai walau WA tidak terkirim — WA cuma pelengkap.
+        $this->assertSame(OrderStatus::EVENT_SELESAI, $order->refresh()->event_status);
         Http::assertNothingSent();
     }
 

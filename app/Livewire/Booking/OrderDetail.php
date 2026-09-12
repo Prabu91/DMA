@@ -464,7 +464,7 @@ class OrderDetail extends Component
         $this->order->update([$col => now(), Order::MILESTONE_OLEH_COL[$key] => auth('web')->id()]);
         $this->order->catat('milestone_'.$key);
 
-        // Notifikasi WA konfirmasi (H-7/H-2) — ditahan via saklar; OTP tetap jalan.
+        // Notifikasi WA konfirmasi (H-7/H-2) — ditahan via saklar.
         if (config('services.fonnte.kirim_konfirmasi')) {
             $this->order->kirimWa($key === 'h7'
                 ? WaPesan::h7($this->order)
@@ -487,14 +487,6 @@ class OrderDetail extends Component
     public function bisaAssignTimEvent(): bool
     {
         return auth('web')->user()?->hasAnyRole(['super_admin', 'operasional', 'admin_sales']) ?? false;
-    }
-
-    /** Super admin & admin sales boleh melihat kode OTP di web (fallback bila WA gagal). */
-    #[Computed]
-    public function bisaLihatOtp(): bool
-    {
-        // Semua admin (admin_sales, operasional, super_admin) — bukan hanya super admin.
-        return auth('web')->user()?->isAdminSales() ?? false;
     }
 
     /** Marketing/area/operasional/super_admin ubah tanggal & jam event. */

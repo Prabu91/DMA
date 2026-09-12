@@ -51,7 +51,7 @@
                     <x-input name="pic_sekolah" label="PIC / narahubung" :value="old('pic_sekolah', $sekolah->pic_sekolah)" :error="$errors->first('pic_sekolah')" />
                     <x-input name="no_telp_pic" label="No. telepon PIC" :value="old('no_telp_pic', $sekolah->no_telp_pic)" :error="$errors->first('no_telp_pic')" />
                     <div class="rounded-lg border border-line bg-page/50 px-3 py-2 text-xs text-ink-muted">
-                        Notifikasi (verifikasi &amp; kode OTP event) dikirim ke email login Anda: <span class="font-medium text-ink">{{ $sekolah->email }}</span>
+                        Notifikasi (termasuk verifikasi akun) dikirim ke email login Anda: <span class="font-medium text-ink">{{ $sekolah->email }}</span>
                     </div>
                     <x-input name="alamat" label="Alamat" :value="old('alamat', $sekolah->alamat)" :error="$errors->first('alamat')" />
                     <x-input name="maps_link" type="url" label="Tautan Google Maps" :value="old('maps_link', $sekolah->maps_link)" :error="$errors->first('maps_link')" placeholder="https://maps.google.com/…" />

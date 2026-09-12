@@ -37,7 +37,7 @@
 
     @if ($terkunci && ! $selesai)
         <div class="mb-4 rounded-lg border-l-4 border-navy bg-navy/5 px-4 py-3 text-sm text-ink">
-            <span class="font-medium">Order terkunci.</span> Hari-H telah dikonfirmasi — data & item tidak bisa diubah lagi. Lanjutkan ke penyelesaian (OTP).@if ($bypassKunci) <span class="font-medium text-brand">Sebagai super admin, Anda tetap bisa mengubah.</span>@endif
+            <span class="font-medium">Order terkunci.</span> Hari-H telah dikonfirmasi — event selesai, data & item tidak bisa diubah lagi.@if ($bypassKunci) <span class="font-medium text-brand">Sebagai super admin, Anda tetap bisa mengubah.</span>@endif
         </div>
     @endif
 
@@ -210,9 +210,9 @@
                 @unless ($terkunci)
                     @php $bolehHariH = $order->konfirmasi_lokasi_at && $order->konfirmasi_h2_at && $order->tanggal_event; @endphp
                     <x-card title="Konfirmasi Hari-H (final)">
-                        <p class="text-sm text-ink-muted">Setelah semua data &amp; item benar, konfirmasi Hari-H. <span class="font-medium text-ink">Order akan dikunci</span> dan tidak bisa diubah lagi, lalu lanjut ke penyelesaian (OTP).</p>
+                        <p class="text-sm text-ink-muted">Setelah semua data &amp; item benar, konfirmasi Hari-H. <span class="font-medium text-ink">Order akan dikunci</span> dan <span class="font-medium text-ink">event dinyatakan selesai</span> — tidak bisa diubah lagi.</p>
                         <div class="mt-3">
-                            <x-confirm action="konfirmasiHariH" title="Konfirmasi Hari-H" message="Order akan FINAL & terkunci — tidak bisa diubah lagi. Lanjutkan?" confirm-label="Ya, kunci order" variant="primary" :disabled="! $bolehHariH">Konfirmasi Hari-H &amp; kunci order</x-confirm>
+                            <x-confirm action="konfirmasiHariH" title="Konfirmasi Hari-H" message="Order akan FINAL &amp; terkunci, dan event dinyatakan SELESAI — tidak bisa diubah lagi. Lanjutkan?" confirm-label="Ya, kunci order" variant="primary" :disabled="! $bolehHariH">Konfirmasi Hari-H &amp; kunci order</x-confirm>
                         </div>
                         @unless ($bolehHariH)
                             <ul class="mt-2 space-y-1 text-xs text-ink-muted">
@@ -229,7 +229,7 @@
             @include('booking.partials.activity-timeline', ['order' => $order, 'activities' => $this->activities])
         </div>
 
-        {{-- Penyelesaian event (OTP) + sampai kantor --}}
+        {{-- Penyelesaian event + sampai kantor --}}
         <div class="space-y-6">
             <x-card title="Penyelesaian event">
                 @if ($selesai)
@@ -254,52 +254,13 @@
                             <x-confirm action="sampaiKantor" title="Sampai kantor" message="Catat waktu sampai kantor sekarang?" block triggerClass="mt-3">Sampai kantor</x-confirm>
                         @endif
                     </div>
-                @elseif (! $terkunci)
-                    <p class="text-sm text-ink-muted">Konfirmasi <span class="font-medium text-ink">data sekolah</span> dan <span class="font-medium text-ink">Hari-H (final)</span> dulu — tombol OTP muncul setelah keduanya selesai.</p>
-                    <ul class="mt-2 space-y-1 text-xs text-ink-muted">
-                        <li>{{ $order->konfirmasi_lokasi_at ? '✅' : '⬜' }} Data sekolah</li>
-                        <li>{{ $order->konfirmasi_hh_at ? '✅' : '⬜' }} Hari-H (final)</li>
-                    </ul>
-                @elseif (! $order->eventOtpActive())
-                    <p class="text-sm text-ink-muted">Buat OTP — kode tampil di akun sekolah (guru). Guru akan membacakan kodenya ke Anda.</p>
-                    <x-button wire:click="generateOtp" class="mt-3 w-full">
-                        <span wire:loading.remove wire:target="generateOtp">Generate OTP untuk guru</span>
-                        <span wire:loading wire:target="generateOtp">Membuat…</span>
-                    </x-button>
-                    @error('otpInput')<p class="mt-2 text-sm text-status-danger">{{ $message }}</p>@enderror
                 @else
-                    <div class="rounded-lg border border-status-info/20 bg-status-info/10 px-3 py-2 text-xs text-status-info">
-                        OTP tampil di akun sekolah. Minta kodenya ke guru, lalu masukkan di bawah.
-                        <span class="block text-status-info/80">Berlaku hingga {{ $order->otp_expires->translatedFormat('H:i') }} ({{ \App\Models\Order::OTP_EXPIRY_MINUTES }} menit).</span>
-                    </div>
-                    <div class="mt-3 space-y-2">
-                        <x-input label="Kode OTP dari guru" wire:model="otpInput" inputmode="numeric" maxlength="6" placeholder="6 digit" :error="$errors->first('otpInput')" />
-                        <x-button wire:click="selesaikanDenganOtp" class="w-full">
-                            <span wire:loading.remove wire:target="selesaikanDenganOtp">Selesaikan event</span>
-                            <span wire:loading wire:target="selesaikanDenganOtp">Memproses…</span>
-                        </x-button>
-                        {{-- Kirim ulang dengan cooldown (hitung mundur) --}}
-                        <div wire:key="otp-cd-{{ $order->otp_expires?->timestamp }}"
-                             x-data="{ s: {{ $order->otpResendSecondsLeft() }} }"
-                             x-init="const t = setInterval(() => { if (s > 0) { s-- } else { clearInterval(t) } }, 1000)">
-                            <button type="button" wire:click="generateOtp" x-bind:disabled="s > 0"
-                                    class="w-full text-center text-xs text-ink-muted hover:text-ink disabled:cursor-not-allowed disabled:opacity-50">
-                                <span x-show="s <= 0">Kirim ulang OTP</span>
-                                <span x-show="s > 0" x-cloak>Kirim ulang dalam <span x-text="s"></span> detik</span>
-                            </button>
-                        </div>
-                    </div>
-                @endif
-
-                @if (! $selesai && auth()->user()->seesAllCabang())
-                    <div class="mt-4 border-t border-line pt-3">
-                        <x-confirm action="selesaikanOverride" title="Selesaikan tanpa OTP" message="Selesaikan event tanpa OTP? (override admin)" confirm-label="Ya, selesaikan" confirm-variant="danger">
-                            <x-slot:trigger>
-                                <button type="button" x-on:click="open = true"
-                                        class="text-xs font-medium text-ink-muted hover:text-status-danger">Selesaikan tanpa OTP (override admin)</button>
-                            </x-slot:trigger>
-                        </x-confirm>
-                    </div>
+                    <p class="text-sm text-ink-muted">Event dinyatakan selesai saat <span class="font-medium text-ink">Konfirmasi Hari-H</span>. Selesaikan tahap di bawah dulu.</p>
+                    <ul class="mt-2 space-y-1 text-xs text-ink-muted">
+                        <li>{{ $order->konfirmasi_lokasi_at ? '✅' : '⬜' }} Konfirmasi data sekolah</li>
+                        <li>{{ $order->konfirmasi_h2_at ? '✅' : '⬜' }} Konfirmasi H-2 (oleh admin sales)</li>
+                        <li>{{ $order->konfirmasi_hh_at ? '✅' : '⬜' }} Konfirmasi Hari-H (final)</li>
+                    </ul>
                 @endif
             </x-card>
 
