@@ -6,6 +6,7 @@ use App\Livewire\Concerns\WithPerPage;
 use App\Models\Desain;
 use App\Models\Kategori;
 use App\Models\OrderItem;
+use App\Services\DesainBulkUpload;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
@@ -46,6 +47,20 @@ class DesainIndex extends Component
     public $foto_preview = null;
 
     public ?string $fotoExisting = null;
+
+    // Unggah massal: banyak berkas sekaligus, kode diambil dari nama berkas.
+    public bool $showBulk = false;
+
+    public array $bulkFiles = [];
+
+    public ?int $bulkKategoriId = null;
+
+    public string $bulkTahun = '';
+
+    // Pilih banyak untuk dihapus sekaligus.
+    public array $terpilih = [];
+
+    public bool $konfirmasiHapusMassal = false;
 
     public ?string $success = null;
 
@@ -224,6 +239,152 @@ class DesainIndex extends Component
     public function isSuperAdmin(): bool
     {
         return auth()->user()?->hasRole('super_admin') ?? false;
+    }
+
+    // ---------------- Unggah massal ----------------
+
+    public function bukaBulk(): void
+    {
+        $this->authorize('create', Desain::class);
+        $this->reset(['success', 'error', 'bulkFiles']);
+        $this->resetErrorBag();
+        $this->bulkKategoriId = $this->filterKategori ?: array_key_first($this->kategoriDesainOptions);
+        $this->bulkTahun = $this->filterTahun ?: $this->tahunAjaranDefault();
+        $this->showBulk = true;
+    }
+
+    public function tutupBulk(): void
+    {
+        $this->showBulk = false;
+        $this->reset('bulkFiles');
+        $this->resetErrorBag();
+    }
+
+    /** Tahun ajaran berjalan (Juli = pergantian tahun ajaran). */
+    private function tahunAjaranDefault(): string
+    {
+        $y = (int) now()->year;
+
+        return now()->month >= 7 ? $y.'/'.($y + 1) : ($y - 1).'/'.$y;
+    }
+
+    public function simpanBulk(): void
+    {
+        $this->authorize('create', Desain::class);
+        $this->reset(['success', 'error']);
+
+        $this->validate([
+            'bulkKategoriId' => ['required', Rule::exists('kategori', 'id')->where('pakai_desain', true)],
+            'bulkTahun' => ['required', 'string', 'max:20'],
+            'bulkFiles' => ['required', 'array', 'min:1', 'max:'.DesainBulkUpload::MAKS_BERKAS],
+            'bulkFiles.*' => ['image', 'max:4096'],
+        ], [
+            'bulkFiles.required' => 'Pilih dulu berkas desainnya.',
+            'bulkFiles.max' => 'Maksimal '.DesainBulkUpload::MAKS_BERKAS.' berkas sekali unggah.',
+            'bulkFiles.*.image' => 'Semua berkas harus berupa gambar.',
+            'bulkFiles.*.max' => 'Tiap berkas maksimal 4 MB.',
+        ]);
+
+        $hasil = app(DesainBulkUpload::class)->jalankan(
+            $this->bulkFiles,
+            (int) $this->bulkKategoriId,
+            $this->bulkTahun,
+        );
+
+        $this->showBulk = false;
+        $this->reset('bulkFiles');
+        unset($this->tahunOptions);
+        $this->resetPage();
+
+        $this->success = $this->ringkasBulk($hasil);
+    }
+
+    /** @param  array{dibuat: array, dilewati: array, gagal: array}  $hasil */
+    private function ringkasBulk(array $hasil): string
+    {
+        $pesan = count($hasil['dibuat']).' desain ditambahkan.';
+
+        if ($hasil['dilewati']) {
+            $pesan .= ' '.count($hasil['dilewati']).' dilewati karena kodenya sudah ada ('
+                .implode(', ', array_slice($hasil['dilewati'], 0, 5))
+                .(count($hasil['dilewati']) > 5 ? ', …' : '').').';
+        }
+        if ($hasil['gagal']) {
+            $pesan .= ' '.count($hasil['gagal']).' gagal: '.implode('; ', $hasil['gagal']).'.';
+        }
+
+        return $pesan;
+    }
+
+    // ---------------- Hapus massal ----------------
+
+    /** Desain terpilih yang benar-benar boleh dihapus + yang tertahan, beserta alasannya. */
+    #[Computed]
+    public function rencanaHapusMassal(): array
+    {
+        $ids = array_values(array_filter(array_map('intval', $this->terpilih)));
+        if (! $ids) {
+            return ['boleh' => collect(), 'tertahan' => collect()];
+        }
+
+        $rows = Desain::whereIn('id', $ids)->withCount(['orderItems', 'products'])->orderBy('kode')->get();
+
+        return [
+            'boleh' => $rows->filter(fn ($d) => $d->order_items_count === 0 && $d->products_count === 0),
+            'tertahan' => $rows->filter(fn ($d) => $d->order_items_count > 0 || $d->products_count > 0),
+        ];
+    }
+
+    public function mintaHapusMassal(): void
+    {
+        $this->reset(['success', 'error']);
+
+        if (! $this->terpilih) {
+            $this->error = 'Belum ada desain yang dipilih.';
+
+            return;
+        }
+
+        unset($this->rencanaHapusMassal);
+        $this->konfirmasiHapusMassal = true;
+    }
+
+    public function batalHapusMassal(): void
+    {
+        $this->konfirmasiHapusMassal = false;
+    }
+
+    /**
+     * Hapus desain terpilih. Yang masih dipakai order atau masih menempel di
+     * produk SENGAJA dilewati, bukan menggagalkan seluruh batch: pengguna
+     * memilih sepuluh dan satu terpakai, yang sembilan tetap harus bersih.
+     */
+    public function hapusMassal(): void
+    {
+        $this->reset(['success', 'error']);
+        $this->konfirmasiHapusMassal = false;
+
+        $rencana = $this->rencanaHapusMassal;
+        $dihapus = 0;
+
+        foreach ($rencana['boleh'] as $desain) {
+            $this->authorize('delete', $desain);
+
+            if ($desain->foto_preview) {
+                Storage::disk('public')->delete($desain->foto_preview);
+            }
+            $desain->delete();
+            $dihapus++;
+        }
+
+        $tertahan = $rencana['tertahan']->count();
+
+        $this->terpilih = [];
+        unset($this->rencanaHapusMassal, $this->tahunOptions);
+        $this->resetPage();
+
+        $this->success = $dihapus.' desain dihapus.'
+            .($tertahan > 0 ? ' '.$tertahan.' dilewati karena masih dipakai order atau masih menempel di produk.' : '');
     }
 
     public function resetForm(): void

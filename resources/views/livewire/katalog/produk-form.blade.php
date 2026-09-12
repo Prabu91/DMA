@@ -181,15 +181,18 @@
                 @endif
 
                 {{-- Cari desain lama / buat baru --}}
-                <div class="mt-3" x-data="{ pool: false, baru: false }" x-on:click.outside="pool = false">
+                <div class="mt-3" x-data="{ pool: false, baru: false, massal: false }" x-on:click.outside="pool = false">
                     <div class="flex flex-wrap items-center gap-2">
                         <div class="min-w-[220px] flex-1">
                             <input type="search" wire:model.live.debounce.300ms="desainCari" x-on:focus="pool = true"
                                    placeholder="Cari desain yang sudah ada (semua kategori)…"
                                    class="block min-h-[44px] w-full rounded-lg border border-line bg-card px-3 text-sm text-ink placeholder:text-ink-muted/60 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30">
                         </div>
-                        <x-button type="button" variant="secondary" size="sm" x-on:click="baru = ! baru; pool = false">
+                        <x-button type="button" variant="secondary" size="sm" x-on:click="baru = ! baru; massal = false; pool = false">
                             <span x-text="baru ? 'Tutup' : '+ Desain baru'">+ Desain baru</span>
+                        </x-button>
+                        <x-button type="button" variant="secondary" size="sm" x-on:click="massal = ! massal; baru = false; pool = false">
+                            <span x-text="massal ? 'Tutup' : 'Unggah massal'">Unggah massal</span>
                         </x-button>
                     </div>
 
@@ -234,6 +237,42 @@
                                 @endforeach
                             </ul>
                         @endif
+                    </div>
+
+                    {{-- Unggah massal: banyak berkas sekaligus, kode dari nama berkas --}}
+                    <div x-show="massal" x-cloak x-transition class="mt-3 rounded-xl border border-line bg-page/50 p-3">
+                        <p class="text-sm text-ink-muted">
+                            Pilih banyak JPG/PNG sekaligus. <span class="font-medium text-ink">Kode desain diambil dari nama berkas</span>
+                            (mis. <span class="font-mono">WSD-012.jpg</span> → <span class="font-mono">WSD-012</span>), orientasi dibaca dari dimensi gambarnya,
+                            dan kategori mengikuti kategori produk ini.
+                        </p>
+
+                        <div class="mt-3 space-y-1.5">
+                            <input type="file" wire:model="desainBulk" accept="image/*" multiple
+                                   class="block w-full text-sm text-ink file:mr-3 file:rounded-lg file:border-0 file:bg-card file:px-3 file:py-2 file:text-sm file:font-medium file:text-ink hover:file:bg-line">
+                            <div wire:loading wire:target="desainBulk" class="text-xs text-ink-muted">Mengunggah…</div>
+                            <p class="text-xs text-ink-muted">Maks 4 MB per berkas, maksimal {{ \App\Services\DesainBulkUpload::MAKS_BERKAS }} berkas. Kode yang sudah ada di katalog dilewati.</p>
+                            @error('desainBulk')<p class="text-xs text-status-danger">{{ $message }}</p>@enderror
+                            @foreach ($errors->get('desainBulk.*') as $pesan)
+                                <p class="text-xs text-status-danger">{{ $pesan[0] }}</p>
+                            @endforeach
+                        </div>
+
+                        @if ($desainBulk)
+                            <div class="mt-3 rounded-lg border border-line bg-card p-3">
+                                <p class="text-xs font-medium text-ink">{{ count($desainBulk) }} berkas siap — kode yang akan dibuat:</p>
+                                <ul class="mt-1.5 max-h-28 space-y-0.5 overflow-y-auto text-xs text-ink-muted">
+                                    @foreach ($desainBulk as $f)
+                                        <li class="font-mono">{{ app(\App\Services\DesainBulkUpload::class)->kodeDariNamaBerkas($f->getClientOriginalName()) }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
+
+                        <x-button type="button" wire:click="tambahDesainBulk" variant="secondary" size="sm" class="mt-3">
+                            <span wire:loading.remove wire:target="tambahDesainBulk,desainBulk">Unggah &amp; masukkan ke daftar</span>
+                            <span wire:loading wire:target="tambahDesainBulk,desainBulk">Memproses…</span>
+                        </x-button>
                     </div>
 
                     {{-- Buat desain baru --}}

@@ -6,6 +6,7 @@ use App\Models\Desain;
 use App\Models\Frame;
 use App\Models\Kategori;
 use App\Models\Produk;
+use App\Services\DesainBulkUpload;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -69,6 +70,9 @@ class ProdukForm extends Component
     public string $desainTahun = '';
 
     public ?string $desainMsg = null;
+
+    /** Unggah massal: banyak berkas sekaligus, kode dari nama berkas. */
+    public array $desainBulk = [];
 
     /** Pesan gagal simpan — ditampilkan sbg notifikasi melayang, lihat <x-toast>. */
     public ?string $error = null;
@@ -523,6 +527,63 @@ class ProdukForm extends Component
         $this->desainTahun = $this->tahunAjaranDefault();
         unset($this->hasilCariDesain);
         $this->desainMsg = 'Desain baru disiapkan — dibuat saat produk disimpan.';
+    }
+
+    /**
+     * Unggah banyak berkas desain sekaligus, kode diambil dari nama berkasnya.
+     *
+     * Berbeda dari tambahDesainBaru() yang menunda pembuatan sampai produk
+     * disimpan: di sini desainnya LANGSUNG dibuat di katalog. Menahan puluhan
+     * berkas di memori komponen sampai produk disimpan cuma membebani sesi,
+     * dan desain memang aset pakai-ulang — berguna walau produk ini batal.
+     */
+    public function tambahDesainBulk(): void
+    {
+        $this->desainMsg = null;
+
+        if (! $this->kategori_id) {
+            $this->addError('desainBulk', 'Pilih kategori produk dulu — desain baru ikut kategori itu.');
+
+            return;
+        }
+
+        $this->validate([
+            'desainBulk' => ['required', 'array', 'min:1', 'max:'.DesainBulkUpload::MAKS_BERKAS],
+            'desainBulk.*' => ['image', 'max:4096'],
+        ], [
+            'desainBulk.required' => 'Pilih dulu berkas desainnya.',
+            'desainBulk.max' => 'Maksimal '.DesainBulkUpload::MAKS_BERKAS.' berkas sekali unggah.',
+            'desainBulk.*.image' => 'Semua berkas harus berupa gambar.',
+            'desainBulk.*.max' => 'Tiap berkas maksimal 4 MB.',
+        ]);
+
+        $hasil = app(DesainBulkUpload::class)->jalankan(
+            $this->desainBulk,
+            (int) $this->kategori_id,
+            $this->desainTahun ?: $this->tahunAjaranDefault(),
+            collect($this->desains)->pluck('kode')->filter()->map(fn ($k) => (string) $k)->all(),
+        );
+
+        // Yang baru dibuat langsung masuk daftar produk ini — itu maksud
+        // mengunggahnya dari halaman produk.
+        foreach ($hasil['dibuat'] as $desain) {
+            $desain->setRelation('kategori', Kategori::find($this->kategori_id));
+            $this->desains[] = $this->rowDesain($desain);
+        }
+
+        $this->reset('desainBulk');
+        unset($this->hasilCariDesain);
+
+        $pesan = count($hasil['dibuat']).' desain dibuat & masuk daftar.';
+        if ($hasil['dilewati']) {
+            $pesan .= ' '.count($hasil['dilewati']).' dilewati (kode sudah ada): '
+                .implode(', ', array_slice($hasil['dilewati'], 0, 5))
+                .(count($hasil['dilewati']) > 5 ? ', …' : '').'.';
+        }
+        if ($hasil['gagal']) {
+            $pesan .= ' '.count($hasil['gagal']).' gagal: '.implode('; ', $hasil['gagal']).'.';
+        }
+        $this->desainMsg = $pesan;
     }
 
     /** Tulis staging ke pivot: desain baru dibuat dulu, lalu sync beserta ukurannya. */

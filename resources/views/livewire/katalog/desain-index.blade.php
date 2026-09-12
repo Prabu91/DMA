@@ -10,7 +10,10 @@
             <h1 class="text-lg font-medium text-ink">Desain</h1>
             <p class="text-sm text-ink-muted">Kode katalog desain — menempel ke kategori.</p>
         </div>
-        <x-button wire:click="create" size="sm" class="shrink-0 self-start whitespace-nowrap sm:self-auto">Tambah desain</x-button>
+        <div class="flex shrink-0 flex-wrap items-center gap-2 self-start sm:self-auto">
+            <x-button wire:click="bukaBulk" variant="secondary" size="sm" class="whitespace-nowrap">Unggah massal</x-button>
+            <x-button wire:click="create" size="sm" class="whitespace-nowrap">Tambah desain</x-button>
+        </div>
     </div>
 
     <x-toast :success="$success" :error="$error" />
@@ -22,10 +25,23 @@
         <x-input wire:model.live.debounce.300ms="search" type="search" placeholder="Cari kode…" />
     </div>
 
+    @if ($terpilih)
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-brand/30 bg-brand/5 px-4 py-2.5">
+            <span class="text-sm text-ink">{{ count($terpilih) }} desain dipilih.</span>
+            <div class="flex items-center gap-2">
+                <x-button wire:click="$set('terpilih', [])" variant="ghost" size="sm">Batal pilih</x-button>
+                <x-button wire:click="mintaHapusMassal" variant="danger" size="sm">Hapus terpilih</x-button>
+            </div>
+        </div>
+    @endif
+
     <x-card padding="p-0">
         @forelse ($desain as $item)
             <div class="flex flex-col gap-2 border-b border-line px-5 py-3.5 last:border-b-0 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                 <div class="flex min-w-0 items-start gap-3">
+                    <input type="checkbox" wire:model.live="terpilih" value="{{ $item->id }}"
+                           aria-label="Pilih desain {{ $item->kode }}"
+                           class="mt-3.5 h-4 w-4 shrink-0 rounded border-line text-brand focus:ring-brand/40">
                     @if ($item->foto_preview)
                         <div class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line bg-page">
                         <img src="{{ asset('storage/'.$item->foto_preview) }}" alt="" loading="lazy" class="max-h-full max-w-full object-contain">
@@ -119,6 +135,106 @@
                         <x-button type="button" wire:click="$set('showForm', false)" variant="ghost">Batal</x-button>
                     </div>
                 </form>
+            </div>
+        </div>
+    @endif
+    {{-- Modal unggah massal --}}
+    @if ($showBulk)
+        <div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center" wire:key="desain-bulk-modal">
+            <div class="absolute inset-0 bg-ink/40" wire:click="tutupBulk"></div>
+            <div class="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-xl border border-line bg-card p-5 shadow-lg sm:rounded-xl">
+                <h2 class="text-base font-medium text-ink">Unggah desain massal</h2>
+                <p class="mt-1 text-sm text-ink-muted">
+                    Pilih banyak JPG/PNG sekaligus. <span class="font-medium text-ink">Kode desain diambil dari nama berkas</span>
+                    (mis. <span class="font-mono">WSD-012.jpg</span> → <span class="font-mono">WSD-012</span>), dan orientasi dibaca dari dimensi gambarnya.
+                </p>
+
+                <form wire:submit="simpanBulk" class="mt-4 space-y-4">
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <x-select label="Kategori" wire:model="bulkKategoriId" :options="$this->kategoriDesainOptions" :selected="$bulkKategoriId" placeholder="— Pilih kategori —" :error="$errors->first('bulkKategoriId')" hint="Berlaku untuk seluruh berkas." />
+                        <x-input label="Tahun ajaran" wire:model="bulkTahun" :error="$errors->first('bulkTahun')" placeholder="mis. 2025/2026" />
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <span class="block text-sm font-medium text-ink">Berkas desain</span>
+                        <input type="file" wire:model="bulkFiles" accept="image/*" multiple
+                               class="block w-full text-sm text-ink-muted file:mr-3 file:rounded-lg file:border file:border-line file:bg-card file:px-3 file:py-2 file:text-sm file:text-ink hover:file:bg-page">
+                        <div wire:loading wire:target="bulkFiles" class="text-xs text-ink-muted">Mengunggah…</div>
+                        <p class="text-xs text-ink-muted">JPG/PNG, maks 4 MB per berkas, maksimal {{ \App\Services\DesainBulkUpload::MAKS_BERKAS }} berkas.</p>
+                        @error('bulkFiles')<p class="text-xs text-status-danger">{{ $message }}</p>@enderror
+                        @foreach ($errors->get('bulkFiles.*') as $pesan)
+                            <p class="text-xs text-status-danger">{{ $pesan[0] }}</p>
+                        @endforeach
+                    </div>
+
+                    @if ($bulkFiles)
+                        <div class="rounded-lg border border-line bg-page/50 p-3">
+                            <p class="text-xs font-medium text-ink">{{ count($bulkFiles) }} berkas siap — kode yang akan dibuat:</p>
+                            <ul class="mt-1.5 max-h-32 space-y-0.5 overflow-y-auto text-xs text-ink-muted">
+                                @foreach ($bulkFiles as $f)
+                                    <li class="font-mono">{{ app(\App\Services\DesainBulkUpload::class)->kodeDariNamaBerkas($f->getClientOriginalName()) }}</li>
+                                @endforeach
+                            </ul>
+                            <p class="mt-2 text-xs text-ink-muted">Kode yang sudah ada di katalog akan dilewati, bukan ditimpa.</p>
+                        </div>
+                    @endif
+
+                    <div class="flex items-center gap-3 pt-2">
+                        <x-button type="submit">
+                            <span wire:loading.remove wire:target="simpanBulk">Unggah semua</span>
+                            <span wire:loading wire:target="simpanBulk">Menyimpan…</span>
+                        </x-button>
+                        <x-button type="button" wire:click="tutupBulk" variant="ghost">Batal</x-button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
+
+    {{-- Modal konfirmasi hapus massal --}}
+    @if ($konfirmasiHapusMassal)
+        @php $rencana = $this->rencanaHapusMassal; @endphp
+        <div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center" wire:key="desain-hapus-massal">
+            <div class="absolute inset-0 bg-ink/40" wire:click="batalHapusMassal"></div>
+            <div class="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-xl border border-line bg-card p-5 shadow-lg sm:rounded-xl">
+                <h2 class="text-base font-medium text-ink">Hapus desain terpilih</h2>
+
+                @if ($rencana['boleh']->isEmpty())
+                    <p class="mt-2 text-sm text-ink-muted">Tidak ada desain yang bisa dihapus dari pilihan ini.</p>
+                @else
+                    <p class="mt-2 text-sm text-ink-muted">
+                        <span class="font-medium text-ink">{{ $rencana['boleh']->count() }} desain</span> akan dihapus permanen beserta berkas fotonya.
+                    </p>
+                    <ul class="mt-2 max-h-32 space-y-0.5 overflow-y-auto text-xs text-ink-muted">
+                        @foreach ($rencana['boleh'] as $d)
+                            <li class="font-mono">{{ $d->kode }}</li>
+                        @endforeach
+                    </ul>
+                @endif
+
+                @if ($rencana['tertahan']->isNotEmpty())
+                    <div class="mt-3 rounded-lg border border-status-danger/20 bg-status-danger/10 p-3 text-xs text-ink">
+                        <p class="font-medium">{{ $rencana['tertahan']->count() }} dilewati — masih dipakai:</p>
+                        <ul class="mt-1 space-y-0.5">
+                            @foreach ($rencana['tertahan'] as $d)
+                                @php
+                                    $sebab = [];
+                                    if ($d->order_items_count > 0) { $sebab[] = $d->order_items_count.' item order'; }
+                                    if ($d->products_count > 0) { $sebab[] = $d->products_count.' produk'; }
+                                @endphp
+                                <li><span class="font-mono">{{ $d->kode }}</span> — {{ implode(', ', $sebab) }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
+                <div class="mt-5 flex items-center justify-end gap-3">
+                    <x-button type="button" wire:click="batalHapusMassal" variant="ghost">Batal</x-button>
+                    <x-button type="button" wire:click="hapusMassal" variant="danger" :disabled="$rencana['boleh']->isEmpty()">
+                        <span wire:loading.remove wire:target="hapusMassal">Ya, hapus</span>
+                        <span wire:loading wire:target="hapusMassal">Menghapus…</span>
+                    </x-button>
+                </div>
             </div>
         </div>
     @endif
