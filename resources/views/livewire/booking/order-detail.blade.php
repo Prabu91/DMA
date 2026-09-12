@@ -101,21 +101,53 @@
             @endif
 
             {{-- Item (diletakkan di atas agar rincian pesanan langsung terlihat) --}}
+            @php
+                // Harga item boleh dikoreksi admin sales/super admin walau order
+                // sudah terkunci — kunci menjaga jadwal & susunan item, bukan
+                // melindungi salah ketik harga.
+                $bisaUbahHarga = ! $sf && $this->isAdminSales && $order->status !== \App\Support\OrderStatus::BATAL;
+            @endphp
             <x-card title="Item" padding="p-0">
                 @foreach ($this->paidItems as $item)
-                    <div class="flex items-center justify-between gap-3 border-b border-line px-5 py-3 last:border-b-0">
-                        <div class="min-w-0">
-                            <div class="flex flex-wrap items-center gap-2">
-                                <x-badge :variant="$item->tipe_item === 'paket' ? 'brand' : 'neutral'">{{ ucfirst($item->tipe_item) }}</x-badge>
-                                <span class="text-sm {{ $sf ? 'font-bold' : 'font-medium' }} text-ink">{{ $item->produk?->nama ?? $item->paket?->nama }}</span>
+                    <div wire:key="item-{{ $item->id }}" class="border-b border-line px-5 py-3 last:border-b-0">
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="min-w-0">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <x-badge :variant="$item->tipe_item === 'paket' ? 'brand' : 'neutral'">{{ ucfirst($item->tipe_item) }}</x-badge>
+                                    <span class="text-sm {{ $sf ? 'font-bold' : 'font-medium' }} text-ink">{{ $item->produk?->nama ?? $item->paket?->nama }}</span>
+                                </div>
+                                <div class="mt-0.5 text-xs text-ink-muted">
+                                    @if ($item->desain) Desain {{ $item->desain->kode }} · @endif
+                                    @if ($item->opsi_ukuran) {{ $item->opsi_ukuran }} · @endif
+                                    {{ $item->qty }} × Rp{{ number_format($item->harga, 0, ',', '.') }}
+                                </div>
                             </div>
-                            <div class="mt-0.5 text-xs text-ink-muted">
-                                @if ($item->desain) Desain {{ $item->desain->kode }} · @endif
-                                @if ($item->opsi_ukuran) {{ $item->opsi_ukuran }} · @endif
-                                {{ $item->qty }} × Rp{{ number_format($item->harga, 0, ',', '.') }}
+
+                            <div class="flex shrink-0 flex-col items-end gap-0.5">
+                                <span class="text-sm font-medium text-ink">Rp{{ number_format($item->harga * $item->qty, 0, ',', '.') }}</span>
+                                @if ($bisaUbahHarga && $hargaEditItemId !== $item->id)
+                                    <button type="button" wire:click="mulaiEditHarga({{ $item->id }})"
+                                            class="text-xs font-medium text-brand hover:text-brand-hover">Ubah harga</button>
+                                @endif
                             </div>
                         </div>
-                        <div class="shrink-0 text-sm font-medium text-ink">Rp{{ number_format($item->harga * $item->qty, 0, ',', '.') }}</div>
+
+                        @if ($bisaUbahHarga && $hargaEditItemId === $item->id)
+                            <div class="mt-3 rounded-lg border border-line bg-page/50 p-3">
+                                <div class="flex flex-wrap items-end gap-2">
+                                    <div class="w-36 shrink-0">
+                                        <x-input type="number" min="0" step="1000" label="Harga satuan (Rp)"
+                                                 wire:model="hargaBaru" :error="$errors->first('hargaBaru')" />
+                                    </div>
+                                    <x-button size="sm" wire:click="simpanHarga">
+                                        <span wire:loading.remove wire:target="simpanHarga">Simpan</span>
+                                        <span wire:loading wire:target="simpanHarga">Menyimpan…</span>
+                                    </x-button>
+                                    <x-button size="sm" variant="secondary" wire:click="batalEditHarga">Batal</x-button>
+                                </div>
+                                <p class="mt-2 text-xs text-ink-muted">Total order &amp; sisa tagihan ikut dihitung ulang, dan perubahan tercatat di riwayat aktivitas.</p>
+                            </div>
+                        @endif
                     </div>
                 @endforeach
 
@@ -130,6 +162,10 @@
                         <div class="shrink-0 text-sm font-medium text-status-success">Rp0</div>
                     </div>
                 @endforeach
+
+                @if (! $sf && $hargaMsg)
+                    <p class="border-t border-line px-5 py-3 text-sm font-medium text-status-success">{{ $hargaMsg }}</p>
+                @endif
             </x-card>
 
             {{-- Visual tracking status order — hanya panel staf; disembunyikan dari portal sekolah (client) untuk sementara --}}

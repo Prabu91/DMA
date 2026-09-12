@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Support\OrderStatus;
 use App\Support\Qr;
 use App\Support\WaPesan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -54,6 +55,13 @@ class OrderDetail extends Component
     public $editBukti = null;
 
     public ?string $bayarMsg = null;
+
+    // Ubah harga satuan item order (admin sales/super admin, tembus kunci).
+    public ?int $hargaEditItemId = null;
+
+    public ?int $hargaBaru = null;
+
+    public ?string $hargaMsg = null;
 
     // Diskon per item (ajukan/setujui). [order_item_id => nominal per satuan]
     public array $diskonItem = [];
@@ -356,6 +364,86 @@ class OrderDetail extends Component
         $this->batalEditPembayaran();
         unset($this->order);
         $this->bayarMsg = 'Pembayaran diperbarui — menunggu approval ulang.';
+    }
+
+    /**
+     * Harga item order boleh dikoreksi ADMIN SALES / SUPER ADMIN meski order
+     * sudah TERKUNCI — permintaan pemilik: kunci melindungi jadwal & susunan
+     * item, tapi salah harga harus tetap bisa dibetulkan sampai tagihan lunas.
+     * Marketing & tim event tidak boleh, dan order batal tidak diutak-atik.
+     */
+    private function bolehUbahHarga(): void
+    {
+        abort_unless($this->konteks === 'staf', 403);
+        abort_unless(auth('web')->user()?->isAdminSales(), 403);
+        abort_if($this->order->status === OrderStatus::BATAL, 422);
+    }
+
+    public function mulaiEditHarga(int $itemId): void
+    {
+        $this->bolehUbahHarga();
+
+        $item = $this->order->items()->where('is_free', false)->findOrFail($itemId);
+        $this->hargaEditItemId = $item->id;
+        $this->hargaBaru = (int) $item->harga;
+        $this->hargaMsg = null;
+        $this->resetErrorBag('hargaBaru');
+    }
+
+    public function batalEditHarga(): void
+    {
+        $this->reset(['hargaEditItemId', 'hargaBaru']);
+        $this->resetErrorBag('hargaBaru');
+    }
+
+    public function simpanHarga(): void
+    {
+        $this->bolehUbahHarga();
+
+        $item = $this->order->items()->where('is_free', false)->findOrFail($this->hargaEditItemId);
+
+        $this->validate(
+            ['hargaBaru' => ['required', 'integer', 'min:0']],
+            [
+                'hargaBaru.required' => 'Harga wajib diisi.',
+                'hargaBaru.integer' => 'Harga harus angka.',
+                'hargaBaru.min' => 'Harga tidak boleh minus.',
+            ]
+        );
+
+        $lama = (int) $item->harga;
+        $baru = (int) $this->hargaBaru;
+
+        if ($lama === $baru) {
+            $this->batalEditHarga();
+            $this->hargaMsg = 'Harga tidak berubah.';
+
+            return;
+        }
+
+        // Diskon per satuan tidak boleh melebihi harga barunya.
+        $diskon = min((int) $item->diskon, $baru);
+        $item->update(['harga' => $baru, 'diskon' => $diskon]);
+
+        // Hitung ulang total dari item berbayar saja. Sengaja TIDAK memakai
+        // rebuildOrder(): itu mengevaluasi ulang item free, dan aturan free
+        // bisa sudah berubah sejak order dibuat — order terkunci tidak boleh
+        // tiba-tiba kehilangan/menambah bonus hanya karena harga dikoreksi.
+        $this->order->update([
+            'total' => (int) $this->order->items()->where('is_free', false)->sum(DB::raw('harga * qty')),
+        ]);
+
+        unset($this->order);
+        $this->order->load('pembayaran')->recalcStatusPembayaran();
+        $this->order->catat(
+            'harga_item_diubah',
+            ($item->produk?->nama ?? $item->paket?->nama ?? 'Item')
+                .': Rp'.number_format($lama, 0, ',', '.').' → Rp'.number_format($baru, 0, ',', '.')
+        );
+
+        unset($this->order);
+        $this->batalEditHarga();
+        $this->hargaMsg = 'Harga diperbarui & tagihan dihitung ulang.';
     }
 
     /** Validasi nominal diskon per item (≥0 & ≤ harga satuan). Return [item_id => nominal]. */
