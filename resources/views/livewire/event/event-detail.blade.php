@@ -236,45 +236,80 @@
 
                 {{-- Konfirmasi Hari-H (final) --}}
                 @unless ($terkunci)
-                    @php $bolehHariH = $order->konfirmasi_lokasi_at && $order->milestoneTerbuka('hh') && $order->tanggal_event; @endphp
+                    @php
+                        $qc = $order->qcProgress('event');
+                        $qcLengkap = $qc['done'] === $qc['total'];
+                        $berdesainIds = $this->itemBerdesain->pluck('id')->all();
+                        $bolehHariH = $order->konfirmasi_lokasi_at && $order->milestoneTerbuka('hh') && $order->tanggal_event && $qcLengkap;
+                    @endphp
                     <x-card title="Konfirmasi Hari-H (final)">
                         <p class="text-sm text-ink-muted">Setelah semua data &amp; item benar, konfirmasi Hari-H. <span class="font-medium text-ink">Order akan dikunci</span> dan <span class="font-medium text-ink">event dinyatakan selesai</span> — tidak bisa diubah lagi.</p>
 
-                        {{-- Tinjau desain sebelum dikunci — ditampilkan sebagai gambar, bukan kode --}}
-                        @if ($this->itemBerdesain->isNotEmpty())
+                        {{-- Periksa item (QC tim event) — pengganti checklist TEAM EVENT di Trello.
+                             Desain ditampilkan sebagai gambar, bukan kode. --}}
+                        @if ($order->items->isNotEmpty())
                             <div class="mt-4 rounded-xl border border-line bg-page/50 p-3">
                                 <div class="flex flex-wrap items-center justify-between gap-2">
-                                    <h3 class="text-sm font-medium text-ink">Desain yang akan dikunci</h3>
-                                    <span class="text-xs text-ink-muted">Cek dulu bersama guru sebelum konfirmasi.</span>
+                                    <h3 class="text-sm font-medium text-ink">Periksa item bersama guru</h3>
+                                    <x-badge :variant="$qcLengkap ? 'success' : 'pending'">{{ $qc['done'] }}/{{ $qc['total'] }} dicek</x-badge>
                                 </div>
+                                <p class="mt-1 text-xs text-ink-muted">Centang tiap item yang sudah sesuai. Kalau ada yang tidak sesuai, ubah jumlah atau hapus itemnya dulu di atas, baru centang.</p>
 
-                                <div class="mt-3 grid gap-3 sm:grid-cols-2">
-                                    @foreach ($this->itemBerdesain as $it)
-                                        <div class="flex items-start gap-3 rounded-lg border border-line bg-card p-2.5">
-                                            <div class="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line bg-page">
-                                                @if ($it->desain?->foto_preview)
-                                                    <img src="{{ asset('storage/'.$it->desain->foto_preview) }}" alt="Desain {{ $it->desain->kode }}"
-                                                         loading="lazy" class="max-h-full max-w-full object-contain">
-                                                @else
-                                                    <svg class="h-6 w-6 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="{{ \App\Support\Icons::path('photo') }}" /></svg>
-                                                @endif
-                                            </div>
-                                            <div class="min-w-0 flex-1">
-                                                <div class="truncate text-sm text-ink">{{ $it->produk?->nama }}</div>
-                                                @if ($it->desain)
-                                                    <div class="mt-0.5 text-xs text-ink-muted">
-                                                        <span class="font-medium text-ink">{{ $it->desain->kode }}</span>
-                                                        @if ($it->desain->seri) · {{ $it->desain->seri }} @endif
-                                                    </div>
-                                                    @if (! $it->desain->foto_preview)
-                                                        <div class="mt-0.5 text-xs text-ink-muted/80">Desain ini belum punya foto preview.</div>
+                                <div class="mt-3 space-y-2">
+                                    @foreach ($order->items as $it)
+                                        @php $cek = $it->sudahQc('event'); @endphp
+                                        <button type="button" wire:click="toggleQcEvent({{ $it->id }})" wire:key="qc-{{ $it->id }}"
+                                                wire:loading.attr="disabled" wire:target="toggleQcEvent({{ $it->id }})"
+                                                aria-pressed="{{ $cek ? 'true' : 'false' }}"
+                                                @class([
+                                                    'flex w-full items-center gap-3 rounded-lg border p-2.5 text-left transition-colors disabled:opacity-60',
+                                                    'border-status-success/40 bg-status-success/5' => $cek,
+                                                    'border-line bg-card hover:border-brand/40' => ! $cek,
+                                                ])>
+                                            <span @class([
+                                                'flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2',
+                                                'border-status-success bg-status-success text-white' => $cek,
+                                                'border-line bg-card' => ! $cek,
+                                            ])>
+                                                @if ($cek)<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>@endif
+                                            </span>
+
+                                            @if (in_array($it->id, $berdesainIds, true))
+                                                <span class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line bg-page">
+                                                    @if ($it->desain?->foto_preview)
+                                                        <img src="{{ asset('storage/'.$it->desain->foto_preview) }}" alt="Desain {{ $it->desain->kode }}"
+                                                             loading="lazy" class="max-h-full max-w-full object-contain">
+                                                    @else
+                                                        <svg class="h-5 w-5 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="{{ \App\Support\Icons::path('photo') }}" /></svg>
                                                     @endif
-                                                @else
-                                                    <div class="mt-0.5 text-xs text-status-danger">Desain belum dipilih.</div>
+                                                </span>
+                                            @endif
+
+                                            <span class="min-w-0 flex-1">
+                                                <span class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                                    <span class="text-sm font-medium text-ink">{{ $it->produk?->nama ?? $it->paket?->nama }}</span>
+                                                    <span class="text-sm text-ink">×{{ $it->qty }}</span>
+                                                    @if ($it->is_free)<x-badge variant="success">Free</x-badge>@endif
+                                                </span>
+                                                <span class="mt-0.5 block text-xs text-ink-muted">
+                                                    @if ($it->opsi_ukuran) {{ $it->opsi_ukuran }} @endif
+                                                    @if (in_array($it->id, $berdesainIds, true))
+                                                        @if ($it->desain)
+                                                            <span class="font-medium text-ink">{{ $it->desain->kode }}</span>
+                                                            @if ($it->desain->seri) · {{ $it->desain->seri }} @endif
+                                                            @unless ($it->desain->foto_preview)
+                                                                <span class="block text-ink-muted/80">Desain ini belum punya foto preview.</span>
+                                                            @endunless
+                                                        @else
+                                                            <span class="block text-status-danger">Desain belum dipilih.</span>
+                                                        @endif
+                                                    @endif
+                                                </span>
+                                                @if ($cek && $it->qcEventOleh)
+                                                    <span class="mt-0.5 block text-[11px] text-status-success">Dicek {{ $it->qcEventOleh->nama ?? $it->qcEventOleh->name }} · {{ $it->qc_event_at->translatedFormat('H:i') }}</span>
                                                 @endif
-                                                @if ($it->opsi_ukuran)<div class="mt-0.5 text-xs text-ink-muted">{{ $it->opsi_ukuran }}</div>@endif
-                                            </div>
-                                        </div>
+                                            </span>
+                                        </button>
                                     @endforeach
                                 </div>
 
@@ -297,6 +332,7 @@
                                 @unless ($order->isSusulan())
                                     <li>{{ $order->konfirmasi_h2_at ? '✅' : '⬜' }} Konfirmasi H-2 (oleh admin sales) dulu.</li>
                                 @endunless
+                                <li>{{ $qcLengkap ? '✅' : '⬜' }} Semua item dicek ({{ $qc['done'] }}/{{ $qc['total'] }}).</li>
                             </ul>
                         @endunless
                     </x-card>

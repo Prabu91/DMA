@@ -125,11 +125,15 @@ class EventFinalisasiTest extends TestCase
     public function test_konfirmasi_hari_h_mengunci_order(): void
     {
         $order = $this->orderDenganItem();
-        // Prasyarat berurutan: data sekolah + H-2 harus beres dulu.
+        // Prasyarat berurutan: data sekolah, H-2, lalu semua item dicek tim event.
         $order->update(['konfirmasi_lokasi_at' => now(), 'konfirmasi_h2_at' => now()]);
         $tim = $this->timEvent();
 
-        $this->comp($order, $tim)->call('konfirmasiHariH');
+        $comp = $this->comp($order, $tim);
+        foreach ($order->items()->pluck('id') as $id) {
+            $comp->call('toggleQcEvent', $id);
+        }
+        $comp->call('konfirmasiHariH');
 
         $order->refresh();
         $this->assertNotNull($order->konfirmasi_hh_at);

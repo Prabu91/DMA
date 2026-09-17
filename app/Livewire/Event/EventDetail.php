@@ -124,7 +124,7 @@ class EventDetail extends Component
     {
         return Order::with([
             'sekolah', 'cabang', 'marketing', 'pembayaran',
-            'items.produk.kategori', 'items.paket', 'items.desain', 'induk:id,booking_code',
+            'items.produk.kategori', 'items.paket', 'items.desain', 'items.qcEventOleh', 'induk:id,booking_code',
         ])->findOrFail($this->orderId);
     }
 
@@ -427,6 +427,31 @@ class EventDetail extends Component
     }
 
     /**
+     * Tim event mencentang item yang sudah dicek bersama sekolah di lokasi —
+     * pengganti checklist "TEAM EVENT" di kartu Trello. Item yang TIDAK sesuai
+     * tidak dibiarkan tak tercentang: direvisi dulu (ubah jumlah / hapus),
+     * baru dicentang. Konfirmasi Hari-H menunggu semua item tercentang.
+     */
+    public function toggleQcEvent(int $itemId): void
+    {
+        $order = $this->order();
+        $this->authorize('manageEvent', $order);
+        abort_if($order->terkunciUntuk(auth('web')->user()), 422);
+
+        $item = $order->items->firstWhere('id', $itemId);
+        abort_unless($item, 404);
+
+        $item->setQc('event', ! $item->sudahQc('event'), auth('web')->id());
+
+        $order->load('items');
+        if ($item->sudahQc('event') && $order->qcLengkap('event')) {
+            $order->catat('qc_event_lengkap', $order->items->count().' item');
+        }
+
+        unset($this->order, $this->itemBerdesain, $this->itemTanpaDesain);
+    }
+
+    /**
      * Konfirmasi HARI-H (final) oleh tim event → order TERKUNCI sekaligus
      * event DINYATAKAN SELESAI. Tidak ada langkah OTP lagi: konfirmasi Hari-H
      * inilah titik penyelesaian event.
@@ -438,7 +463,7 @@ class EventDetail extends Component
         abort_if($order->terkunciUntuk(auth('web')->user()), 422);
         abort_if($order->tanggal_event === null, 422);
 
-        // Berurutan: data sekolah + H-2 harus beres dulu.
+        // Berurutan: data sekolah, H-2, lalu semua item dicek.
         if (! $order->konfirmasi_lokasi_at) {
             session()->flash('event-flash', 'Konfirmasi data sekolah dulu sebelum Hari-H.');
 
@@ -446,6 +471,12 @@ class EventDetail extends Component
         }
         if (! $order->milestoneTerbuka('hh')) {
             session()->flash('event-flash', 'Konfirmasi H-2 (oleh admin sales) dulu sebelum Hari-H.');
+
+            return;
+        }
+        if (! $order->qcLengkap('event')) {
+            $p = $order->qcProgress('event');
+            session()->flash('event-flash', "Centang semua item dulu ({$p['done']}/{$p['total']}) sebelum Hari-H.");
 
             return;
         }

@@ -335,6 +335,7 @@ class OrderSusulanTest extends TestCase
 
         Livewire::actingAs($tim)
             ->test(EventDetail::class, ['orderId' => $susulan->id])
+            ->call('toggleQcEvent', $susulan->items()->value('id'))
             ->call('konfirmasiHariH')
             ->assertHasNoErrors();
 

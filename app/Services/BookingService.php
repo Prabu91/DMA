@@ -212,6 +212,15 @@ class BookingService
 
             // Evaluasi ulang item free. Order susulan tidak pernah mendapat item
             // free — bonusnya sudah diberikan di order induk.
+            //
+            // Item free dibuat ulang dari nol, jadi centang QC-nya disimpan dulu:
+            // item free yang hasilnya persis sama (produk, ukuran, jumlah) tetap
+            // tercentang — tim event tidak perlu mencentang ulang hanya karena
+            // item LAIN diubah.
+            $qcLama = $order->items->where('is_free', true)
+                ->mapWithKeys(fn ($i) => [self::kunciFree($i->produk_id, $i->opsi_ukuran, $i->qty) => $i->only([
+                    'qc_event_at', 'qc_event_oleh', 'qc_admin_at', 'qc_admin_oleh',
+                ])]);
             $order->items()->where('is_free', true)->delete();
             $freeItems = $order->isSusulan()
                 ? []
@@ -226,11 +235,17 @@ class BookingService
                     'qty' => $f['qty'],
                     'harga' => 0,
                     'is_free' => true,
-                ]);
+                ] + ($qcLama[self::kunciFree($f['produk_id'], $f['ukuran'] ?? null, $f['qty'])] ?? []));
             }
 
             $order->update(['total' => $subtotal]);
         });
+    }
+
+    /** Identitas item free untuk mencocokkan hasil evaluasi lama & baru. */
+    private static function kunciFree($produkId, $ukuran, $qty): string
+    {
+        return (int) $produkId.'|'.(string) $ukuran.'|'.(int) $qty;
     }
 
     /**

@@ -105,7 +105,7 @@ class EventTinjauDesainTest extends TestCase
 
         Livewire::actingAs($this->timEvent($order))
             ->test(EventDetail::class, ['orderId' => $order->id])
-            ->assertSee('Desain yang akan dikunci')
+            ->assertSee('Periksa item bersama guru')
             ->assertSee('WSD-007')
             ->assertSee('storage/desain/wsd-007.jpg', escape: false);
     }
@@ -120,8 +120,10 @@ class EventTinjauDesainTest extends TestCase
             ->assertSee('Desain belum dipilih.')
             ->assertSee('1 item belum punya desain.');
 
-        // Peringatan saja — konfirmasi Hari-H tetap boleh jalan.
-        $komponen->call('konfirmasiHariH')->assertHasNoErrors();
+        // Peringatan saja — setelah item dicek, konfirmasi Hari-H tetap boleh
+        // jalan walau desainnya kosong.
+        $komponen->call('toggleQcEvent', $order->items()->value('id'))
+            ->call('konfirmasiHariH')->assertHasNoErrors();
         $this->assertSame(OrderStatus::EVENT_SELESAI, $order->refresh()->event_status);
     }
 
@@ -132,7 +134,8 @@ class EventTinjauDesainTest extends TestCase
 
         Livewire::actingAs($this->timEvent($order))
             ->test(EventDetail::class, ['orderId' => $order->id])
-            ->assertDontSee('Desain yang akan dikunci')
+            ->assertSee('Box Pensil')              // tetap ada di daftar periksa
+            ->assertDontSee('Desain belum dipilih.') // tapi tanpa tuntutan desain
             ->assertCount('itemBerdesain', 0);
     }
 
@@ -162,11 +165,13 @@ class EventTinjauDesainTest extends TestCase
         $tim = $this->timEvent($order);
         Livewire::actingAs($tim)
             ->test(EventDetail::class, ['orderId' => $order->id])
+            ->call('toggleQcEvent', $order->items()->value('id'))
             ->call('konfirmasiHariH');
+        $this->assertTrue($order->refresh()->isLocked());
 
         Livewire::actingAs($tim)
             ->test(EventDetail::class, ['orderId' => $order->id])
-            ->assertDontSee('Desain yang akan dikunci')
+            ->assertDontSee('Periksa item bersama guru')
             ->assertSee('WSD-007'); // tetap terbaca di daftar item
     }
 }

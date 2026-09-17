@@ -118,6 +118,30 @@ class Order extends Model
         return $this->order_induk_id !== null;
     }
 
+    /**
+     * Progres QC item untuk satu peran — semua item dihitung, termasuk item
+     * gratis (justru yang paling sering terlupa).
+     *
+     * @return array{done:int, total:int}
+     */
+    public function qcProgress(string $peran): array
+    {
+        $items = $this->items;
+
+        return [
+            'done' => $items->filter(fn ($i) => $i->sudahQc($peran))->count(),
+            'total' => $items->count(),
+        ];
+    }
+
+    /** Semua item sudah dicentang peran ini? Order tanpa item dianggap lengkap. */
+    public function qcLengkap(string $peran): bool
+    {
+        $p = $this->qcProgress($peran);
+
+        return $p['done'] === $p['total'];
+    }
+
     /** Milestone yang berlaku: order susulan hanya punya Hari-H. */
     public function milestoneBerlaku(): array
     {
@@ -315,9 +339,15 @@ class Order extends Model
         return $this->belongsTo(Cabang::class);
     }
 
+    /**
+     * Item order dalam urutan tetap (urutan dibuat). Tanpa ini PostgreSQL bebas
+     * mengembalikan baris dalam urutan apa pun — item yang baru diubah (mis.
+     * dicentang QC) bisa pindah posisi dan daftar periksa "meloncat" di tangan
+     * tim event.
+     */
     public function items(): HasMany
     {
-        return $this->hasMany(OrderItem::class);
+        return $this->hasMany(OrderItem::class)->orderBy('id');
     }
 
     public function timEvent(): BelongsToMany

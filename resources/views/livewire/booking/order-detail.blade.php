@@ -134,6 +134,18 @@
                 $bisaUbahHarga = ! $sf && $this->isAdminSales && $order->status !== \App\Support\OrderStatus::BATAL;
             @endphp
             <x-card title="Item" padding="p-0">
+                @if ($this->tampilQc)
+                    @php
+                        $qcE = $order->qcProgress('event');
+                        $qcA = $order->qcProgress('admin');
+                    @endphp
+                    <x-slot name="actions">
+                        <div class="flex flex-wrap justify-end gap-1.5">
+                            <x-badge :variant="$qcE['done'] === $qcE['total'] ? 'success' : 'pending'">Tim event {{ $qcE['done'] }}/{{ $qcE['total'] }}</x-badge>
+                            <x-badge :variant="$qcA['done'] === $qcA['total'] ? 'success' : 'neutral'">Admin {{ $qcA['done'] }}/{{ $qcA['total'] }}</x-badge>
+                        </div>
+                    </x-slot>
+                @endif
                 @foreach ($this->paidItems as $item)
                     <div wire:key="item-{{ $item->id }}" class="border-b border-line px-5 py-3 last:border-b-0">
                         <div class="flex items-center justify-between gap-3">
@@ -174,18 +186,26 @@
                                 <p class="mt-2 text-xs text-ink-muted">Total order &amp; sisa tagihan ikut dihitung ulang, dan perubahan tercatat di riwayat aktivitas.</p>
                             </div>
                         @endif
+                        @if ($this->tampilQc)
+                            @include('booking.partials.qc-item', ['item' => $item])
+                        @endif
                     </div>
                 @endforeach
 
                 @foreach ($this->freeItems as $item)
-                    <div class="flex items-center justify-between gap-3 border-b border-line px-5 py-3 last:border-b-0">
-                        <div class="flex flex-wrap items-center gap-2">
-                            <x-badge variant="success">Free</x-badge>
-                            <span class="text-sm text-ink">{{ $item->produk?->nama ?? 'Produk' }}</span>
-                            @if ($item->opsi_ukuran)<span class="text-xs text-ink-muted">{{ $item->opsi_ukuran }}</span>@endif
-                            <span class="text-xs text-ink-muted">×{{ $item->qty }}</span>
+                    <div wire:key="item-{{ $item->id }}" class="border-b border-line px-5 py-3 last:border-b-0">
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <x-badge variant="success">Free</x-badge>
+                                <span class="text-sm text-ink">{{ $item->produk?->nama ?? 'Produk' }}</span>
+                                @if ($item->opsi_ukuran)<span class="text-xs text-ink-muted">{{ $item->opsi_ukuran }}</span>@endif
+                                <span class="text-xs text-ink-muted">×{{ $item->qty }}</span>
+                            </div>
+                            <div class="shrink-0 text-sm font-medium text-status-success">Rp0</div>
                         </div>
-                        <div class="shrink-0 text-sm font-medium text-status-success">Rp0</div>
+                        @if ($this->tampilQc)
+                            @include('booking.partials.qc-item', ['item' => $item])
+                        @endif
                     </div>
                 @endforeach
 

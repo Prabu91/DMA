@@ -607,7 +607,8 @@ class OrderDetail extends Component
     #[Computed]
     public function order(): Order
     {
-        $with = ['items.produk', 'items.paket', 'items.desain', 'sekolah', 'cabang', 'marketing', 'timEvent', 'pembayaran',
+        $with = ['items.produk', 'items.paket', 'items.desain', 'items.qcEventOleh', 'items.qcAdminOleh',
+            'sekolah', 'cabang', 'marketing', 'timEvent', 'pembayaran',
             'induk:id,booking_code,tanggal_event', 'susulan'];
 
         if ($this->konteks === 'sekolah') {
@@ -632,6 +633,50 @@ class OrderDetail extends Component
     public function freeItems()
     {
         return $this->order->items->where('is_free', true);
+    }
+
+    /**
+     * Tampilkan status QC item? Baru bermakna setelah tim event mulai
+     * memeriksa — sebelum itu hanya jadi deretan "belum dicek" yang bising.
+     */
+    #[Computed]
+    public function tampilQc(): bool
+    {
+        return $this->konteks === 'staf'
+            && ($this->order->konfirmasi_hh_at !== null
+                || $this->order->items->contains(fn ($i) => $i->sudahQc('event')));
+    }
+
+    /**
+     * Admin mencentang ulang item sesudah event (H+1), dicocokkan dengan
+     * invoice & DO — pengganti checklist "ADMIN" di kartu Trello. Tetap bisa
+     * walau order terkunci: ini pemeriksaan, bukan perubahan data order.
+     */
+    #[Computed]
+    public function bisaQcAdmin(): bool
+    {
+        return $this->konteks === 'staf'
+            && $this->order->konfirmasi_hh_at !== null
+            && $this->order->status !== OrderStatus::BATAL
+            && (auth('web')->user()?->isAdminSales() ?? false);
+    }
+
+    public function toggleQcAdmin(int $itemId): void
+    {
+        abort_unless($this->bisaQcAdmin, 403);
+        $this->authorize('view', $this->order);
+
+        $item = $this->order->items->firstWhere('id', $itemId);
+        abort_unless($item, 404);
+
+        $item->setQc('admin', ! $item->sudahQc('admin'), auth('web')->id());
+
+        $order = $this->order->load('items');
+        if ($item->sudahQc('admin') && $order->qcLengkap('admin')) {
+            $order->catat('qc_admin_lengkap', $order->items->count().' item');
+        }
+
+        unset($this->order);
     }
 
     /**
