@@ -8,8 +8,11 @@
         ['label' => 'Pesanan dibuat', 'done' => true, 'at' => $order->tanggal_booking],
         ['label' => 'Marketing ditugaskan', 'done' => $order->marketing_id !== null, 'at' => null],
         ['label' => 'DP dibayar', 'done' => in_array($order->status, [\App\Support\OrderStatus::DP, \App\Support\OrderStatus::LUNAS], true), 'at' => null],
-        ['label' => 'Konfirmasi H-7', 'done' => $order->konfirmasi_h7_at !== null, 'at' => $order->konfirmasi_h7_at],
-        ['label' => 'Konfirmasi H-2 · STE terbit', 'done' => $order->konfirmasi_h2_at !== null, 'at' => $order->konfirmasi_h2_at],
+        // Order susulan langsung ke hari event: tidak ada H-7/H-2.
+        ...($order->isSusulan() ? [] : [
+            ['label' => 'Konfirmasi H-7', 'done' => $order->konfirmasi_h7_at !== null, 'at' => $order->konfirmasi_h7_at],
+            ['label' => 'Konfirmasi H-2 · STE terbit', 'done' => $order->konfirmasi_h2_at !== null, 'at' => $order->konfirmasi_h2_at],
+        ]),
         // Hari-H = titik penyelesaian event, jadi satu tahap (bukan dua yang
         // selalu menyala bersamaan).
         ['label' => 'Hari-H (final) · event selesai', 'done' => $order->konfirmasi_hh_at !== null, 'at' => $order->konfirmasi_hh_at],

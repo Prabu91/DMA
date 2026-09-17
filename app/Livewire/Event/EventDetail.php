@@ -124,7 +124,7 @@ class EventDetail extends Component
     {
         return Order::with([
             'sekolah', 'cabang', 'marketing', 'pembayaran',
-            'items.produk.kategori', 'items.paket', 'items.desain',
+            'items.produk.kategori', 'items.paket', 'items.desain', 'induk:id,booking_code',
         ])->findOrFail($this->orderId);
     }
 
@@ -444,7 +444,7 @@ class EventDetail extends Component
 
             return;
         }
-        if (! $order->konfirmasi_h2_at) {
+        if (! $order->milestoneTerbuka('hh')) {
             session()->flash('event-flash', 'Konfirmasi H-2 (oleh admin sales) dulu sebelum Hari-H.');
 
             return;

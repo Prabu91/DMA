@@ -21,6 +21,32 @@
         <a href="{{ $this->kembaliUrl() }}" wire:navigate class="text-sm font-semibold text-ink-muted hover:text-ink">Selesai</a>
     </div>
 
+    {{-- Order susulan: tunjukkan induknya dengan jelas --}}
+    @if ($order->isSusulan())
+        <div class="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand/30 bg-brand/5 px-4 py-3">
+            <div class="flex items-center gap-3">
+                <x-badge variant="brand">Susulan</x-badge>
+                <p class="text-sm text-ink">
+                    Order susulan dari
+                    @if ($order->induk)
+                        @if ($sf)
+                            <a href="{{ route('sekolah.riwayat.show', $order->induk->id) }}" wire:navigate class="font-medium text-brand hover:text-brand-hover">{{ $order->induk->booking_code ?? 'order #'.$order->induk->id }}</a>
+                        @else
+                            <a href="{{ route('app.order.show', $order->induk->id) }}" wire:navigate class="font-medium text-brand hover:text-brand-hover">{{ $order->induk->booking_code ?? 'order #'.$order->induk->id }}</a>
+                        @endif
+                        @if ($order->induk->tanggal_event)<span class="text-ink-muted"> · event {{ $order->induk->tanggal_event->translatedFormat('d M Y') }}</span>@endif
+                        @if ($order->induk->trashed())<span class="text-ink-muted"> (sudah dihapus)</span>@endif
+                    @else
+                        <span class="text-ink-muted">order yang sudah dihapus permanen</span>
+                    @endif
+                </p>
+            </div>
+            @unless ($sf)
+                <span class="text-xs text-ink-muted">Langsung ke hari event · tanpa H-7/H-2 · tanpa item free</span>
+            @endunless
+        </div>
+    @endif
+
     <div class="grid gap-6 lg:grid-cols-3">
         <div class="space-y-6 lg:col-span-2">
             {{-- Perlu tindakan (staf): sorot yang belum dilakukan --}}
@@ -174,6 +200,43 @@
                     <x-order-tracking :order="$order" />
                 </x-card>
             @endunless
+
+            {{-- Order susulan milik order ini (staf) --}}
+            @if (! $sf && ! $order->isSusulan() && ($order->susulan->isNotEmpty() || $this->bisaBuatSusulan))
+                <x-card title="Order susulan">
+                    <x-slot name="subtitle">Siswa yang difoto belakangan dibuat sebagai order baru yang tertaut ke order ini.</x-slot>
+
+                    @if ($order->susulan->isNotEmpty())
+                        <div class="-mx-5 mb-4 border-y border-line">
+                            @foreach ($order->susulan as $sus)
+                                <a href="{{ route('app.order.show', $sus->id) }}" wire:navigate wire:key="sus-{{ $sus->id }}"
+                                   class="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-2.5 last:border-b-0 hover:bg-page">
+                                    <div class="min-w-0">
+                                        <div class="text-sm font-medium text-ink">{{ $sus->booking_code ?? 'Order #'.$sus->id }}</div>
+                                        <div class="text-xs text-ink-muted">
+                                            {{ $sus->tanggal_event ? 'Event '.$sus->tanggal_event->translatedFormat('d M Y') : 'Tanggal event belum diisi' }}
+                                            · {{ (int) $sus->jumlah_siswa }} siswa
+                                            · Rp{{ number_format((int) $sus->total, 0, ',', '.') }}
+                                        </div>
+                                    </div>
+                                    <div class="flex shrink-0 items-center gap-2">
+                                        <x-badge :variant="\App\Support\OrderStatus::badge($sus->status)">{{ $sus->statusLabel() }}</x-badge>
+                                        @if ($sus->event_status === \App\Support\OrderStatus::EVENT_SELESAI)<x-badge variant="success">Event selesai</x-badge>@endif
+                                    </div>
+                                </a>
+                            @endforeach
+                        </div>
+                    @else
+                        <p class="mb-4 text-sm text-ink-muted">Belum ada order susulan.</p>
+                    @endif
+
+                    @if ($this->bisaBuatSusulan)
+                        <x-confirm action="buatSusulan" title="Buat order susulan"
+                                   message="Keranjang Anda akan dikosongkan lalu dikunci ke sekolah {{ $order->sekolah?->nama }}. Pilih item susulan di etalase seperti biasa. Lanjutkan?"
+                                   confirm-label="Ya, buat susulan" variant="secondary" confirm-variant="primary" size="sm">+ Buat order susulan</x-confirm>
+                    @endif
+                </x-card>
+            @endif
 
             {{-- Jadwal event — dapat diubah staf (marketing/area) --}}
             @unless ($sf)
@@ -422,9 +485,11 @@
                             @endforeach
                         </div>
 
-                        @unless ($this->isAdminSales)
+                        @if ($order->isSusulan())
+                            <p class="mt-3 text-xs text-ink-muted">Order susulan langsung ke hari event — tidak ada konfirmasi H-7 &amp; H-2.</p>
+                        @elseif (! $this->isAdminSales)
                             <p class="mt-3 text-xs text-ink-muted">Konfirmasi H-7 &amp; H-2 dilakukan oleh admin area/sales.</p>
-                        @endunless
+                        @endif
 
                         @if ($milestoneMsg)
                             <p class="mt-3 text-sm font-medium text-status-success">{{ $milestoneMsg }}</p>
@@ -437,7 +502,7 @@
             @unless ($sf)
                 <x-card title="Tim event">
                     <x-slot name="actions">
-                        @if ($order->konfirmasi_h2_at)
+                        @if ($order->steTersedia())
                             <a href="{{ route('app.order.ste', $order->id) }}" target="_blank"
                                class="text-sm font-medium text-brand hover:text-brand-hover">Cetak STE →</a>
                         @else

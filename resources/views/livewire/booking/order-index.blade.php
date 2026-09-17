@@ -107,6 +107,7 @@
                 </div>
                 <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
                     <x-badge :variant="\App\Support\OrderStatus::badge($order->status)">{{ $order->statusLabel() }}</x-badge>
+                    @if ($order->isSusulan())<x-badge variant="brand">Susulan</x-badge>@endif
                     @if ($order->event_status === \App\Support\OrderStatus::EVENT_SELESAI)<x-badge variant="success">✓ Event selesai</x-badge>@endif
                     @unless ($order->marketing)<x-badge variant="neutral">Belum ditugaskan</x-badge>@endunless
                     @if ($cd)<x-badge :variant="$cd['state'] === 'past' ? 'danger' : ($cd['state'] === 'today' ? 'pending' : 'info')">{{ $cd['label'] }}</x-badge>@endif
@@ -154,6 +155,7 @@
                     </a>
                     @php $cd = $order->eventCountdown(); @endphp
                     @if ($cd)<x-badge :variant="$cd['state'] === 'past' ? 'danger' : ($cd['state'] === 'today' ? 'pending' : 'info')" class="ml-1">{{ $cd['label'] }}</x-badge>@endif
+                    @if ($order->isSusulan())<x-badge variant="brand" class="ml-1">Susulan</x-badge>@endif
                 </x-table.td>
                 <x-table.td>
                     <x-badge :variant="\App\Support\OrderStatus::badge($order->status)">{{ $order->statusLabel() }}</x-badge>

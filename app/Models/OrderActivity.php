@@ -31,6 +31,7 @@ class OrderActivity extends Model
     /** Label & ikon per action (untuk timeline). */
     public const LABELS = [
         'dibuat' => 'Order dibuat',
+        'susulan_dibuat' => 'Order susulan dibuat',
         'marketing_diambil' => 'Diambil marketing',
         'marketing_ditugaskan' => 'Ditugaskan ke marketing',
         'status_dp' => 'DP dikonfirmasi',

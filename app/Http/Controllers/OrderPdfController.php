@@ -38,8 +38,9 @@ class OrderPdfController extends Controller
         $order = Order::with(['sekolah', 'cabang', 'marketing', 'timEvent', 'items.produk', 'items.paket'])
             ->findOrFail($id); // CabangScope membatasi ke cabang staf
 
-        // STE hanya terbit setelah konfirmasi H-2 (poin 6).
-        abort_unless($order->konfirmasi_h2_at !== null, 403, 'STE terbit setelah konfirmasi H-2.');
+        // STE hanya terbit setelah konfirmasi H-2 (poin 6) — kecuali order
+        // susulan, yang langsung ke hari event tanpa H-7/H-2.
+        abort_unless($order->steTersedia(), 403, 'STE terbit setelah konfirmasi H-2.');
 
         $pdf = Pdf::loadView('pdf.ste', ['order' => $order])->setPaper('a4');
 

@@ -5,8 +5,10 @@ namespace App\Livewire\Booking;
 use App\Livewire\Concerns\WithSorting;
 use App\Models\Cabang;
 use App\Models\Order;
+use App\Models\OrderPembayaran;
 use App\Support\OrderStatus;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -106,7 +108,7 @@ class OrderIndex extends Component
         abort_unless($this->isSuperAdmin, 403);
         $order = Order::onlyTrashed()->findOrFail($id);
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($order) {
+        DB::transaction(function () use ($order) {
             $order->items()->delete();
             $order->timEvent()->detach();
             $order->pembayaran()->delete();   // + cascade
@@ -130,10 +132,11 @@ class OrderIndex extends Component
             ->when($this->eventStatus !== '', fn ($x) => $x->where('event_status', $this->eventStatus))
             ->when($this->dari !== '', fn ($x) => $x->whereDate('tanggal_event', '>=', $this->dari))
             ->when($this->sampai !== '', fn ($x) => $x->whereDate('tanggal_event', '<=', $this->sampai))
-            ->when($this->tahap === 'butuh_h7', fn ($x) => $x->whereNull('konfirmasi_h7_at')
+            // Order susulan tidak punya H-7/H-2, jadi tidak pernah "butuh" keduanya.
+            ->when($this->tahap === 'butuh_h7', fn ($x) => $x->whereNull('konfirmasi_h7_at')->whereNull('order_induk_id')
                 ->whereNotNull('tanggal_event')->where($belumSelesai)
                 ->whereDate('tanggal_event', '<=', Carbon::now()->addDays(7)))
-            ->when($this->tahap === 'butuh_h2', fn ($x) => $x->whereNull('konfirmasi_h2_at')
+            ->when($this->tahap === 'butuh_h2', fn ($x) => $x->whereNull('konfirmasi_h2_at')->whereNull('order_induk_id')
                 ->whereNotNull('tanggal_event')->where($belumSelesai)
                 ->whereDate('tanggal_event', '<=', Carbon::now()->addDays(2)))
             ->when($this->tahap === 'butuh_hh', fn ($x) => $x->whereNull('konfirmasi_hh_at')
@@ -162,7 +165,7 @@ class OrderIndex extends Component
             ->when($this->cabangId !== '', fn ($x) => $x->where('cabang_id', $this->cabangId))
             ->with(['sekolah', 'cabang', 'marketing'])
             ->withCount('items')
-            ->withCount(['pembayaran as pembayaran_pending_count' => fn ($q) => $q->where('status', \App\Models\OrderPembayaran::STATUS_PENDING)]);
+            ->withCount(['pembayaran as pembayaran_pending_count' => fn ($q) => $q->where('status', OrderPembayaran::STATUS_PENDING)]);
 
         $orders = $this->applySort($ordersQuery, 'created_at', 'desc')
             ->orderBy('id') // tiebreaker → paginasi stabil saat sort kolom non-unik

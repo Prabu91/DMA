@@ -31,6 +31,7 @@ class Order extends Model
     public const SUMBER_MARKETING = 'marketing';
 
     protected $fillable = [
+        'order_induk_id',
         'booking_code',
         'sekolah_id',
         'marketing_id',
@@ -92,6 +93,44 @@ class Order extends Model
     }
 
     /**
+     * Order induk dari sebuah order SUSULAN (siswa yang difoto belakangan).
+     * Ikut membaca induk yang sudah di sampah supaya tautannya tidak hilang
+     * dari tampilan hanya karena induknya dibuang.
+     */
+    public function induk(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'order_induk_id')->withTrashed();
+    }
+
+    /** Order-order susulan milik order ini. */
+    public function susulan(): HasMany
+    {
+        return $this->hasMany(self::class, 'order_induk_id')->orderBy('created_at');
+    }
+
+    /**
+     * Order susulan langsung ke hari event: tidak melewati H-7/H-2 (jadwalnya
+     * mepet & jumlahnya kecil) dan tidak memicu aturan free sekolah lagi
+     * (bonusnya sudah diberikan di order induk).
+     */
+    public function isSusulan(): bool
+    {
+        return $this->order_induk_id !== null;
+    }
+
+    /** Milestone yang berlaku: order susulan hanya punya Hari-H. */
+    public function milestoneBerlaku(): array
+    {
+        return $this->isSusulan() ? ['hh'] : ['h7', 'h2', 'hh'];
+    }
+
+    /** STE (surat tugas event) boleh dicetak? Susulan tidak menunggu H-2. */
+    public function steTersedia(): bool
+    {
+        return $this->isSusulan() || $this->konfirmasi_h2_at !== null;
+    }
+
+    /**
      * Milestone event (H-7 / H-2 / Hari-H) beserta status:
      * confirmed | overdue (jatuh tempo lewat, belum konfirmasi) | upcoming.
      *
@@ -111,6 +150,9 @@ class Order extends Model
             ['h2', 'H-2', $event->copy()->subDays(2), $this->konfirmasi_h2_at, $this->konfirmasiH2Oleh],
             ['hh', 'Hari-H', $event->copy(), $this->konfirmasi_hh_at, $this->konfirmasiHhOleh],
         ];
+
+        $berlaku = $this->milestoneBerlaku();
+        $defs = array_values(array_filter($defs, fn ($d) => in_array($d[0], $berlaku, true)));
 
         return array_map(function ($d) use ($today) {
             [$key, $label, $due, $confirmedAt, $oleh] = $d;
@@ -160,7 +202,7 @@ class Order extends Model
         return match ($key) {
             'h7' => true,
             'h2' => $this->konfirmasi_h7_at !== null,
-            'hh' => $this->konfirmasi_h2_at !== null,
+            'hh' => $this->isSusulan() || $this->konfirmasi_h2_at !== null,
             default => false,
         };
     }

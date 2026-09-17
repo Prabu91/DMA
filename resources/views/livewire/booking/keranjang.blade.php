@@ -18,7 +18,31 @@
             {{-- Booking untuk — konteks publik: sekolah ditentukan saat login/checkout (Fase 4). --}}
             @if ($konteks !== 'publik')
             <x-card title="Booking untuk">
-                @if ($this->isSekolahFlow)
+                @if ($this->induk)
+                    {{-- Mode susulan: sekolah dikunci ke sekolah order induk --}}
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div class="flex items-center gap-3">
+                            <x-avatar :name="$this->induk->sekolah?->nama" size="sm" />
+                            <div>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="text-sm font-medium text-ink">{{ $this->induk->sekolah?->nama }}</span>
+                                    <x-badge variant="brand">Susulan</x-badge>
+                                </div>
+                                <div class="text-xs text-ink-muted">
+                                    Susulan dari
+                                    <a href="{{ route('app.order.show', $this->induk->id) }}" wire:navigate class="font-medium text-brand hover:text-brand-hover">{{ $this->induk->booking_code ?? 'order #'.$this->induk->id }}</a>
+                                </div>
+                            </div>
+                        </div>
+                        <x-confirm action="batalSusulan" title="Batalkan order susulan"
+                                   message="Keranjang akan dikosongkan dan Anda kembali ke order induk. Lanjutkan?"
+                                   confirm-label="Ya, batalkan" variant="ghost" confirm-variant="danger" size="sm">Batalkan susulan</x-confirm>
+                    </div>
+                    <p class="mt-3 text-xs text-ink-muted">
+                        Produk yang juga ada di order induk memakai <span class="font-medium text-ink">harga induk</span>.
+                        Order susulan tidak mendapat item free dan langsung ke hari event, tanpa H-7/H-2.
+                    </p>
+                @elseif ($this->isSekolahFlow)
                     <div class="flex items-center gap-3">
                         <x-avatar :name="$this->sekolahTerpilih?->nama" size="sm" />
                         <div>
@@ -48,6 +72,7 @@
                                 @if ($line['desain']) Desain {{ $line['desain'] }} · @endif
                                 @if ($line['ukuran']) Ukuran {{ $line['ukuran'] }} · @endif
                                 <x-harga :nilai="$line['unit']" satuan="/item" />
+                                @if (! empty($line['harga_induk']))<span class="font-medium text-brand">· harga order induk</span>@endif
                             </div>
                         </div>
                         <div class="flex items-center justify-between gap-3 sm:shrink-0 sm:justify-end">
@@ -76,7 +101,8 @@
             <x-card title="Ringkasan">
                 <div class="space-y-4">
                     @if ($konteks !== 'publik')
-                        <x-input label="Jumlah siswa" type="number" min="0" wire:model.live.debounce.400ms="jumlahSiswa" hint="Dipakai untuk aturan free sekolah." />
+                        <x-input :label="$this->induk ? 'Jumlah siswa susulan' : 'Jumlah siswa'" type="number" min="0" wire:model.live.debounce.400ms="jumlahSiswa"
+                                 :hint="$this->induk ? 'Jumlah anak yang difoto di sesi susulan.' : 'Dipakai untuk aturan free sekolah.'" />
                     @endif
 
                     <div @class(['flex items-baseline justify-between', 'border-t border-line pt-4' => $konteks !== 'publik'])>

@@ -36,6 +36,13 @@
                                 {{ $this->ctx['sumber'] === 'sekolah' ? 'Booking mandiri' : 'Dibuat marketing' }} ·
                                 {{ $this->jumlahSiswa }} siswa
                             </div>
+                            @if ($this->ctx['induk'])
+                                <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
+                                    <x-badge variant="brand">Susulan</x-badge>
+                                    dari <span class="font-medium text-ink">{{ $this->ctx['induk']->booking_code ?? 'order #'.$this->ctx['induk']->id }}</span>
+                                    · tanpa item free · langsung ke hari event
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </x-card>
@@ -52,6 +59,7 @@
                                     @if ($line['desain']) Desain {{ $line['desain'] }} · @endif
                                     @if ($line['ukuran']) {{ $line['ukuran'] }} · @endif
                                     {{ $line['qty'] }} × Rp{{ number_format($line['unit'], 0, ',', '.') }}
+                                    @if (! empty($line['harga_induk']))<span class="font-medium text-brand">· harga order induk</span>@endif
                                 </div>
                             </div>
                             <div class="text-sm font-medium text-ink">Rp{{ number_format($line['total'], 0, ',', '.') }}</div>

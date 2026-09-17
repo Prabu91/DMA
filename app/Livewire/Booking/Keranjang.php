@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Booking;
 
+use App\Models\Order;
 use App\Models\Sekolah;
 use App\Services\BookingService;
 use App\Support\Cart;
@@ -38,6 +39,16 @@ class Keranjang extends Component
         return auth('sekolah')->check();
     }
 
+    /** Order induk bila keranjang sedang dipakai membuat order susulan (staf). */
+    #[Computed]
+    public function induk(): ?Order
+    {
+        $id = app(Cart::class)->indukId();
+
+        // Order::find kena CabangScope — induk di luar jangkauan tidak terbaca.
+        return ($id && ! $this->isSekolahFlow()) ? Order::with('sekolah')->find($id) : null;
+    }
+
     #[Computed]
     public function sekolahOptions(): array
     {
@@ -50,6 +61,10 @@ class Keranjang extends Component
     {
         if ($this->isSekolahFlow()) {
             return auth('sekolah')->user();
+        }
+
+        if ($this->induk()) {
+            return $this->induk()->sekolah;
         }
 
         return $this->sekolahId ? Sekolah::find($this->sekolahId) : null;
@@ -78,6 +93,13 @@ class Keranjang extends Component
 
     public function updatedSekolahId($value): void
     {
+        // Mode susulan: sekolah terkunci ke sekolah order induk.
+        if ($this->induk()) {
+            $this->sekolahId = app(Cart::class)->sekolahId();
+
+            return;
+        }
+
         $this->sekolahId = $value ? (int) $value : null;
         app(Cart::class)->setSekolahId($this->sekolahId);
     }
@@ -100,6 +122,18 @@ class Keranjang extends Component
         $this->jumlahSiswa = 0;
         $this->sekolahId = null;
         unset($this->lines, $this->subtotal);
+    }
+
+    /** Batalkan mode susulan: keranjang dikosongkan, kembali ke order induk. */
+    public function batalSusulan()
+    {
+        $induk = $this->induk();
+        app(Cart::class)->clear();
+
+        return $this->redirect(
+            $induk ? route('app.order.show', $induk->id) : route('app.keranjang'),
+            navigate: true
+        );
     }
 
     public function lanjut()

@@ -62,6 +62,11 @@ class Review extends Component
     #[Computed]
     public function freeItems(): array
     {
+        // Order susulan tidak memicu aturan free sekolah lagi.
+        if ($this->ctx['induk']) {
+            return [];
+        }
+
         return app(BookingService::class)->evaluasiFree($this->lines, $this->jumlahSiswa, $this->subtotal);
     }
 

@@ -22,7 +22,15 @@
                     <x-badge :variant="$cd['state'] === 'past' ? 'danger' : ($cd['state'] === 'today' ? 'pending' : 'info')">{{ $cd['label'] }}</x-badge>
                 @endif
                 @if ($terkunci)<x-badge variant="neutral">Terkunci (final)</x-badge>@endif
+                @if ($order->isSusulan())<x-badge variant="brand">Susulan</x-badge>@endif
             </div>
+            @if ($order->isSusulan())
+                <p class="mt-1 text-sm text-ink-muted">
+                    Susulan dari
+                    <span class="font-medium text-ink">{{ $order->induk?->booking_code ?? 'order #'.$order->order_induk_id }}</span>
+                    — langsung ke hari event, tanpa H-7/H-2.
+                </p>
+            @endif
         </div>
         <a href="{{ route('app.event.ste', $order->id) }}" target="_blank"
            class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-line bg-card px-3 py-2 text-sm font-medium text-ink hover:bg-page">
@@ -226,7 +234,7 @@
 
                 {{-- Konfirmasi Hari-H (final) --}}
                 @unless ($terkunci)
-                    @php $bolehHariH = $order->konfirmasi_lokasi_at && $order->konfirmasi_h2_at && $order->tanggal_event; @endphp
+                    @php $bolehHariH = $order->konfirmasi_lokasi_at && $order->milestoneTerbuka('hh') && $order->tanggal_event; @endphp
                     <x-card title="Konfirmasi Hari-H (final)">
                         <p class="text-sm text-ink-muted">Setelah semua data &amp; item benar, konfirmasi Hari-H. <span class="font-medium text-ink">Order akan dikunci</span> dan <span class="font-medium text-ink">event dinyatakan selesai</span> — tidak bisa diubah lagi.</p>
 
@@ -284,7 +292,9 @@
                             <ul class="mt-2 space-y-1 text-xs text-ink-muted">
                                 @if ($order->tanggal_event === null)<li class="text-status-danger">⬜ Tanggal event belum ditentukan.</li>@endif
                                 <li>{{ $order->konfirmasi_lokasi_at ? '✅' : '⬜' }} Konfirmasi data sekolah dulu.</li>
-                                <li>{{ $order->konfirmasi_h2_at ? '✅' : '⬜' }} Konfirmasi H-2 (oleh admin sales) dulu.</li>
+                                @unless ($order->isSusulan())
+                                    <li>{{ $order->konfirmasi_h2_at ? '✅' : '⬜' }} Konfirmasi H-2 (oleh admin sales) dulu.</li>
+                                @endunless
                             </ul>
                         @endunless
                     </x-card>
@@ -324,7 +334,9 @@
                     <p class="text-sm text-ink-muted">Event dinyatakan selesai saat <span class="font-medium text-ink">Konfirmasi Hari-H</span>. Selesaikan tahap di bawah dulu.</p>
                     <ul class="mt-2 space-y-1 text-xs text-ink-muted">
                         <li>{{ $order->konfirmasi_lokasi_at ? '✅' : '⬜' }} Konfirmasi data sekolah</li>
-                        <li>{{ $order->konfirmasi_h2_at ? '✅' : '⬜' }} Konfirmasi H-2 (oleh admin sales)</li>
+                        @unless ($order->isSusulan())
+                            <li>{{ $order->konfirmasi_h2_at ? '✅' : '⬜' }} Konfirmasi H-2 (oleh admin sales)</li>
+                        @endunless
                         <li>{{ $order->konfirmasi_hh_at ? '✅' : '⬜' }} Konfirmasi Hari-H (final)</li>
                     </ul>
                 @endif

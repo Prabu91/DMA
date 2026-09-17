@@ -68,7 +68,61 @@ class BookingService
             }
         }
 
+        if ($indukId = $cart->indukId()) {
+            // Order::find kena CabangScope — induk di luar jangkauan tak terbaca.
+            $induk = auth('sekolah')->check() ? null : Order::with('items')->find($indukId);
+            if ($induk) {
+                $lines = $this->terapkanHargaInduk($lines, $induk);
+            }
+        }
+
         return $lines;
+    }
+
+    /**
+     * Order SUSULAN: produk yang juga ada di order induk memakai HARGA INDUK,
+     * bukan harga katalog terbaru — harga katalog bisa sudah berubah sejak
+     * event utama, dan harga induk bisa sudah dikoreksi admin atau didiskon.
+     * Tanpa ini, dua anak dari sekolah yang sama membayar beda untuk produk
+     * yang sama. Produk yang tidak ada di induk tetap memakai harga katalog.
+     *
+     * Dicocokkan per produk + pilihan opsinya, karena harga produk bergantung
+     * pada opsi (mis. Yearbook 60 HALAMAN + BOX). Desain induk ikut dipakai
+     * bila baris susulan belum memilih desain.
+     *
+     * @param  array<int, array<string, mixed>>  $lines
+     * @return array<int, array<string, mixed>>
+     */
+    public function terapkanHargaInduk(array $lines, Order $induk): array
+    {
+        $itemInduk = $induk->items
+            ->where('is_free', false)
+            // Baris satuan didahulukan dari baris pecahan paket.
+            ->sortBy(fn ($i) => [$i->paket_id === null ? 0 : 1, $i->id]);
+
+        return array_map(function (array $l) use ($itemInduk) {
+            if ($l['tipe'] !== 'produk') {
+                return $l;
+            }
+
+            $cocok = $itemInduk->first(fn ($i) => (int) $i->produk_id === (int) $l['produk_id']
+                && (string) $i->opsi_ukuran === (string) ($l['ukuran'] ?? ''));
+
+            if (! $cocok) {
+                return $l;
+            }
+
+            $l['unit'] = (int) $cocok->harga;
+            $l['total'] = $l['unit'] * (int) $l['qty'];
+            $l['harga_induk'] = true;
+
+            if (empty($l['desain_id']) && $cocok->desain_id) {
+                $l['desain_id'] = $cocok->desain_id;
+                $l['desain'] = optional(Desain::find($cocok->desain_id))->kode;
+            }
+
+            return $l;
+        }, $lines);
     }
 
     public function subtotal(array $lines): int
@@ -156,9 +210,12 @@ class BookingService
                 ];
             }
 
-            // Evaluasi ulang item free.
+            // Evaluasi ulang item free. Order susulan tidak pernah mendapat item
+            // free — bonusnya sudah diberikan di order induk.
             $order->items()->where('is_free', true)->delete();
-            $freeItems = $this->evaluasiFree($lines, (int) ($order->jumlah_siswa ?? 0), $subtotal);
+            $freeItems = $order->isSusulan()
+                ? []
+                : $this->evaluasiFree($lines, (int) ($order->jumlah_siswa ?? 0), $subtotal);
             foreach ($freeItems as $f) {
                 $order->items()->create([
                     'tipe_item' => 'produk',
@@ -182,7 +239,10 @@ class BookingService
     public function simpan(array $ctx, array $lines, array $freeItems, int $jumlahSiswa, int $subtotal, ?string $tanggalEvent = null, ?string $jamEvent = null): Order
     {
         return DB::transaction(function () use ($ctx, $lines, $freeItems, $jumlahSiswa, $subtotal, $tanggalEvent, $jamEvent) {
+            $induk = $ctx['induk'] ?? null;
+
             $order = Order::create([
+                'order_induk_id' => $induk?->id,
                 'sekolah_id' => $ctx['sekolah_id'],
                 'marketing_id' => $ctx['marketing_id'],
                 'cabang_id' => $ctx['cabang_id'],
@@ -225,7 +285,9 @@ class BookingService
                 }
             }
 
-            foreach ($freeItems as $f) {
+            // Pertahanan kedua: pemanggil seharusnya sudah mengosongkan item free
+            // untuk susulan, tapi aturan uang tidak boleh bergantung pada itu.
+            foreach ($induk ? [] : $freeItems as $f) {
                 $order->items()->create([
                     'tipe_item' => 'produk',
                     'produk_id' => $f['produk_id'],
@@ -238,7 +300,11 @@ class BookingService
                 ]);
             }
 
-            $order->catat('dibuat', $ctx['sumber'] === 'sekolah' ? 'via portal sekolah' : 'oleh marketing');
+            if ($induk) {
+                $order->catat('dibuat', 'susulan dari '.($induk->booking_code ?? 'order #'.$induk->id));
+            } else {
+                $order->catat('dibuat', $ctx['sumber'] === 'sekolah' ? 'via portal sekolah' : 'oleh marketing');
+            }
 
             // Jalur sekolah: auto-assign marketing berdasarkan kecamatan sekolah
             // (admin tetap bisa override di kotak masuk). Fallback: tetap menunggu.
@@ -254,6 +320,8 @@ class BookingService
             if ($order->marketing_id) {
                 $this->codeGenerator->generate($order);
             }
+
+            $induk?->catat('susulan_dibuat', $order->booking_code ?? 'order #'.$order->id, ['susulan_id' => $order->id]);
 
             return $order;
         });

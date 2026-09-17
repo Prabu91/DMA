@@ -90,6 +90,25 @@ class Cart
         session([$this->key.'.sekolah_id' => $id]);
     }
 
+    /**
+     * Mode SUSULAN (staf): keranjang ini sedang dipakai membuat order susulan
+     * untuk order induk ini. Sekolah, marketing & cabang lalu mengikuti induk.
+     */
+    public function indukId(): ?int
+    {
+        return session($this->key.'.induk_id');
+    }
+
+    /** Mulai mode susulan: keranjang dikosongkan, sekolah dikunci ke sekolah induk. */
+    public function mulaiSusulan(int $indukId, int $sekolahId): void
+    {
+        $this->clear();
+        session([
+            $this->key.'.induk_id' => $indukId,
+            $this->key.'.sekolah_id' => $sekolahId,
+        ]);
+    }
+
     public function clear(): void
     {
         session()->forget($this->key);

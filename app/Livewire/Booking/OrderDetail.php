@@ -5,6 +5,7 @@ namespace App\Livewire\Booking;
 use App\Models\Order;
 use App\Models\OrderPembayaran;
 use App\Models\User;
+use App\Support\Cart;
 use App\Support\OrderStatus;
 use App\Support\Qr;
 use App\Support\WaPesan;
@@ -535,6 +536,8 @@ class OrderDetail extends Component
 
         // Hanya H-7 & H-2 di panel staf, dan hanya admin sales.
         abort_unless(in_array($key, Order::MILESTONE_ADMIN, true), 422);
+        // Order susulan langsung ke hari event, tidak punya H-7/H-2.
+        abort_unless(in_array($key, $this->order->milestoneBerlaku(), true), 422);
         abort_unless(auth('web')->user()->isAdminSales(), 403);
         abort_if($this->order->terkunciUntuk(auth('web')->user()), 423);
         abort_if($this->order->tanggal_event === null, 422);
@@ -604,7 +607,8 @@ class OrderDetail extends Component
     #[Computed]
     public function order(): Order
     {
-        $with = ['items.produk', 'items.paket', 'items.desain', 'sekolah', 'cabang', 'marketing', 'timEvent', 'pembayaran'];
+        $with = ['items.produk', 'items.paket', 'items.desain', 'sekolah', 'cabang', 'marketing', 'timEvent', 'pembayaran',
+            'induk:id,booking_code,tanggal_event', 'susulan'];
 
         if ($this->konteks === 'sekolah') {
             // Isolasi eksplisit: hanya order milik sekolah yang login.
@@ -628,6 +632,44 @@ class OrderDetail extends Component
     public function freeItems()
     {
         return $this->order->items->where('is_free', true);
+    }
+
+    /**
+     * Boleh membuat order susulan dari order ini? Peran yang sama dengan yang
+     * boleh membuat booking (halaman etalase & keranjang), dan hanya untuk
+     * order yang boleh diubah pengguna itu.
+     */
+    #[Computed]
+    public function bisaBuatSusulan(): bool
+    {
+        $user = auth('web')->user();
+
+        return $this->konteks === 'staf'
+            && $this->order->status !== OrderStatus::BATAL
+            && $user?->hasAnyRole(['super_admin', 'operasional', 'admin_sales', 'marketing'])
+            && $user->can('update', $this->order);
+    }
+
+    /**
+     * Mulai membuat order susulan: keranjang dikosongkan dan dikunci ke
+     * sekolah order ini, lalu staf memilih item di etalase seperti biasa —
+     * item susulan boleh berbeda dari induk.
+     *
+     * Susulan dari sebuah susulan ditautkan ke order induk ASLINYA, supaya
+     * satu event tidak berubah jadi rantai yang harus ditelusuri satu per satu.
+     */
+    public function buatSusulan()
+    {
+        abort_unless($this->bisaBuatSusulan, 403);
+
+        $induk = $this->order->isSusulan() && $this->order->induk
+            ? $this->order->induk
+            : $this->order;
+
+        // Sekolah susulan selalu sama dengan sekolah order ini (dan induknya).
+        app(Cart::class)->mulaiSusulan($induk->id, $this->order->sekolah_id);
+
+        return $this->redirect(route('app.etalase.index'), navigate: true);
     }
 
     public function kembaliUrl(): string
