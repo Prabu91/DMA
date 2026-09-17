@@ -190,5 +190,14 @@ Route::prefix('sekolah')->name('sekolah.')->middleware('auth:sekolah')->group(fu
     Route::get('riwayat/{id}/pdf', [OrderPdfController::class, 'sekolah'])->whereNumber('id')->name('riwayat.pdf');
 });
 
+// Kanban (pengganti Trello) — dilayani di subdomain kanban, juga bisa di /kanban.
+Route::prefix('kanban')->name('kanban.')
+    ->middleware(['auth', 'verified', 'role:'.implode('|', \App\Support\Kanban\Akses::PERAN_STAF)])
+    ->group(function () {
+        Route::get('/', \App\Livewire\Kanban\Beranda::class)->name('beranda');
+        Route::get('/b/{board}', \App\Livewire\Kanban\PapanBoard::class)->whereNumber('board')->name('board');
+        Route::get('/lampiran/{lampiran}', \App\Http\Controllers\Kanban\LampiranController::class)->whereNumber('lampiran')->name('lampiran');
+    });
+
 // Auth staf bawaan Breeze — tetap di root (login, register, password, verifikasi).
 require __DIR__.'/auth.php';

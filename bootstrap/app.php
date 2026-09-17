@@ -23,6 +23,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'api.token' => \App\Http\Middleware\EnsureApiToken::class,
         ]);
 
+        // Subdomain kanban hanya melayani kanban (lihat DomainKanban). Global
+        // supaya pengalihan terjadi sebelum middleware auth rute berjalan.
+        $middleware->append(\App\Http\Middleware\DomainKanban::class);
+
         // Tamu di area sekolah (portal /sekolah/*, verifikasi /email/*, /keluar)
         // diarahkan ke login sekolah; selain itu (mis. /app/*) ke login staf.
         $middleware->redirectGuestsTo(fn (Request $request) => $request->is('sekolah/*', 'verifikasi', 'verifikasi/*', 'keluar')

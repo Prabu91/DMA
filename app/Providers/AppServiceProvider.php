@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Http\Middleware\DomainKanban;
 use App\Models\Sekolah;
 use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -23,7 +24,7 @@ class AppServiceProvider extends ServiceProvider
                 return route('storefront.katalog.index');
             }
 
-            return route('app.dashboard');
+            return DomainKanban::aktif(request()) ? route('kanban.beranda') : route('app.dashboard');
         });
 
         // URL verifikasi email untuk sekolah → route storefront (bukan route staf).
