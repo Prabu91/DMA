@@ -107,6 +107,7 @@
                                     <dt class="text-ink-muted">Marketing</dt><dd>{{ $k->order->marketing?->nama ?? $k->order->marketing?->name ?? '—' }}</dd>
                                     <dt class="text-ink-muted">Cabang</dt><dd>{{ $k->order->cabang?->nama ?? '—' }}</dd>
                                     <dt class="text-ink-muted">Status</dt><dd>{{ $k->order->statusLabel() }}</dd>
+                                    <dt class="text-ink-muted">Tanggal event</dt><dd>{{ $k->order->tanggal_event?->translatedFormat('j M Y') ?? 'Belum diatur' }}</dd>
                                 </dl>
                                 <a href="{{ route('app.order.show', $k->order_id) }}" target="_blank" rel="noopener"
                                    class="mt-3 inline-flex min-h-[36px] items-center rounded-md bg-navy px-3 text-sm font-medium text-white hover:bg-navy-900">Buka order di panel staf ↗</a>
