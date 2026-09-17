@@ -21,6 +21,7 @@ class OrderItem extends Model
         'diskon',
         'diskon_diajukan',
         'is_free',
+        'tanpa_redaksi',
         'qc_event_at',
         'qc_event_oleh',
         'qc_admin_at',
@@ -54,6 +55,7 @@ class OrderItem extends Model
     {
         return [
             'is_free' => 'boolean',
+            'tanpa_redaksi' => 'boolean',
             'harga' => 'integer',
             'qty' => 'integer',
             'diskon' => 'integer',

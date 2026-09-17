@@ -107,6 +107,7 @@ Route::prefix('app')->name('app.')->middleware(['auth', 'verified'])->group(func
             ->whereNumber('id')->name('order.show');
         Route::get('/order/{id}/pdf', [OrderPdfController::class, 'staf'])->whereNumber('id')->name('order.pdf');
         Route::get('/order/{id}/ste', [OrderPdfController::class, 'ste'])->whereNumber('id')->name('order.ste');
+        Route::get('/order/{id}/redaksi.txt', \App\Http\Controllers\OrderRedaksiController::class)->whereNumber('id')->name('order.redaksi');
         Route::get('/kotak-masuk', KotakMasuk::class)->name('kotak-masuk');
         Route::get('/sekolah', SekolahIndex::class)->name('sekolah.index');
     });

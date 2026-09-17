@@ -46,6 +46,8 @@ class OrderActivity extends Model
         'konfirmasi_lokasi' => 'Detail dikonfirmasi di lokasi',
         'revisi' => 'Revisi detail order',
         'harga_item_diubah' => 'Harga item dikoreksi',
+        'redaksi_diubah' => 'Redaksi dikoreksi',
+        'redaksi_item' => 'Redaksi item diubah',
         'qc_event_lengkap' => 'Semua item dicek tim event',
         'qc_admin_lengkap' => 'Semua item dicek admin',
         // Peninggalan alur OTP yang sudah dihapus — label dipertahankan agar

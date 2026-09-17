@@ -214,6 +214,11 @@
                 @endif
             </x-card>
 
+            {{-- Redaksi & folder kerja editor (staf) --}}
+            @unless ($sf)
+                @include('booking.partials.redaksi-folder', ['order' => $order])
+            @endunless
+
             {{-- Visual tracking status order — hanya panel staf; disembunyikan dari portal sekolah (client) untuk sementara --}}
             @unless ($sf)
                 <x-card title="Lacak status pesanan">

@@ -6,8 +6,10 @@ use App\Models\Order;
 use App\Models\OrderPembayaran;
 use App\Models\User;
 use App\Support\Cart;
+use App\Support\FolderKerja;
 use App\Support\OrderStatus;
 use App\Support\Qr;
+use App\Support\Redaksi;
 use App\Support\WaPesan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -63,6 +65,13 @@ class OrderDetail extends Component
     public ?int $hargaBaru = null;
 
     public ?string $hargaMsg = null;
+
+    // Redaksi (teks cetak) — koreksi per order.
+    public bool $redaksiEdit = false;
+
+    public string $redaksiTeks = '';
+
+    public ?string $redaksiMsg = null;
 
     // Diskon per item (ajukan/setujui). [order_item_id => nominal per satuan]
     public array $diskonItem = [];
@@ -633,6 +642,100 @@ class OrderDetail extends Component
     public function freeItems()
     {
         return $this->order->items->where('is_free', true);
+    }
+
+    /**
+     * Boleh mengoreksi redaksi & menandai item tanpa redaksi? Staf yang boleh
+     * mengubah order. SENGAJA tidak ikut terkunci: redaksi justru dipakai di
+     * tahap editing, sesudah Hari-H.
+     */
+    #[Computed]
+    public function bisaUbahRedaksi(): bool
+    {
+        $user = auth('web')->user();
+
+        return $this->konteks === 'staf'
+            && $this->order->status !== OrderStatus::BATAL
+            && ($user?->can('update', $this->order) ?? false);
+    }
+
+    public function mulaiEditRedaksi(): void
+    {
+        abort_unless($this->bisaUbahRedaksi, 403);
+
+        $this->redaksiTeks = Redaksi::untuk($this->order);
+        $this->redaksiMsg = null;
+        $this->resetErrorBag('redaksiTeks');
+        $this->redaksiEdit = true;
+    }
+
+    public function batalEditRedaksi(): void
+    {
+        $this->redaksiEdit = false;
+        $this->resetErrorBag('redaksiTeks');
+    }
+
+    /**
+     * Simpan koreksi redaksi untuk order ini saja — data sekolah tidak ikut
+     * berubah. Teks yang sama persis dengan redaksi dari data sekolah disimpan
+     * sebagai "ikut data sekolah", supaya perbaikan data sekolah berikutnya
+     * tetap terbawa.
+     */
+    public function simpanRedaksi(): void
+    {
+        abort_unless($this->bisaUbahRedaksi, 403);
+
+        $this->validate(
+            ['redaksiTeks' => ['required', 'string', 'max:1000']],
+            ['redaksiTeks.required' => 'Redaksi tidak boleh kosong.', 'redaksiTeks.max' => 'Redaksi maksimal 1000 karakter.'],
+        );
+
+        $teks = trim(str_replace("\r\n", "\n", $this->redaksiTeks));
+        $koreksi = $teks === Redaksi::bawaan($this->order->sekolah) ? null : $teks;
+
+        $this->order->update(['redaksi' => $koreksi]);
+        $this->order->catat('redaksi_diubah', $koreksi === null ? 'kembali ikut data sekolah' : 'dikoreksi untuk order ini');
+
+        unset($this->order);
+        $this->redaksiEdit = false;
+        $this->redaksiMsg = 'Redaksi disimpan.';
+    }
+
+    /** Kembali memakai redaksi dari data sekolah. */
+    public function redaksiIkutSekolah(): void
+    {
+        abort_unless($this->bisaUbahRedaksi, 403);
+
+        $this->order->update(['redaksi' => null]);
+        $this->order->catat('redaksi_diubah', 'kembali ikut data sekolah');
+
+        unset($this->order);
+        $this->redaksiEdit = false;
+        $this->redaksiMsg = 'Redaksi kembali mengikuti data sekolah.';
+    }
+
+    /** Tandai produk yang dicetak tanpa teks (di Trello: "PFM-008 TANPA REDAKSI"). */
+    public function toggleTanpaRedaksi(int $itemId): void
+    {
+        abort_unless($this->bisaUbahRedaksi, 403);
+
+        $item = $this->order->items->firstWhere('id', $itemId);
+        abort_unless($item, 404);
+
+        $item->update(['tanpa_redaksi' => ! $item->tanpa_redaksi]);
+        $this->order->catat(
+            'redaksi_item',
+            ($item->produk?->nama ?? $item->paket?->nama ?? 'Item').': '.($item->tanpa_redaksi ? 'tanpa redaksi' : 'pakai redaksi'),
+        );
+
+        unset($this->order);
+    }
+
+    /** Path folder kerja editor per item: [order_item_id => path]. */
+    #[Computed]
+    public function folderItem(): array
+    {
+        return FolderKerja::perItem($this->order);
     }
 
     /**

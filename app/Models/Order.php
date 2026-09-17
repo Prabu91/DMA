@@ -33,6 +33,7 @@ class Order extends Model
     protected $fillable = [
         'order_induk_id',
         'booking_code',
+        'redaksi',
         'sekolah_id',
         'marketing_id',
         'cabang_id',

@@ -55,4 +55,63 @@
             </ul>
         </div>
     </x-card>
+
+    <x-card class="mt-6">
+        <x-slot name="title">Folder kerja editor</x-slot>
+        <x-slot name="subtitle">Pola path folder foto di server kantor yang ditampilkan di tiap order. Ubah bila susunan folder kantor berbeda.</x-slot>
+
+        <form wire:submit="simpanFolder" class="space-y-4">
+            <x-input label="Folder server" wire:model="folderRoot" :error="$errors->first('folderRoot')" hint="Dipakai lewat penanda {root}." />
+            <x-input label="Templat folder sekolah" wire:model="folderTemplatSekolah" :error="$errors->first('folderTemplatSekolah')" />
+            <x-input label="Templat folder item" wire:model="folderTemplatItem" :error="$errors->first('folderTemplatItem')" />
+
+            <div>
+                <span class="block text-sm font-medium text-ink">Folder jalur per grup kategori</span>
+                <p class="mt-0.5 text-xs text-ink-muted">Dipakai lewat penanda {jalur}. Hanya folder Reguler yang diketahui dari contoh DMA — cek yang lain ke tim editor.</p>
+                <div class="mt-2 grid gap-3 sm:grid-cols-2">
+                    @foreach (\App\Models\Kategori::GRUP as $grup => $label)
+                        <x-input :label="$label" wire:model="folderJalur.{{ $grup }}" :error="$errors->first('folderJalur.'.$grup)" />
+                    @endforeach
+                </div>
+            </div>
+
+            <details class="rounded-xl border border-line bg-page/50 p-3">
+                <summary class="cursor-pointer text-xs font-medium text-ink">Penanda yang bisa dipakai</summary>
+                <div class="mt-2 grid gap-3 text-xs sm:grid-cols-2">
+                    <ul class="space-y-1">
+                        <li class="font-medium text-ink">Templat folder sekolah</li>
+                        @foreach (\App\Support\FolderKerja::PENANDA_SEKOLAH as $penanda => $arti)
+                            <li class="text-ink-muted"><code class="text-ink">{{ $penanda }}</code> — {{ $arti }}</li>
+                        @endforeach
+                    </ul>
+                    <ul class="space-y-1">
+                        <li class="font-medium text-ink">Templat folder item</li>
+                        @foreach (\App\Support\FolderKerja::PENANDA_ITEM as $penanda => $arti)
+                            <li class="text-ink-muted"><code class="text-ink">{{ $penanda }}</code> — {{ $arti }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            </details>
+
+            @if ($this->contohFolder)
+                <div class="rounded-xl border border-line bg-page/50 p-3">
+                    <p class="text-xs font-medium text-ink">Contoh dari order terbaru (pola yang tersimpan)</p>
+                    <ul class="mt-2 space-y-1">
+                        @foreach ($this->contohFolder as $path)
+                            <li><code class="block break-all text-xs text-ink-muted">{{ $path }}</code></li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            <div class="flex flex-wrap items-center gap-3">
+                <x-button type="submit" size="sm">
+                    <span wire:loading.remove wire:target="simpanFolder">Simpan pola folder</span>
+                    <span wire:loading wire:target="simpanFolder">Menyimpan…</span>
+                </x-button>
+                <x-confirm action="folderKeBawaan" variant="ghost" size="sm" confirm-label="Ya, kembalikan"
+                           title="Kembalikan pola bawaan" message="Semua pola folder kembali ke bawaan aplikasi. Lanjutkan?">Kembalikan ke bawaan</x-confirm>
+            </div>
+        </form>
+    </x-card>
 </div>
