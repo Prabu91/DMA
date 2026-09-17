@@ -50,7 +50,8 @@
     @endif
 
     <div class="grid gap-6 lg:grid-cols-3">
-        <div class="space-y-6 lg:col-span-2">
+        {{-- min-w-0: isi yang lebar (tabel, baris item) tidak boleh ikut melebarkan kolom di HP --}}
+        <div class="min-w-0 space-y-6 lg:col-span-2">
             @if ($revisiMode)
                 {{-- ============ FORM REVISI DATA SEKOLAH & DESAIN ============ --}}
                 <x-card title="Revisi data sekolah & desain">
@@ -161,14 +162,15 @@
                         <span class="text-sm font-medium text-ink">Total Rp{{ number_format($order->total, 0, ',', '.') }}</span>
                     </x-slot>
                     @forelse ($order->items as $item)
-                        <div class="flex items-center justify-between gap-3 border-b border-line px-5 py-3 last:border-b-0">
+                        <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-line px-5 py-3 last:border-b-0">
                             @if ($item->desain?->foto_preview)
                                 <div class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line bg-page">
                                     <img src="{{ asset('storage/'.$item->desain->foto_preview) }}" alt="Desain {{ $item->desain->kode }}"
                                          loading="lazy" class="max-h-full max-w-full object-contain">
                                 </div>
                             @endif
-                            <div class="min-w-0 flex-1">
+                            {{-- basis-40: bila tak muat, tombol jumlah turun ke baris berikutnya --}}
+                            <div class="min-w-0 grow basis-40">
                                 <div class="flex items-center gap-2">
                                     <x-badge :variant="$item->tipe_item === 'paket' ? 'brand' : 'neutral'">{{ ucfirst($item->tipe_item) }}</x-badge>
                                     <span class="truncate text-sm text-ink">{{ $item->produk?->nama ?? $item->paket?->nama }}</span>
@@ -181,7 +183,7 @@
                                 </div>
                             </div>
                             @if ($bolehEdit && ! $item->is_free)
-                                <div class="flex shrink-0 items-center gap-1.5">
+                                <div class="ml-auto flex shrink-0 items-center gap-1.5">
                                     <button type="button" wire:click="ubahQtyItem({{ $item->id }}, {{ $item->qty - 1 }})" @disabled($item->qty <= 1)
                                             class="grid h-8 w-8 place-items-center rounded-lg border border-line text-ink hover:bg-page disabled:opacity-40">−</button>
                                     <span class="w-8 text-center text-sm text-ink">{{ $item->qty }}</span>
@@ -306,7 +308,7 @@
         </div>
 
         {{-- Penyelesaian event + sampai kantor --}}
-        <div class="space-y-6">
+        <div class="min-w-0 space-y-6">
             <x-card title="Penyelesaian event">
                 @if ($selesai)
                     <div class="flex items-start gap-2 text-sm text-status-success">
