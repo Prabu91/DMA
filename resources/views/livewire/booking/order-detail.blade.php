@@ -222,6 +222,17 @@
             {{-- Visual tracking status order — hanya panel staf; disembunyikan dari portal sekolah (client) untuk sementara --}}
             @unless ($sf)
                 <x-card title="Lacak status pesanan">
+                    @if ($order->tahap)
+                        <x-slot name="actions">
+                            <a href="{{ route('app.papan', ['mode' => 'orang', 'di' => $order->tahap]) }}" wire:navigate class="text-sm font-medium text-brand hover:text-brand-hover">Papan order →</a>
+                        </x-slot>
+                        <div class="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-line bg-page/50 px-3 py-2 text-sm">
+                            <span class="text-ink-muted">Tahap sekarang:</span>
+                            <span class="font-medium text-ink">{{ \App\Support\TahapOrder::label($order->tahap) }}</span>
+                            @if ($order->pjPapan)<span class="text-ink-muted">· {{ $order->pjPapan->nama ?? $order->pjPapan->name }}</span>@endif
+                            @if ($order->tertahan_alasan)<x-badge variant="pending">Tertahan: {{ $order->tertahan_alasan }}</x-badge>@endif
+                        </div>
+                    @endif
                     <x-order-tracking :order="$order" />
                 </x-card>
             @endunless

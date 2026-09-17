@@ -486,6 +486,9 @@ class EventDetail extends Component
             'konfirmasi_hh_oleh' => auth('web')->id(),
             'event_status' => OrderStatus::EVENT_SELESAI,
             'event_selesai_at' => now(),
+            // Kartu masuk papan order di tahap pertama sesudah event.
+            'tahap' => $order->tahap ?? 'C',
+            'tahap_masuk_at' => $order->tahap_masuk_at ?? now(),
         ]);
         $order->catat('milestone_hh', 'oleh tim event (final, order dikunci)');
         $order->catat('event_selesai', 'via konfirmasi Hari-H');

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Scopes\CabangScope;
 use App\Services\Notifications\FonnteService;
 use App\Support\OrderStatus;
+use App\Support\TahapOrder;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Model;
@@ -34,6 +35,12 @@ class Order extends Model
         'order_induk_id',
         'booking_code',
         'redaksi',
+        'tahap',
+        'tahap_masuk_at',
+        'tahap_pj_id',
+        'tenggat_manual',
+        'tertahan_alasan',
+        'tertahan_at',
         'sekolah_id',
         'marketing_id',
         'cabang_id',
@@ -71,6 +78,9 @@ class Order extends Model
             'konfirmasi_lokasi_at' => 'datetime',
             'event_selesai_at' => 'datetime',
             'sampai_kantor_at' => 'datetime',
+            'tahap_masuk_at' => 'datetime',
+            'tenggat_manual' => 'date',
+            'tertahan_at' => 'datetime',
             'tanggal_booking' => 'datetime',
         ];
     }
@@ -141,6 +151,38 @@ class Order extends Model
         $p = $this->qcProgress($peran);
 
         return $p['done'] === $p['total'];
+    }
+
+    /** Penanggung jawab kartu di tahap papan saat ini. */
+    public function pjPapan(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'tahap_pj_id');
+    }
+
+    /**
+     * Tenggat kartu di tahapnya: tenggat yang ditetapkan SPV, atau tanggal
+     * event + jumlah hari tahap itu (H+1 collect admin, H+3 QC, H+4 produksi —
+     * dari nama board Trello). Null = tahap tanpa tenggat.
+     */
+    public function tenggatPapan(): ?CarbonInterface
+    {
+        if ($this->tenggat_manual) {
+            return $this->tenggat_manual->copy()->startOfDay();
+        }
+
+        $hari = TahapOrder::DAFTAR[$this->tahap]['hari'] ?? null;
+
+        return ($hari !== null && $this->tanggal_event)
+            ? $this->tanggal_event->copy()->startOfDay()->addDays($hari)
+            : null;
+    }
+
+    /** Selisih hari ke tenggat: negatif = lewat, 0 = hari ini, null = tanpa tenggat. */
+    public function sisaHariTenggat(): ?int
+    {
+        $tenggat = $this->tenggatPapan();
+
+        return $tenggat ? (int) now()->startOfDay()->diffInDays($tenggat, false) : null;
     }
 
     /** Milestone yang berlaku: order susulan hanya punya Hari-H. */

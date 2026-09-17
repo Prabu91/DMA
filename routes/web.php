@@ -112,6 +112,11 @@ Route::prefix('app')->name('app.')->middleware(['auth', 'verified'])->group(func
         Route::get('/sekolah', SekolahIndex::class)->name('sekolah.index');
     });
 
+    // Papan order (kanban) — tahap sesudah event. Hak memindah kartu dicek per aksi.
+    Route::middleware('role:super_admin|operasional|admin_sales|marketing|editor')->group(function () {
+        Route::get('/papan', \App\Livewire\Papan\PapanOrder::class)->name('papan');
+    });
+
     // Aktivitas (audit lintas order) — admin & area (area ter-scope cabang).
     Route::middleware('role:super_admin|operasional|admin_sales')->group(function () {
         Route::get('/aktivitas', \App\Livewire\ActivityIndex::class)->name('aktivitas');

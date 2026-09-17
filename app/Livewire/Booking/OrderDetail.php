@@ -617,7 +617,7 @@ class OrderDetail extends Component
     public function order(): Order
     {
         $with = ['items.produk', 'items.paket', 'items.desain', 'items.qcEventOleh', 'items.qcAdminOleh',
-            'sekolah', 'cabang', 'marketing', 'timEvent', 'pembayaran',
+            'sekolah', 'cabang', 'marketing', 'timEvent', 'pembayaran', 'pjPapan:id,nama,name',
             'induk:id,booking_code,tanggal_event', 'susulan'];
 
         if ($this->konteks === 'sekolah') {
