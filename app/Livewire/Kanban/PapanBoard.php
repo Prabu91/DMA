@@ -44,11 +44,11 @@ class PapanBoard extends Component
     use WithPagination;
 
     public const TAMPILAN = [
-        'papan' => 'Papan',
-        'tabel' => 'Tabel',
-        'kalender' => 'Kalender',
-        'linimasa' => 'Linimasa',
-        'dasbor' => 'Dasbor',
+        'papan' => 'Board',
+        'tabel' => 'Table',
+        'kalender' => 'Calendar',
+        'linimasa' => 'Timeline',
+        'dasbor' => 'Dashboard',
     ];
 
     /** Panjang jendela linimasa (hari). */
@@ -150,7 +150,7 @@ class PapanBoard extends Component
         if (! array_key_exists($this->tampilan, self::TAMPILAN)) {
             $this->tampilan = 'papan';
         }
-        $this->namaSalinanBoard = mb_substr($board->nama.' (salinan)', 0, 120);
+        $this->namaSalinanBoard = mb_substr($board->nama.' (copy)', 0, 120);
 
         // Catatan "baru dibuka" per orang, dipakai di halaman Semua board.
         DB::table('kanban_kunjungan')->updateOrInsert(
@@ -796,7 +796,7 @@ class PapanBoard extends Component
         $this->wajibUbah();
         $kolom = $this->kolomMilikBoard($kolomId);
 
-        app(Tata::class)->salinKolom($kolom, mb_substr($kolom->nama.' (salinan)', 0, 120), auth()->user());
+        app(Tata::class)->salinKolom($kolom, mb_substr($kolom->nama.' (copy)', 0, 120), auth()->user());
         $this->segarkan();
     }
 

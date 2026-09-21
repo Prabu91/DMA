@@ -123,25 +123,25 @@
                 <button type="button" x-on:click="saring = ! saring" :aria-expanded="saring"
                         class="flex h-9 items-center gap-1.5 rounded-md px-2.5 text-sm hover:bg-white/15 {{ $this->adaSaringan ? 'bg-white text-ink hover:bg-white/90' : '' }}">
                     <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="M3 5h18M6 12h12M10 19h4" /></svg>
-                    <span class="hidden sm:inline">Saring</span>
+                    <span class="hidden sm:inline">Filter</span>
                 </button>
                 <div x-show="saring" x-cloak x-on:click.outside="saring = false" x-on:keydown.escape.window="saring = false"
                      class="absolute right-0 z-40 mt-2 max-h-[70vh] w-[min(20rem,calc(100vw-1.5rem))] overflow-y-auto rounded-xl border border-line bg-card p-4 text-sm text-ink shadow-lg">
                     <div class="flex items-center justify-between">
-                        <h2 class="font-semibold">Saring kartu</h2>
+                        <h2 class="font-semibold">Filter kartu</h2>
                         @if ($this->adaSaringan)
                             <button type="button" wire:click="bersihkanSaringan" class="text-xs text-navy underline">Bersihkan</button>
                         @endif
                     </div>
                     @if ($this->saringanTersimpan->isNotEmpty())
                         <div class="mt-3">
-                            <p class="text-xs font-medium text-ink-muted">Saringan tersimpan</p>
+                            <p class="text-xs font-medium text-ink-muted">Filter tersimpan</p>
                             <ul class="mt-1 space-y-1">
                                 @foreach ($this->saringanTersimpan as $sim)
                                     <li wire:key="sim-{{ $sim->id }}" class="flex items-center gap-1">
                                         <button type="button" wire:click="pakaiSaringan({{ $sim->id }})"
                                                 class="min-h-[32px] flex-1 truncate rounded-md bg-page px-2 text-left text-sm hover:bg-line">{{ $sim->nama }}</button>
-                                        <button type="button" wire:click="hapusSaringan({{ $sim->id }})" aria-label="Hapus saringan {{ $sim->nama }}"
+                                        <button type="button" wire:click="hapusSaringan({{ $sim->id }})" aria-label="Hapus filter {{ $sim->nama }}"
                                                 class="flex h-8 w-8 items-center justify-center rounded-md text-ink-muted hover:bg-page hover:text-[#AE2E24]">✕</button>
                                     </li>
                                 @endforeach
@@ -176,7 +176,7 @@
 
                     @if ($this->adaSaringan)
                         <form wire:submit="simpanSaringan" class="mt-4 rounded-lg bg-page p-3">
-                            <label for="nama-saringan" class="text-xs font-medium text-ink-muted">Simpan saringan ini</label>
+                            <label for="nama-saringan" class="text-xs font-medium text-ink-muted">Simpan filter ini</label>
                             <div class="mt-1 flex gap-2">
                                 <input id="nama-saringan" type="text" wire:model="namaSaringan" placeholder="mis. Revisi saya"
                                        class="block min-h-[36px] min-w-0 flex-1 rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
@@ -200,7 +200,7 @@
                 </div>
             </div>
 
-            <button type="button" x-on:click="bantuan = true" aria-label="Pintasan papan ketik"
+            <button type="button" x-on:click="bantuan = true" aria-label="Keyboard shortcut"
                     class="hidden h-9 w-9 items-center justify-center rounded-md hover:bg-white/15 sm:flex">
                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2" /><path stroke-linecap="round" d="M7 10h.01M10 10h.01M13 10h.01M16 10h.01M7 14h10" /></svg>
             </button>
@@ -266,7 +266,7 @@
                                          class="absolute left-0 z-30 mt-1 w-52 rounded-xl border border-line bg-card py-1 text-sm shadow-lg">
                                         <button type="button" x-on:click="buka = false" wire:click="mulaiTambahKartu({{ $kolom->id }})" class="block w-full px-3 py-2 text-left hover:bg-page">Tambah kartu</button>
                                         <button type="button" x-on:click="buka = false; ubah = true; $nextTick(() => $refs.masukan.select())" class="block w-full px-3 py-2 text-left hover:bg-page">Ubah nama list</button>
-                                        <button type="button" x-on:click="buka = false" wire:click="salinKolom({{ $kolom->id }})" class="block w-full px-3 py-2 text-left hover:bg-page">Salin list</button>
+                                        <button type="button" x-on:click="buka = false" wire:click="salinKolom({{ $kolom->id }})" class="block w-full px-3 py-2 text-left hover:bg-page">Copy list</button>
                                         <button type="button" x-on:click="buka = false; toggleLipat({{ $kolom->id }})" class="block w-full px-3 py-2 text-left hover:bg-page">Lipat list</button>
 
                                         <div class="border-t border-line px-3 py-2">
@@ -362,7 +362,7 @@
                                             @if (true)
                                                 <span class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
                                                     @if ($kartu->templat)
-                                                        <span class="rounded bg-[#5E4DB2] px-1.5 py-0.5 font-medium text-white">Templat</span>
+                                                        <span class="rounded bg-[#5E4DB2] px-1.5 py-0.5 font-medium text-white">Template</span>
                                                     @endif
                                                     <span class="text-ink-muted/80" title="Nomor kartu">#{{ $kartu->id }}</span>
                                                     @if ($kartu->order_id)
@@ -434,7 +434,7 @@
                                         @if ($this->templat->isNotEmpty())
                                             <div class="relative ml-auto" x-data="{ buka: false }">
                                                 <button type="button" x-on:click="buka = ! buka" :aria-expanded="buka"
-                                                        class="h-9 rounded-md px-2 text-sm text-ink-muted hover:bg-line hover:text-ink">Dari templat</button>
+                                                        class="h-9 rounded-md px-2 text-sm text-ink-muted hover:bg-line hover:text-ink">Dari template</button>
                                                 <ul x-show="buka" x-cloak x-on:click.outside="buka = false"
                                                     class="absolute right-0 z-30 mt-1 w-56 overflow-hidden rounded-xl border border-line bg-card py-1 text-sm shadow-lg">
                                                     @foreach ($this->templat as $tpl)
@@ -505,7 +505,7 @@
                 <button type="button" x-show="bagian !== 'utama'" x-on:click="bagian = 'utama'" aria-label="Kembali"
                         class="flex h-9 w-9 items-center justify-center rounded-md hover:bg-page">‹</button>
                 <h2 class="flex-1 text-center font-semibold"
-                    x-text="({ utama: 'Menu', warna: 'Ganti latar', label: 'Label', anggota: 'Anggota', salin: 'Salin board', otomasi: 'Otomasi kartu order', arsip: 'Item diarsipkan', aktivitas: 'Aktivitas' })[bagian]">Menu</h2>
+                    x-text="({ utama: 'Menu', warna: 'Ganti latar', label: 'Label', anggota: 'Anggota', salin: 'Copy board', otomasi: 'Otomasi kartu order', arsip: 'Item diarsipkan', aktivitas: 'Aktivitas' })[bagian]">Menu</h2>
                 <button type="button" x-on:click="menu = false" aria-label="Tutup menu" class="flex h-9 w-9 items-center justify-center rounded-md hover:bg-page">✕</button>
             </div>
 
@@ -538,7 +538,7 @@
                     @if ($board->isOrder() && \App\Support\Kanban\Akses::admin(auth()->user()))
                         <button type="button" x-on:click="bagian = 'otomasi'" class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left hover:bg-page">Otomasi kartu order</button>
                     @endif
-                    <button type="button" x-on:click="bagian = 'salin'" class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left hover:bg-page">Salin board</button>
+                    <button type="button" x-on:click="bagian = 'salin'" class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left hover:bg-page">Copy board</button>
                     <a href="{{ route('kanban.ekspor', $board) }}" class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left hover:bg-page">Unduh CSV (semua kartu)</a>
                     <button type="button" x-on:click="bagian = 'arsip'" class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left hover:bg-page">Item diarsipkan</button>
                     <button type="button" x-on:click="bagian = 'aktivitas'" class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left hover:bg-page">Aktivitas</button>
@@ -687,10 +687,10 @@
                     @error('namaSalinanBoard')<p class="mt-1 text-xs text-[#AE2E24]">{{ $message }}</p>@enderror
                     <label class="mt-3 flex min-h-[36px] items-center gap-2">
                         <input type="checkbox" wire:model="salinDenganKartu" class="rounded text-brand focus:ring-brand/30">
-                        Ikut salin kartunya
+                        Ikut copy kartunya
                     </label>
-                    <p class="mt-1 text-xs text-ink-muted">Kartu order tidak ikut disalin karena satu order hanya boleh punya satu kartu.</p>
-                    <button type="submit" class="mt-3 h-9 rounded-md bg-navy px-3 text-sm font-medium text-white hover:bg-navy-900">Salin board</button>
+                    <p class="mt-1 text-xs text-ink-muted">Kartu order tidak ikut di-copy karena satu order hanya boleh punya satu kartu.</p>
+                    <button type="submit" class="mt-3 h-9 rounded-md bg-navy px-3 text-sm font-medium text-white hover:bg-navy-900">Copy board</button>
                 </form>
 
                 {{-- Arsip --}}
@@ -758,19 +758,19 @@
         <div class="absolute inset-0 bg-ink/40" x-on:click="bantuan = false"></div>
         <div class="relative w-full max-w-md rounded-t-2xl border border-line bg-card p-5 text-sm text-ink shadow-lg sm:rounded-2xl">
             <div class="flex items-center justify-between">
-                <h2 id="judul-pintasan" class="text-base font-semibold">Pintasan papan ketik</h2>
+                <h2 id="judul-pintasan" class="text-base font-semibold">Keyboard shortcut</h2>
                 <button type="button" x-on:click="bantuan = false" aria-label="Tutup" class="flex h-9 w-9 items-center justify-center rounded-md hover:bg-page">✕</button>
             </div>
             <dl class="mt-3 grid grid-cols-[4.5rem_minmax(0,1fr)] gap-y-2">
                 @foreach ([
                     'n' => 'Tambah kartu di list pertama',
                     '/' => 'Cari kartu di board ini',
-                    'f' => 'Buka / tutup penyaring',
+                    'f' => 'Buka / tutup filter',
                     'm' => 'Buka / tutup menu board',
-                    'x' => 'Bersihkan saringan',
+                    'x' => 'Bersihkan filter',
                     's' => 'Beri / hapus bintang board',
-                    '1 … 5' => 'Tampilan papan, tabel, kalender, linimasa, dasbor',
-                    '?' => 'Tampilkan pintasan ini',
+                    '1 … 5' => 'Board, Table, Calendar, Timeline, Dashboard',
+                    '?' => 'Tampilkan daftar ini',
                 ] as $tombol => $arti)
                     <dt><kbd class="rounded border border-line bg-page px-1.5 py-0.5 font-mono text-xs">{{ $tombol }}</kbd></dt>
                     <dd class="text-ink-muted">{{ $arti }}</dd>
@@ -781,7 +781,7 @@
                 @foreach ([
                     'spasi' => 'Tugaskan / lepaskan diri sendiri',
                     'e' => 'Ubah deskripsi',
-                    'w' => 'Ikuti / berhenti ikuti',
+                    'w' => 'Follow / unfollow kartu',
                     'c' => 'Arsipkan kartu',
                     'esc' => 'Tutup kartu',
                 ] as $tombol => $arti)

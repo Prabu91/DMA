@@ -115,6 +115,58 @@
             </main>
         </div>
 
+        <script>
+            // Editor sederhana untuk deskripsi & komentar: tombol format menulis
+            // penanda Markdown di sekitar teks yang dipilih. Isinya tetap teks biasa,
+            // jadi aman disimpan dan tetap terbaca dari mana pun.
+            window.editorTeksDasar = (namaRef = 'isi') => ({
+                namaRef,
+                kotak() { return this.$refs[this.namaRef] },
+                ganti(mulai, akhir, teks, pilihDari, pilihSampai) {
+                    const el = this.kotak();
+                    el.setRangeText(teks, mulai, akhir, 'end');
+                    el.dispatchEvent(new Event('input'));
+                    el.focus();
+                    if (pilihDari !== undefined) el.setSelectionRange(pilihDari, pilihSampai ?? pilihDari);
+                },
+                bungkus(tanda, contoh) {
+                    const el = this.kotak();
+                    const [a, b] = [el.selectionStart, el.selectionEnd];
+                    const pilihan = el.value.slice(a, b) || contoh;
+                    this.ganti(a, b, tanda + pilihan + tanda, a + tanda.length, a + tanda.length + pilihan.length);
+                },
+                awalan(tanda) {
+                    const el = this.kotak();
+                    const [a, b] = [el.selectionStart, el.selectionEnd];
+                    const mulaiBaris = el.value.lastIndexOf('\n', a - 1) + 1;
+                    const baris = el.value.slice(mulaiBaris, b).split('\n');
+                    const hasil = baris.map((t, i) => {
+                        const label = tanda === '1. ' ? (i + 1) + '. ' : tanda;
+                        return t.startsWith(label) ? t.slice(label.length) : label + t;
+                    }).join('\n');
+                    this.ganti(mulaiBaris, b, hasil, mulaiBaris + hasil.length);
+                },
+                tautan() {
+                    const el = this.kotak();
+                    const [a, b] = [el.selectionStart, el.selectionEnd];
+                    const pilihan = el.value.slice(a, b) || 'tautan';
+                    const teks = '[' + pilihan + '](https://)';
+                    this.ganti(a, b, teks, a + teks.length - 1);
+                },
+                pintas(e) {
+                    if (! (e.ctrlKey || e.metaKey)) return;
+                    const tombol = e.key.toLowerCase();
+                    if (tombol === 'b') { e.preventDefault(); this.bungkus('**', 'tebal') }
+                    if (tombol === 'i') { e.preventDefault(); this.bungkus('*', 'miring') }
+                    if (tombol === 'k') { e.preventDefault(); this.tautan() }
+                },
+            });
+
+            document.addEventListener('alpine:init', () => {
+                Alpine.data('editorTeks', () => window.editorTeksDasar('isi'));
+            });
+        </script>
+
         @livewireScripts
     </body>
 </html>

@@ -44,6 +44,9 @@ class DetailKartu extends Component
 
     public bool $ubahDeskripsi = false;
 
+    /** Saat menulis deskripsi: tampilkan hasil jadinya, bukan penanda formatnya. */
+    public bool $pratinjauDeskripsi = false;
+
     public string $komentarBaru = '';
 
     public ?int $ubahKomentarId = null;
@@ -283,6 +286,11 @@ class DetailKartu extends Component
         $this->segarkan();
     }
 
+    public function togglePratinjauDeskripsi(): void
+    {
+        $this->pratinjauDeskripsi = ! $this->pratinjauDeskripsi;
+    }
+
     public function simpanDeskripsi(): void
     {
         $kartu = $this->wajibUbah();
@@ -292,6 +300,7 @@ class DetailKartu extends Component
             $this->kabar()->deskripsi($kartu, $this->deskripsi, auth()->user());
         }
         $this->ubahDeskripsi = false;
+        $this->pratinjauDeskripsi = false;
         $this->segarkan();
     }
 
@@ -299,6 +308,7 @@ class DetailKartu extends Component
     {
         $this->deskripsi = (string) $this->kartu->deskripsi;
         $this->ubahDeskripsi = false;
+        $this->pratinjauDeskripsi = false;
     }
 
     // ---------------- Label & anggota ----------------

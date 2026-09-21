@@ -195,8 +195,8 @@ class KanbanLinimasaDasborTest extends TestCase
     public function test_pemilih_tampilan_memuat_lima_pilihan(): void
     {
         $this->papan()
-            ->assertSee('Linimasa')
-            ->assertSee('Dasbor')
+            ->assertSee('Timeline')
+            ->assertSee('Dashboard')
             ->call('gantiTampilan', 'linimasa')->assertSet('tampilan', 'linimasa')
             ->call('gantiTampilan', 'dasbor')->assertSet('tampilan', 'dasbor');
     }

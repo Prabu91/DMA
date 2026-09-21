@@ -90,7 +90,7 @@
         </div>
 
         <p class="px-1 text-xs text-white/90">
-            Angka mengikuti saringan yang sedang aktif. Bersihkan saringan untuk melihat seluruh board.
+            Angka mengikuti filter yang sedang aktif. Bersihkan filter untuk melihat seluruh board.
         </p>
     </div>
 </div>

@@ -78,11 +78,11 @@ class KanbanKabarTest extends TestCase
     public function test_ikuti_dan_berhenti_ikuti_dari_detail_kartu(): void
     {
         $detail = Livewire::actingAs($this->shanty)->test(DetailKartu::class, ['kartuId' => $this->kartu->id])
-            ->assertSee('Ikuti')
+            ->assertSee('Follow')
             ->call('toggleIkut');
 
         $this->assertTrue($this->kabar()->mengikuti($this->kartu, $this->shanty));
-        $detail->assertSee('Berhenti ikuti')->call('toggleIkut');
+        $detail->assertSee('Unfollow')->call('toggleIkut');
         $this->assertFalse($this->kabar()->mengikuti($this->kartu, $this->shanty));
     }
 

@@ -15,7 +15,7 @@
         </div>
         @if ($this->adaSaringan)
             <button type="button" wire:click="bersihkanSaringan"
-                    class="min-h-[40px] rounded-lg bg-white/20 px-3 text-sm text-white hover:bg-white/30">Bersihkan saringan</button>
+                    class="min-h-[40px] rounded-lg bg-white/20 px-3 text-sm text-white hover:bg-white/30">Bersihkan filter</button>
         @endif
         <span class="ml-auto text-xs text-white/90">{{ $this->baris->total() }} kartu</span>
     </div>
@@ -62,7 +62,7 @@
                                 <span class="ml-1 rounded bg-navy/10 px-1.5 py-0.5 text-[11px] font-medium text-navy">{{ $kartu->order?->isSusulan() ? 'Susulan' : 'Order' }}</span>
                             @endif
                             @if ($kartu->templat)
-                                <span class="ml-1 rounded bg-[#5E4DB2] px-1.5 py-0.5 text-[11px] font-medium text-white">Templat</span>
+                                <span class="ml-1 rounded bg-[#5E4DB2] px-1.5 py-0.5 text-[11px] font-medium text-white">Template</span>
                             @endif
                         </td>
                         <td class="px-3 py-2 text-ink-muted">{{ $kartu->kolom?->nama }}</td>
@@ -101,7 +101,7 @@
                 @empty
                     <tr>
                         <td colspan="7" class="px-3 py-10 text-center text-ink-muted">
-                            {{ $this->adaSaringan ? 'Tidak ada kartu yang cocok dengan saringan.' : 'Board ini belum punya kartu.' }}
+                            {{ $this->adaSaringan ? 'Tidak ada kartu yang cocok dengan filter.' : 'Board ini belum punya kartu.' }}
                         </td>
                     </tr>
                 @endforelse

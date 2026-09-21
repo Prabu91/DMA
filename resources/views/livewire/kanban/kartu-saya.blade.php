@@ -53,7 +53,7 @@
                 <input type="checkbox" wire:model.live="termasukArsip" class="rounded text-brand focus:ring-brand/30">
                 Termasuk yang diarsipkan
             </label>
-            <button type="button" wire:click="bersihkan" class="text-navy underline">Bersihkan saringan</button>
+            <button type="button" wire:click="bersihkan" class="text-navy underline">Bersihkan filter</button>
             <span class="ml-auto text-ink-muted">{{ $this->hasil->total() }} kartu</span>
         </div>
 

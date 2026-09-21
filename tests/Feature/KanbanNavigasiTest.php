@@ -181,7 +181,7 @@ class KanbanNavigasiTest extends TestCase
     public function test_daftar_pintasan_memuat_yang_baru(): void
     {
         $this->papan()
-            ->assertSee('Bersihkan saringan')
+            ->assertSee('Bersihkan filter')
             ->assertSee('Beri / hapus bintang board');
     }
 }

@@ -5,6 +5,19 @@
     $tenggat = $k->keadaanTenggat();
     $tombol = 'flex min-h-[36px] w-full items-center gap-2 rounded-md bg-[#E9EBEE] px-3 text-left text-sm font-medium text-ink hover:bg-[#DCDFE4]';
     $panel = 'absolute right-0 z-20 mt-1 w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-line bg-card p-3 text-sm shadow-lg';
+
+    // Tombol format: [judul, isi tombol, perintah Alpine].
+    $format = [
+        ['Tebal (Ctrl+B)', '<span class="font-bold">B</span>', "bungkus('**', 'tebal')"],
+        ['Miring (Ctrl+I)', '<span class="font-serif italic">I</span>', "bungkus('*', 'miring')"],
+        ['Judul', '<span class="font-semibold">H</span>', "awalan('## ')"],
+        ['Daftar', '&bull;', "awalan('- ')"],
+        ['Daftar bernomor', '1.', "awalan('1. ')"],
+        ['Kutipan', '&rdquo;', "awalan('&gt; ')"],
+        ['Kode', '&lt;/&gt;', "bungkus('`', 'kode')"],
+        ['Tautan (Ctrl+K)', '&#128279;', 'tautan()'],
+    ];
+    $tombolFormat = 'flex h-8 min-w-[2rem] items-center justify-center rounded-md px-1.5 text-sm text-ink hover:bg-[#DCDFE4]';
 @endphp
 
 <div class="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="judul-kartu"
@@ -115,8 +128,8 @@
                 @endif
                 <p class="px-2 text-sm text-ink-muted"><span class="font-mono" title="Nomor kartu — bisa dicari dengan mengetik #{{ $k->id }}">#{{ $k->id }}</span>
                     · di list <span class="font-medium text-ink">{{ $k->kolom?->nama }}</span> · board {{ $k->board->nama }}
-                    @if ($k->templat)<span class="ml-1 rounded bg-[#5E4DB2] px-1.5 py-0.5 text-xs font-medium text-white">Templat</span>@endif
-                    @if ($this->mengikuti)<span class="ml-1 rounded bg-[#E9EBEE] px-1.5 py-0.5 text-xs text-ink">Diikuti</span>@endif
+                    @if ($k->templat)<span class="ml-1 rounded bg-[#5E4DB2] px-1.5 py-0.5 text-xs font-medium text-white">Template</span>@endif
+                    @if ($this->mengikuti)<span class="ml-1 rounded bg-[#E9EBEE] px-1.5 py-0.5 text-xs text-ink">Following</span>@endif
                 </p>
             </div>
 
@@ -195,12 +208,37 @@
                             @endif
                         </div>
                         @if ($ubahDeskripsi && $ubah)
-                            <form wire:submit="simpanDeskripsi" class="mt-2 px-2">
-                                <label for="deskripsi-kartu" class="sr-only">Deskripsi</label>
-                                <textarea id="deskripsi-kartu" wire:model="deskripsi" rows="6" x-init="$el.focus()"
-                                          class="block w-full rounded-lg border-line text-sm focus:border-brand focus:ring-brand/30"
-                                          placeholder="Tambahkan deskripsi yang lebih rinci…"></textarea>
-                                <p class="mt-1 text-[11px] text-ink-muted">Format: {{ \App\Support\Kanban\Teks::BANTUAN }}</p>
+                            <form wire:submit="simpanDeskripsi" class="mt-2 px-2" x-data="editorTeks">
+                                <div class="overflow-hidden rounded-lg border border-line bg-card focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/30">
+                                    <div class="flex flex-wrap items-center gap-0.5 border-b border-line bg-[#F1F2F4] px-1.5 py-1">
+                                        @foreach ($format as [$judulFormat, $isiTombol, $perintah])
+                                            <button type="button" title="{{ $judulFormat }}" aria-label="{{ $judulFormat }}"
+                                                    @disabled($pratinjauDeskripsi) x-on:click="{{ $perintah }}"
+                                                    class="{{ $tombolFormat }} disabled:opacity-40">{!! $isiTombol !!}</button>
+                                        @endforeach
+                                        <button type="button" wire:click="togglePratinjauDeskripsi"
+                                                class="ml-auto h-8 rounded-md px-2.5 text-xs font-medium {{ $pratinjauDeskripsi ? 'bg-navy text-white' : 'text-ink hover:bg-[#DCDFE4]' }}">
+                                            {{ $pratinjauDeskripsi ? 'Kembali menulis' : 'Preview' }}
+                                        </button>
+                                    </div>
+
+                                    @if ($pratinjauDeskripsi)
+                                        <div class="isi-teks min-h-[9rem] break-words px-3 py-2 text-sm leading-relaxed">
+                                            @if (trim($deskripsi) === '')
+                                                <span class="text-ink-muted">Belum ada isi.</span>
+                                            @else
+                                                {!! \App\Support\Kanban\Teks::html($deskripsi) !!}
+                                            @endif
+                                        </div>
+                                    @else
+                                        <label for="deskripsi-kartu" class="sr-only">Deskripsi</label>
+                                        <textarea id="deskripsi-kartu" x-ref="isi" wire:model="deskripsi" rows="8" x-init="$el.focus()"
+                                                  x-on:keydown="pintas($event)"
+                                                  class="block w-full resize-y border-0 text-sm focus:ring-0"
+                                                  placeholder="Tambahkan deskripsi yang lebih rinci…"></textarea>
+                                    @endif
+                                </div>
+                                <p class="mt-1 text-[11px] text-ink-muted">Pilih teksnya dulu, lalu tekan tombol format. Ctrl+B tebal, Ctrl+I miring, Ctrl+K tautan.</p>
                                 @error('deskripsi')<p class="mt-1 text-xs text-[#AE2E24]">{{ $message }}</p>@enderror
                                 <div class="mt-2 flex gap-2">
                                     <button type="submit" class="h-9 rounded-md bg-navy px-3 text-sm font-medium text-white hover:bg-navy-900">Simpan</button>
@@ -257,10 +295,10 @@
                                                 @endunless
                                                 @if ($ubah && $lp->isGambar())
                                                     @if ((int) $k->cover_lampiran_id === $lp->id)
-                                                        <button type="button" wire:click="jadikanSampul(null)" class="text-navy underline">Lepas sampul</button>
-                                                        <button type="button" wire:click="toggleSampulPenuh" class="text-navy underline">{{ $k->cover_penuh ? 'Sampul ukuran biasa' : 'Sampul ukuran penuh' }}</button>
+                                                        <button type="button" wire:click="jadikanSampul(null)" class="text-navy underline">Lepas cover</button>
+                                                        <button type="button" wire:click="toggleSampulPenuh" class="text-navy underline">{{ $k->cover_penuh ? 'Cover ukuran biasa' : 'Cover ukuran penuh' }}</button>
                                                     @else
-                                                        <button type="button" wire:click="jadikanSampul({{ $lp->id }})" class="text-navy underline">Jadikan sampul</button>
+                                                        <button type="button" wire:click="jadikanSampul({{ $lp->id }})" class="text-navy underline">Jadikan cover</button>
                                                     @endif
                                                 @endif
                                                 @if ($ubah && ((int) $lp->user_id === (int) auth()->id() || $this->admin))
@@ -438,6 +476,7 @@
                                     <label for="komentar-baru" class="sr-only">Tulis komentar</label>
                                     <div class="relative"
                                          x-data="{
+                                            ...window.editorTeksDasar('komentar'),
                                             daftar: @js($this->namaCalon),
                                             cocok: [],
                                             cari() {
@@ -458,10 +497,21 @@
                                                 this.cocok = [];
                                             },
                                          }">
-                                        <textarea id="komentar-baru" x-ref="komentar" wire:model="komentarBaru" rows="2"
-                                                  placeholder="Tulis komentar… ketik @ untuk menyebut rekan"
-                                                  x-on:input="cari()" x-on:keydown.escape.stop="cocok = []" x-on:blur="setTimeout(() => cocok = [], 150)"
-                                                  class="block w-full rounded-lg border-line bg-white text-sm focus:border-brand focus:ring-brand/30"></textarea>
+                                        <div class="overflow-hidden rounded-lg border border-line bg-white focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/30">
+                                            <div class="flex items-center gap-0.5 border-b border-line bg-[#F1F2F4] px-1.5 py-1">
+                                                @foreach (array_slice($format, 0, 5) as [$judulFormat, $isiTombol, $perintah])
+                                                    <button type="button" title="{{ $judulFormat }}" aria-label="{{ $judulFormat }} komentar"
+                                                            x-on:click="{{ $perintah }}" class="{{ $tombolFormat }}">{!! $isiTombol !!}</button>
+                                                @endforeach
+                                                <button type="button" title="Tautan (Ctrl+K)" aria-label="Tautan komentar"
+                                                        x-on:click="tautan()" class="{{ $tombolFormat }}">&#128279;</button>
+                                            </div>
+                                            <textarea id="komentar-baru" x-ref="komentar" wire:model="komentarBaru" rows="2"
+                                                      placeholder="Tulis komentar… ketik @ untuk menyebut rekan"
+                                                      x-on:input="cari()" x-on:keydown="pintas($event)"
+                                                      x-on:keydown.escape.stop="cocok = []" x-on:blur="setTimeout(() => cocok = [], 150)"
+                                                      class="block w-full border-0 text-sm focus:ring-0"></textarea>
+                                        </div>
                                         <ul x-show="cocok.length" x-cloak
                                             class="absolute z-20 mt-1 w-56 overflow-hidden rounded-lg border border-line bg-card py-1 text-sm shadow-lg">
                                             <template x-for="nama in cocok" :key="nama">
@@ -472,7 +522,7 @@
                                             </template>
                                         </ul>
                                     </div>
-                                    <p class="mt-1 text-[11px] text-ink-muted">Format: {{ \App\Support\Kanban\Teks::BANTUAN }}</p>
+                                    <p class="mt-1 text-[11px] text-ink-muted">Ketik @ untuk menyebut rekan. Tombol di atas untuk tebal, miring, daftar, dan tautan.</p>
                                     @error('komentarBaru')<p class="mt-1 text-xs text-[#AE2E24]">{{ $message }}</p>@enderror
                                     <button type="submit" class="mt-2 h-9 rounded-md bg-navy px-3 text-sm font-medium text-white hover:bg-navy-900">Kirim</button>
                                 </div>
@@ -683,22 +733,22 @@
 
                             {{-- Sampul --}}
                             <div class="relative" x-data="{ buka: false }">
-                                <button type="button" x-on:click="buka = ! buka" :aria-expanded="buka" class="{{ $tombol }}">Sampul</button>
+                                <button type="button" x-on:click="buka = ! buka" :aria-expanded="buka" class="{{ $tombol }}">Cover</button>
                                 <div x-show="buka" x-cloak x-on:click.outside="buka = false" x-on:keydown.escape.stop="buka = false" data-panel-kartu class="{{ $panel }}">
-                                    <h4 class="text-center font-semibold">Sampul</h4>
+                                    <h4 class="text-center font-semibold">Cover</h4>
                                     <div class="mt-2 grid grid-cols-5 gap-1.5">
                                         @foreach (Warna::LABEL as $w => [$t, $latar])
-                                            <button type="button" wire:click="warnaSampul('{{ $w }}')" title="{{ $t }}" aria-label="Sampul {{ $t }}"
+                                            <button type="button" wire:click="warnaSampul('{{ $w }}')" title="{{ $t }}" aria-label="Cover {{ $t }}"
                                                     class="h-8 rounded {{ $latar }} {{ $k->cover_warna === $w ? 'ring-2 ring-ink ring-offset-1' : '' }}"></button>
                                         @endforeach
                                     </div>
-                                    <p class="mt-2 text-xs text-ink-muted">Gambar dari lampiran juga bisa jadi sampul.</p>
+                                    <p class="mt-2 text-xs text-ink-muted">Gambar dari lampiran juga bisa jadi cover.</p>
                                     @if ($k->cover_lampiran_id)
                                         <button type="button" wire:click="toggleSampulPenuh"
-                                                class="mt-2 h-8 w-full rounded-md bg-[#E9EBEE] text-xs font-medium">{{ $k->cover_penuh ? 'Ubah ke ukuran biasa' : 'Ubah ke ukuran penuh' }}</button>
+                                                class="mt-2 h-8 w-full rounded-md bg-[#E9EBEE] text-xs font-medium">{{ $k->cover_penuh ? 'Cover ukuran biasa' : 'Cover ukuran penuh' }}</button>
                                     @endif
                                     @if ($k->cover_warna || $k->cover_lampiran_id)
-                                        <button type="button" wire:click="warnaSampul(null)" class="mt-2 h-8 w-full rounded-md bg-[#E9EBEE] text-xs font-medium">Lepas sampul</button>
+                                        <button type="button" wire:click="warnaSampul(null)" class="mt-2 h-8 w-full rounded-md bg-[#E9EBEE] text-xs font-medium">Lepas cover</button>
                                     @endif
                                 </div>
                             </div>
@@ -752,10 +802,10 @@
                             </div>
 
                             <div class="relative" x-data="{ buka: false }">
-                                <button type="button" x-on:click="buka = ! buka" :aria-expanded="buka" class="{{ $tombol }}">Salin</button>
+                                <button type="button" x-on:click="buka = ! buka" :aria-expanded="buka" class="{{ $tombol }}">Copy</button>
                                 <form x-show="buka" x-cloak x-on:click.outside="buka = false" x-on:keydown.escape.stop="buka = false" data-panel-kartu class="{{ $panel }}"
                                       wire:submit="salin" x-on:submit="buka = false">
-                                    <h4 class="text-center font-semibold">Salin kartu</h4>
+                                    <h4 class="text-center font-semibold">Copy kartu</h4>
                                     <label for="judul-salinan" class="mt-2 block text-xs font-medium text-ink-muted">Judul</label>
                                     <textarea id="judul-salinan" wire:model="judulSalinan" rows="2"
                                               class="mt-1 block w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30"></textarea>
@@ -771,7 +821,7 @@
                                     @error('salinKolom')<p class="mt-1 text-xs text-[#AE2E24]">{{ $message }}</p>@enderror
 
                                     <fieldset class="mt-3">
-                                        <legend class="text-xs font-medium text-ink-muted">Ikut disalin</legend>
+                                        <legend class="text-xs font-medium text-ink-muted">Ikut di-copy</legend>
                                         @foreach (['label' => 'Label', 'anggota' => 'Anggota', 'checklist' => 'Checklist', 'lampiran' => 'Lampiran'] as $kunci => $labelBawa)
                                             <label class="mt-1 flex min-h-[32px] items-center gap-2">
                                                 <input type="checkbox" wire:model="bawaSalinan" value="{{ $kunci }}" class="rounded text-brand focus:ring-brand/30">
@@ -779,20 +829,20 @@
                                             </label>
                                         @endforeach
                                     </fieldset>
-                                    <button type="submit" class="mt-3 h-9 rounded-md bg-navy px-3 text-sm font-medium text-white">Buat salinan</button>
+                                    <button type="submit" class="mt-3 h-9 rounded-md bg-navy px-3 text-sm font-medium text-white">Buat copy</button>
                                 </form>
                             </div>
 
                             @unless ($k->order_id)
                                 <button type="button" wire:click="toggleTemplat" class="{{ $tombol }}" aria-pressed="{{ $k->templat ? 'true' : 'false' }}">
-                                    {{ $k->templat ? 'Bukan templat lagi' : 'Jadikan templat' }}
+                                    {{ $k->templat ? 'Bukan template lagi' : 'Jadikan template' }}
                                     @if ($k->templat)<span class="ml-auto text-navy" aria-hidden="true">✓</span>@endif
                                 </button>
                             @endunless
 
                             <button type="button" wire:click="toggleIkut" class="{{ $tombol }}" aria-pressed="{{ $this->mengikuti ? 'true' : 'false' }}">
                                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" /><circle cx="12" cy="12" r="2.5" /></svg>
-                                {{ $this->mengikuti ? 'Berhenti ikuti' : 'Ikuti' }}
+                                {{ $this->mengikuti ? 'Unfollow' : 'Follow' }}
                                 @if ($this->mengikuti)<span class="ml-auto text-navy" aria-hidden="true">✓</span>@endif
                             </button>
                             <button type="button" wire:click="arsipkan" class="{{ $tombol }}">Arsipkan</button>

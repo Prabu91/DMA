@@ -154,9 +154,9 @@ class KanbanSalinTest extends TestCase
 
         Livewire::actingAs($this->faris)->test(PapanBoard::class, ['board' => $this->board])
             ->call('salinKolom', $this->todo->id)
-            ->assertSee('To do (salinan)');
+            ->assertSee('To do (copy)');
 
-        $salinan = Kolom::where('nama', 'To do (salinan)')->firstOrFail();
+        $salinan = Kolom::where('nama', 'To do (copy)')->firstOrFail();
         $this->assertSame(['SD Harapan', 'SMP 3'], $salinan->kartu()->pluck('judul')->all());
         $this->assertSame(2, $this->todo->kartu()->count(), 'list asli tidak berubah');
     }
@@ -164,7 +164,7 @@ class KanbanSalinTest extends TestCase
     public function test_salin_board(): void
     {
         Livewire::actingAs($this->faris)->test(PapanBoard::class, ['board' => $this->board])
-            ->assertSet('namaSalinanBoard', '5. Editing (salinan)')
+            ->assertSet('namaSalinanBoard', '5. Editing (copy)')
             ->set('namaSalinanBoard', 'Editing 2027')
             ->call('salinBoard')
             ->assertRedirect();

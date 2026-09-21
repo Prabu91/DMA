@@ -105,6 +105,48 @@ class KanbanFormatReaksiTest extends TestCase
             ->assertSeeHtml('<code>kode</code>');
     }
 
+    public function test_editor_deskripsi_punya_tombol_format_dan_preview(): void
+    {
+        $detail = $this->detail()->set('ubahDeskripsi', true);
+
+        $detail->assertSee('Tebal (Ctrl+B)')->assertSee('Preview')->assertSeeHtml('x-data="editorTeks"');
+
+        // Preview menampilkan hasil jadinya, bukan penanda formatnya.
+        $detail->set('deskripsi', '**Redaksi** sekolah')
+            ->call('togglePratinjauDeskripsi')
+            ->assertSet('pratinjauDeskripsi', true)
+            ->assertSeeHtml('<strong>Redaksi</strong>')
+            ->assertSee('Kembali menulis');
+
+        $detail->call('togglePratinjauDeskripsi')->assertSet('pratinjauDeskripsi', false);
+    }
+
+    public function test_preview_ditutup_sesudah_deskripsi_disimpan_atau_dibatalkan(): void
+    {
+        $this->detail()
+            ->set('ubahDeskripsi', true)
+            ->set('deskripsi', 'Isi baru')
+            ->call('togglePratinjauDeskripsi')
+            ->call('simpanDeskripsi')
+            ->assertSet('pratinjauDeskripsi', false)
+            ->assertSet('ubahDeskripsi', false);
+
+        $this->assertSame('Isi baru', $this->kartu->fresh()->deskripsi);
+
+        $this->detail()
+            ->set('ubahDeskripsi', true)
+            ->call('togglePratinjauDeskripsi')
+            ->call('batalDeskripsi')
+            ->assertSet('pratinjauDeskripsi', false);
+    }
+
+    public function test_kotak_komentar_punya_tombol_format(): void
+    {
+        $this->detail()
+            ->assertSeeHtml("window.editorTeksDasar('komentar')")
+            ->assertSee('Ketik @ untuk menyebut rekan.');
+    }
+
     // ---------------- Reaksi ----------------
 
     public function test_beri_dan_tarik_reaksi(): void
@@ -188,7 +230,7 @@ class KanbanFormatReaksiTest extends TestCase
     public function test_daftar_pintasan_tampil_di_papan(): void
     {
         Livewire::actingAs($this->faris)->test(PapanBoard::class, ['board' => $this->board])
-            ->assertSee('Pintasan papan ketik')
+            ->assertSee('Keyboard shortcut')
             ->assertSee('Tambah kartu di list pertama')
             ->assertSee('Tugaskan / lepaskan diri sendiri');
     }
