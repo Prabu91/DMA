@@ -68,6 +68,13 @@ class Kabar
         $this->kirim(collect([$target]), new KanbanKabar(KanbanKabar::DITUGASKAN, $kartu, $oleh), $oleh);
     }
 
+    /** Ditugaskan mengerjakan satu item checklist. */
+    public function ditugaskanItem(Kartu $kartu, User $target, User $oleh, string $item): void
+    {
+        $this->ikut($kartu, $target);
+        $this->kirim(collect([$target]), new KanbanKabar(KanbanKabar::DITUGASKAN, $kartu, $oleh, 'Item checklist: '.$item), $oleh);
+    }
+
     /** Perubahan kartu yang layak dikabarkan ke pengikut (pindah list, diarsipkan). */
     public function perubahan(Kartu $kartu, string $jenis, User $oleh, ?string $cuplikan = null): void
     {

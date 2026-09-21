@@ -119,6 +119,8 @@ class Tata
                             'checklist_id' => $baru->id,
                             'teks' => $item->teks,
                             'posisi' => $item->posisi,
+                            'user_id' => $item->user_id,
+                            'tenggat_pada' => $item->tenggat_pada,
                         ]);
                     }
                 }

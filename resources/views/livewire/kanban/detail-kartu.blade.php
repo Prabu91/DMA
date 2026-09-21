@@ -10,6 +10,8 @@
 <div class="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="judul-kartu"
      x-data="{
         pewaktu: null,
+        seret: false,
+        bolehUnggah: @js($ubah),
         init() {
             // Ikut memantau perubahan rekan (komentar, checklist) selama kartu terbuka.
             this.pewaktu = setInterval(() => {
@@ -19,7 +21,29 @@
             }, 8000);
         },
         destroy() { clearInterval(this.pewaktu); },
-     }" x-on:keydown.escape="$wire.tutup()">
+        adaBerkas(e) {
+            return this.bolehUnggah && Array.from(e.dataTransfer?.types ?? []).includes('Files');
+        },
+        unggah(daftar) {
+            const berkas = Array.from(daftar ?? []);
+            this.seret = false;
+            if (! this.bolehUnggah || berkas.length === 0) return;
+            $wire.uploadMultiple('berkas', berkas, () => {}, () => {});
+        },
+     }"
+     x-on:dragenter.prevent="if (adaBerkas($event)) seret = true"
+     x-on:dragover.prevent="if (adaBerkas($event)) seret = true"
+     x-on:dragleave="if ($event.relatedTarget === null) seret = false"
+     x-on:drop.prevent.stop="unggah($event.dataTransfer?.files)"
+     x-on:paste="unggah($event.clipboardData?.files)"
+     x-on:keydown.escape="$wire.tutup()">
+
+    {{-- Seret berkas ke mana saja di kartu untuk melampirkan. --}}
+    <div x-show="seret" x-cloak class="pointer-events-none fixed inset-0 z-[60] flex items-center justify-center bg-navy/50 p-6">
+        <p class="rounded-2xl border-2 border-dashed border-white bg-card px-6 py-5 text-center text-sm font-medium text-ink shadow-lg">
+            Lepaskan berkas di sini untuk melampirkan ke kartu ini
+        </p>
+    </div>
     <div class="fixed inset-0 bg-black/50" wire:click="tutup"></div>
 
     <div class="relative mx-auto my-0 w-full max-w-3xl bg-[#F1F2F4] text-ink sm:my-12 sm:rounded-2xl">
@@ -249,13 +273,97 @@
                                                        x-on:blur="ubah = false; if (teks !== @js($it->teks)) $wire.ubahItem({{ $it->id }}, teks)"
                                                        class="block w-full rounded-md border-brand py-1 text-sm focus:ring-brand/30">
                                             @endif
-                                            @if ($it->selesai_at)
-                                                <p class="text-[11px] text-ink-muted">selesai {{ $it->selesai_at->diffForHumans() }}</p>
+                                            @php $tenggatItem = $it->keadaanTenggat(); @endphp
+                                            @if ($it->petugas || $tenggatItem || $it->selesai_at)
+                                                <p class="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-ink-muted">
+                                                    @if ($it->petugas)
+                                                        <span class="inline-flex items-center gap-1 rounded bg-[#DCDFE4] px-1.5 py-0.5 text-ink">
+                                                            <x-avatar :name="$it->petugas->nama ?? $it->petugas->name" size="sm" class="!h-4 !w-4 !text-[8px]" />
+                                                            {{ $it->petugas->nama ?? $it->petugas->name }}
+                                                        </span>
+                                                    @endif
+                                                    @if ($tenggatItem)
+                                                        <span @class([
+                                                            'inline-flex items-center rounded px-1.5 py-0.5',
+                                                            'bg-[#1F845A] text-white' => $tenggatItem === 'selesai',
+                                                            'bg-[#C9372C] text-white' => $tenggatItem === 'lewat',
+                                                            'bg-[#F5CD47] text-ink' => $tenggatItem === 'segera',
+                                                            'bg-[#DCDFE4] text-ink' => $tenggatItem === 'biasa',
+                                                        ])>{{ $it->tenggat_pada->translatedFormat('j M, H:i') }}</span>
+                                                    @endif
+                                                    @if ($it->selesai_at)
+                                                        <span>selesai {{ $it->selesai_at->diffForHumans() }}</span>
+                                                    @endif
+                                                </p>
                                             @endif
                                         </div>
+
                                         @if ($ubah)
-                                            <button type="button" wire:click="hapusItem({{ $it->id }})" aria-label="Hapus item {{ $it->teks }}"
-                                                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-ink-muted hover:bg-[#DCDFE4] hover:text-[#AE2E24] sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100">✕</button>
+                                            {{-- Tugaskan item --}}
+                                            <div class="relative shrink-0" x-data="{ buka: false }">
+                                                <button type="button" x-on:click="buka = ! buka" :aria-expanded="buka"
+                                                        aria-label="Tugaskan item {{ $it->teks }}"
+                                                        class="flex h-8 w-8 items-center justify-center rounded-md text-ink-muted hover:bg-[#DCDFE4] hover:text-ink">
+                                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8" r="3.2" /><path stroke-linecap="round" d="M5 19.5c1.6-3 4-4.5 7-4.5s5.4 1.5 7 4.5" /></svg>
+                                                </button>
+                                                <div x-show="buka" x-cloak x-on:click.outside="buka = false" x-on:keydown.escape.stop="buka = false" data-panel-kartu
+                                                     class="{{ $panel }} w-60">
+                                                    <h5 class="text-center font-semibold">Tugaskan ke</h5>
+                                                    <ul class="mt-2 max-h-56 overflow-y-auto">
+                                                        @foreach ($this->calonAnggota as $u)
+                                                            <li wire:key="tugas-{{ $it->id }}-{{ $u->id }}">
+                                                                <button type="button" x-on:click="buka = false" wire:click="tugaskanItem({{ $it->id }}, {{ $u->id }})"
+                                                                        class="flex min-h-[36px] w-full items-center gap-2 rounded-md px-2 text-left hover:bg-page">
+                                                                    <x-avatar :name="$u->nama ?? $u->name" size="sm" class="!h-6 !w-6 !text-[10px]" />
+                                                                    <span class="min-w-0 flex-1 truncate">{{ $u->nama ?? $u->name }}</span>
+                                                                    @if ((int) $it->user_id === (int) $u->id)<span class="text-navy" aria-hidden="true">✓</span>@endif
+                                                                </button>
+                                                            </li>
+                                                        @endforeach
+                                                    </ul>
+                                                    @if ($it->user_id)
+                                                        <button type="button" x-on:click="buka = false" wire:click="tugaskanItem({{ $it->id }}, null)"
+                                                                class="mt-2 h-8 w-full rounded-md bg-[#E9EBEE] text-xs font-medium">Lepas tugas</button>
+                                                    @endif
+                                                </div>
+                                            </div>
+
+                                            {{-- Tenggat item --}}
+                                            <div class="relative shrink-0" x-data="{ buka: false, nilai: @js(optional($it->tenggat_pada)->format('Y-m-d\TH:i') ?? '') }">
+                                                <button type="button" x-on:click="buka = ! buka" :aria-expanded="buka"
+                                                        aria-label="Tenggat item {{ $it->teks }}"
+                                                        class="flex h-8 w-8 items-center justify-center rounded-md text-ink-muted hover:bg-[#DCDFE4] hover:text-ink">
+                                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" d="M12 7v5l3 1.5m6-1.5a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                </button>
+                                                <div x-show="buka" x-cloak x-on:click.outside="buka = false" x-on:keydown.escape.stop="buka = false" data-panel-kartu
+                                                     class="{{ $panel }} w-64">
+                                                    <h5 class="text-center font-semibold">Tenggat item</h5>
+                                                    <label for="tenggat-item-{{ $it->id }}" class="sr-only">Tenggat item {{ $it->teks }}</label>
+                                                    <input id="tenggat-item-{{ $it->id }}" type="datetime-local" x-model="nilai"
+                                                           class="mt-2 block min-h-[36px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
+                                                    <div class="mt-2 flex gap-2">
+                                                        <button type="button" x-on:click="buka = false; $wire.tenggatItem({{ $it->id }}, nilai || null)"
+                                                                class="h-8 flex-1 rounded-md bg-navy text-xs font-medium text-white">Simpan</button>
+                                                        <button type="button" x-on:click="nilai = ''; buka = false; $wire.tenggatItem({{ $it->id }}, null)"
+                                                                class="h-8 rounded-md bg-[#E9EBEE] px-2 text-xs">Hapus</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {{-- Menu item --}}
+                                            <div class="relative shrink-0" x-data="{ buka: false }">
+                                                <button type="button" x-on:click="buka = ! buka" :aria-expanded="buka" aria-label="Menu item {{ $it->teks }}"
+                                                        class="flex h-8 w-8 items-center justify-center rounded-md text-ink-muted hover:bg-[#DCDFE4] hover:text-ink">
+                                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" /></svg>
+                                                </button>
+                                                <div x-show="buka" x-cloak x-on:click.outside="buka = false" x-on:keydown.escape.stop="buka = false" data-panel-kartu
+                                                     class="absolute right-0 z-20 mt-1 w-48 rounded-xl border border-line bg-card py-1 text-sm shadow-lg">
+                                                    <button type="button" x-on:click="buka = false" wire:click="itemJadiKartu({{ $it->id }})"
+                                                            class="block w-full px-3 py-2 text-left hover:bg-page">Jadikan kartu</button>
+                                                    <button type="button" x-on:click="buka = false" wire:click="hapusItem({{ $it->id }})"
+                                                            class="block w-full px-3 py-2 text-left text-[#AE2E24] hover:bg-page">Hapus item</button>
+                                                </div>
+                                            </div>
                                         @endif
                                     </li>
                                 @endforeach
@@ -473,6 +581,7 @@
                                     <span wire:loading wire:target="berkas">Mengunggah…</span>
                                     <input type="file" wire:model="berkas" multiple class="sr-only">
                                 </label>
+                                <p class="mt-1 text-[11px] text-ink-muted">Bisa juga seret berkas ke kartu, atau tempel gambar (Ctrl+V).</p>
                                 @error('berkas')<p class="mt-1 text-xs text-[#AE2E24]">{{ $message }}</p>@enderror
                                 @error('berkas.*')<p class="mt-1 text-xs text-[#AE2E24]">{{ $message }}</p>@enderror
                             </div>

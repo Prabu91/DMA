@@ -449,6 +449,58 @@ class DetailKartu extends Component
         $this->segarkan();
     }
 
+    /** Tugaskan item ke seorang anggota (kosongkan untuk melepas). */
+    public function tugaskanItem(int $itemId, ?int $userId): void
+    {
+        $this->wajibUbah();
+        $item = $this->itemMilikKartu($itemId);
+
+        if ($userId !== null) {
+            abort_unless($this->calonAnggota->contains('id', $userId), 403);
+        }
+
+        $item->update(['user_id' => $userId]);
+
+        if ($userId && $userId !== auth()->id()) {
+            $this->kabar()->ditugaskanItem($this->kartu, User::findOrFail($userId), auth()->user(), $item->teks);
+        }
+
+        $this->segarkan();
+    }
+
+    /** Beri (atau hapus) tenggat pada satu item checklist. */
+    public function tenggatItem(int $itemId, ?string $tenggat): void
+    {
+        $this->wajibUbah();
+        $item = $this->itemMilikKartu($itemId);
+
+        $item->update(['tenggat_pada' => $tenggat ? Carbon::parse($tenggat) : null]);
+        $this->segarkan();
+    }
+
+    /**
+     * Ubah item checklist menjadi kartu tersendiri di list yang sama
+     * (padanan "Convert to card" Trello). Itemnya ikut terhapus.
+     */
+    public function itemJadiKartu(int $itemId): void
+    {
+        $kartu = $this->wajibUbah();
+        $item = $this->itemMilikKartu($itemId);
+        $kolom = Kolom::findOrFail($kartu->kolom_id);
+
+        $baru = app(Tata::class)->tambahKartu($kolom, $item->teks, auth()->user(), array_filter([
+            'tenggat_pada' => $item->tenggat_pada,
+        ]));
+
+        if ($item->user_id) {
+            $baru->anggota()->attach($item->user_id);
+        }
+
+        $item->delete();
+        $this->catat('item_jadi_kartu', $baru->judul);
+        $this->segarkan();
+    }
+
     public function ubahItem(int $itemId, string $teks): void
     {
         $this->wajibUbah();
