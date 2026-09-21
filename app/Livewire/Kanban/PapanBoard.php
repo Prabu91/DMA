@@ -684,20 +684,27 @@ class PapanBoard extends Component
         return $this->redirect(route('kanban.beranda'), navigate: true);
     }
 
-    /** Hapus list yang sudah tidak berisi kartu sama sekali. */
+    /** Hapus list beserta seluruh kartu di dalamnya. */
     public function hapusKolom(int $kolomId): void
     {
         $this->wajibUbah();
         $kolom = $this->kolomMilikBoard($kolomId);
+        $tata = app(Tata::class);
 
-        if (Kartu::where('kolom_id', $kolom->id)->exists()) {
-            $this->pesan = 'List "'.$kolom->nama.'" masih berisi kartu. Pindahkan atau hapus kartunya dulu.';
+        if ($tata->adaKartuOrder($kolom)) {
+            $this->pesan = 'List "'.$kolom->nama.'" berisi kartu order yang tidak bisa dihapus. Pindahkan kartunya dulu, atau arsipkan list-nya.';
             $this->segarkan();
 
             return;
         }
 
-        app(Tata::class)->hapusKolom($kolom, auth()->user());
+        $jumlah = Kartu::where('kolom_id', $kolom->id)->count();
+        $nama = $kolom->nama;
+        $tata->hapusKolom($kolom, auth()->user());
+
+        $this->pesan = $jumlah
+            ? 'List "'.$nama.'" dan '.$jumlah.' kartunya dihapus permanen.'
+            : 'List "'.$nama.'" dihapus.';
         $this->segarkan();
     }
 

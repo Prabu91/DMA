@@ -278,7 +278,7 @@
                                     <div class="h-full rounded-full {{ $persen === 100 ? 'bg-[#1F845A]' : 'bg-navy' }}" style="width: {{ $persen }}%"></div>
                                 </div>
                             </div>
-                            <ul @if ($ubah) wire:sort="urutItem" wire:sort:group="checklist" wire:sort:group-id="{{ $cl->id }}" @endif class="mt-1 min-h-[1.5rem]">
+                            <ul @if ($ubah) wire:sort="urutItem" wire:sort:group="checklist" wire:sort:group-id="{{ $cl->id }}" wire:sort:config="{ delay: 220, delayOnTouchOnly: true, touchStartThreshold: 6 }" @endif class="mt-1 min-h-[1.5rem]">
                                 @foreach ($cl->item as $it)
                                     <li wire:key="it-{{ $it->id }}" wire:sort:item="{{ $it->id }}" class="group flex items-start gap-2 rounded-md px-2 py-1 hover:bg-[#E9EBEE]"
                                         @if ($it->selesai_at) x-show="! sembunyi" @endif

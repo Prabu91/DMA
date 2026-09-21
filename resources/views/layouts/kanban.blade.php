@@ -44,15 +44,37 @@
     <body class="font-sans antialiased">
         <div class="flex h-dvh flex-col bg-page">
             <header class="flex h-12 shrink-0 items-center justify-between gap-3 bg-navy-900 px-3 text-white sm:px-4">
-                <div class="flex min-w-0 items-center gap-2 sm:gap-4">
+                <div class="flex min-w-0 items-center gap-1 sm:gap-4">
+                    {{-- Menu ringkas: di layar HP tautan navigasi disembunyikan, jadi dikumpulkan di sini. --}}
+                    <div class="relative sm:hidden" x-data="{ buka: false }">
+                        <button type="button" x-on:click="buka = ! buka" x-on:keydown.escape.window="buka = false"
+                                :aria-expanded="buka" aria-label="Menu navigasi"
+                                class="flex h-9 w-9 items-center justify-center rounded-md hover:bg-white/10">
+                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" d="M4 7h16M4 12h16M4 17h16" /></svg>
+                        </button>
+                        <div x-show="buka" x-cloak x-on:click.outside="buka = false"
+                             class="absolute left-0 z-50 mt-2 w-60 overflow-hidden rounded-xl border border-line bg-card py-1 text-sm text-ink shadow-lg">
+                            <a href="{{ route('kanban.beranda') }}" wire:navigate class="block px-3 py-2.5 hover:bg-page">Semua board</a>
+                            <a href="{{ route('kanban.kartu-saya') }}" wire:navigate class="block px-3 py-2.5 hover:bg-page">Kartu saya</a>
+                            <form method="GET" action="{{ route('kanban.kartu-saya') }}" class="border-t border-line px-3 py-2">
+                                <input type="hidden" name="tab" value="semua">
+                                <label for="cari-hp" class="text-xs font-medium text-ink-muted">Cari kartu di semua board</label>
+                                <input id="cari-hp" type="search" name="q" placeholder="Judul kartu…"
+                                       class="mt-1 block min-h-[38px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
+                            </form>
+                            <a href="{{ rtrim(config('app.url'), '/') }}/app/dashboard" class="block border-t border-line px-3 py-2.5 hover:bg-page">Panel staf ↗</a>
+                        </div>
+                    </div>
+
                     <a href="{{ route('kanban.beranda') }}" wire:navigate class="flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-white/10">
                         <span class="flex h-7 w-7 items-center justify-center rounded-md bg-white text-[11px] font-semibold text-navy">DMA</span>
-                        <span class="text-sm font-semibold">Kanban</span>
+                        <span class="hidden text-sm font-semibold sm:inline">Kanban</span>
                     </a>
                     <a href="{{ route('kanban.beranda') }}" wire:navigate class="hidden rounded-md px-2 py-1.5 text-sm text-white/85 hover:bg-white/10 hover:text-white sm:block">Semua board</a>
                     <a href="{{ route('kanban.kartu-saya') }}" wire:navigate class="hidden rounded-md px-2 py-1.5 text-sm text-white/85 hover:bg-white/10 hover:text-white sm:block">Kartu saya</a>
                     <form method="GET" action="{{ route('kanban.kartu-saya') }}" class="hidden lg:block">
-                        <label for="cari-global" class="sr-only">Cari kartu</label>
+                        <input type="hidden" name="tab" value="semua">
+                        <label for="cari-global" class="sr-only">Cari kartu di semua board</label>
                         <input id="cari-global" type="search" name="q" placeholder="Cari kartu…"
                                class="h-8 w-48 rounded-md border-0 bg-white/15 px-2.5 text-sm text-white placeholder:text-white/70 focus:bg-white focus:text-ink focus:placeholder:text-ink-muted focus:ring-2 focus:ring-brand">
                     </form>

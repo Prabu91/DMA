@@ -126,4 +126,20 @@ class KanbanKartuSayaTest extends TestCase
             ->assertSee('SMP Nusantara')
             ->assertDontSee('SD Harapan');
     }
+
+    public function test_hasil_pencarian_menyebut_board_dan_list_kartunya(): void
+    {
+        $this->halaman(['tab' => 'semua', 'q' => 'harapan'])
+            ->assertSee('SD Harapan')
+            ->assertSee('5. Editing')
+            ->assertSee('To do');
+    }
+
+    public function test_kotak_cari_di_navbar_mencari_ke_semua_board(): void
+    {
+        // Kotak cari di kepala halaman selalu membawa tab "semua".
+        $this->actingAs($this->shanty)->get(route('kanban.beranda'))
+            ->assertOk()
+            ->assertSeeHtml('<input type="hidden" name="tab" value="semua">');
+    }
 }

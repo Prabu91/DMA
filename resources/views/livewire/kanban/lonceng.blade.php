@@ -12,7 +12,7 @@
         @endif
     </button>
 
-    <div x-show="buka" x-cloak x-transition.opacity x-on:click.outside="buka = false"
+    <div x-show="buka" x-cloak x-on:click.outside="buka = false"
          class="absolute right-0 z-50 mt-2 w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-line bg-card text-ink shadow-lg">
         <div class="flex items-center justify-between gap-2 border-b border-line px-3 py-2">
             <h2 class="text-sm font-semibold">Notifikasi</h2>

@@ -139,19 +139,46 @@ class KanbanHapusTest extends TestCase
         $this->assertDatabaseHas('kanban_aktivitas', ['aksi' => 'kolom_dihapus', 'keterangan' => 'List kosong']);
     }
 
-    public function test_list_yang_masih_berisi_kartu_tidak_dihapus(): void
+    public function test_list_berisi_kartu_ikut_menghapus_kartunya(): void
     {
-        $this->papan()->call('hapusKolom', $this->todo->id)->assertSee('masih berisi kartu');
+        Storage::fake('local');
+        $this->detail()->set('berkas', [UploadedFile::fake()->image('foto.jpg', 10, 10)]);
+        $lampiran = Lampiran::firstOrFail();
+        $arsip = app(Tata::class)->tambahKartu($this->todo, 'Kartu arsip', $this->faris);
+        $arsip->update(['diarsipkan_at' => now()]);
 
-        $this->assertModelExists($this->todo);
+        $this->papan()
+            ->call('hapusKolom', $this->todo->id)
+            ->assertSee('2 kartunya dihapus permanen');
+
+        $this->assertDatabaseMissing('kanban_kolom', ['id' => $this->todo->id]);
+        $this->assertSame(0, Kartu::count(), 'kartu aktif & arsip ikut terhapus');
+        $this->assertSame(0, Komentar::count());
+        Storage::disk('local')->assertMissing($lampiran->path);
+        $this->assertDatabaseHas('kanban_aktivitas', ['aksi' => 'kolom_dihapus', 'keterangan' => 'To do (2 kartu)']);
     }
 
-    public function test_list_dengan_kartu_diarsipkan_juga_ditahan(): void
+    public function test_list_berisi_kartu_order_ditolak(): void
     {
-        $this->kartu->update(['diarsipkan_at' => now()]);
+        $sekolah = Sekolah::create(['id_sekolah' => 'SKL-000555', 'nama' => 'TK Order', 'cabang_id' => $this->faris->cabang_id]);
+        $order = Order::create([
+            'booking_code' => 'BK-HAPUS-2',
+            'sekolah_id' => $sekolah->id,
+            'marketing_id' => $this->faris->id,
+            'cabang_id' => $this->faris->cabang_id,
+            'sumber' => 'marketing',
+            'status' => 'baru',
+            'total' => 1000,
+            'tanggal_booking' => now(),
+        ]);
+        $kartuOrder = Kartu::where('order_id', $order->id)->firstOrFail();
+        $board = Board::find($kartuOrder->board_id);
 
-        $this->papan()->call('hapusKolom', $this->todo->id)->assertSee('masih berisi kartu');
-        $this->assertModelExists($this->todo);
+        Livewire::actingAs($this->faris)->test(PapanBoard::class, ['board' => $board])
+            ->call('hapusKolom', $kartuOrder->kolom_id)
+            ->assertSee('berisi kartu order');
+
+        $this->assertModelExists($kartuOrder);
     }
 
     // ---------------- Board ----------------

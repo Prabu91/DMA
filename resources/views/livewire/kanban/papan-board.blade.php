@@ -102,11 +102,11 @@
             @endif
 
             {{-- Tampilan --}}
-            <div class="flex items-center rounded-md bg-white/15 p-0.5" role="group" aria-label="Tampilan board">
+            <div class="order-last flex w-full items-center rounded-md bg-white/15 p-0.5 sm:order-none sm:w-auto" role="group" aria-label="Tampilan board">
                 @foreach (\App\Livewire\Kanban\PapanBoard::TAMPILAN as $kunci => $labelTampilan)
                     <button type="button" wire:click="gantiTampilan('{{ $kunci }}')" aria-pressed="{{ $tampilan === $kunci ? 'true' : 'false' }}"
                             @class([
-                                'h-8 rounded px-2.5 text-sm',
+                                'h-8 flex-1 rounded px-2.5 text-sm sm:flex-none',
                                 'bg-white font-medium text-ink' => $tampilan === $kunci,
                                 'text-white/90 hover:bg-white/15' => $tampilan !== $kunci,
                             ])>{{ $labelTampilan }}</button>
@@ -120,7 +120,7 @@
                     <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="M3 5h18M6 12h12M10 19h4" /></svg>
                     <span class="hidden sm:inline">Saring</span>
                 </button>
-                <div x-show="saring" x-cloak x-transition.opacity x-on:click.outside="saring = false" x-on:keydown.escape.window="saring = false"
+                <div x-show="saring" x-cloak x-on:click.outside="saring = false" x-on:keydown.escape.window="saring = false"
                      class="absolute right-0 z-40 mt-2 max-h-[70vh] w-[min(20rem,calc(100vw-1.5rem))] overflow-y-auto rounded-xl border border-line bg-card p-4 text-sm text-ink shadow-lg">
                     <div class="flex items-center justify-between">
                         <h2 class="font-semibold">Saring kartu</h2>
@@ -190,7 +190,7 @@
     @if ($tampilan === 'papan')
     <div class="min-h-0 flex-1 overflow-x-auto overflow-y-hidden">
         <div class="flex h-full items-start gap-3 p-3 sm:px-4">
-            <ol @if ($ubah) wire:sort="urutKolom" wire:sort:config="{ handle: '.pegangan-list' }" @endif
+            <ol @if ($ubah) wire:sort="urutKolom" wire:sort:config="{ handle: '.pegangan-list', delay: 220, delayOnTouchOnly: true, touchStartThreshold: 6 }" @endif
                 class="flex h-full items-start gap-3" aria-label="List">
                 @foreach ($this->kolom as $kolom)
                     <li wire:key="kolom-{{ $kolom->id }}" wire:sort:item="{{ $kolom->id }}"
@@ -278,9 +278,12 @@
                                         <button type="button" x-on:click="buka = false" wire:click="arsipkanSemuaKartu({{ $kolom->id }})"
                                                 wire:confirm="Arsipkan semua kartu di list &quot;{{ $kolom->nama }}&quot;? Kartu bisa dipulihkan dari menu board."
                                                 class="block w-full border-t border-line px-3 py-2 text-left text-[#AE2E24] hover:bg-page">Arsipkan semua kartu</button>
+                                        @php $isiKolom = $kolom->kartu->count(); @endphp
                                         <button type="button" x-on:click="buka = false" wire:click="hapusKolom({{ $kolom->id }})"
-                                                wire:confirm="Hapus list &quot;{{ $kolom->nama }}&quot; selamanya? Hanya bisa untuk list yang sudah kosong."
-                                                class="block w-full px-3 py-2 text-left text-[#AE2E24] hover:bg-page">Hapus list</button>
+                                                wire:confirm="{{ $isiKolom
+                                                    ? 'PERHATIAN: list &quot;'.$kolom->nama.'&quot; masih berisi '.$isiKolom.' kartu. Menghapus list ini akan menghapus seluruh kartu di dalamnya (beserta komentar, checklist, dan lampirannya) selamanya. Lanjutkan?'
+                                                    : 'Hapus list &quot;'.$kolom->nama.'&quot; selamanya?' }}"
+                                                class="block w-full px-3 py-2 text-left text-[#AE2E24] hover:bg-page">Hapus list{{ $isiKolom ? ' + '.$isiKolom.' kartu' : '' }}</button>
                                         <button type="button" x-on:click="buka = false" wire:click="arsipkanKolom({{ $kolom->id }})"
                                                 wire:confirm="Arsipkan list &quot;{{ $kolom->nama }}&quot; beserta kartunya? List bisa dipulihkan dari menu board."
                                                 class="block w-full px-3 py-2 text-left text-[#AE2E24] hover:bg-page">Arsipkan list</button>
@@ -289,7 +292,7 @@
                             @endif
                         </div>
 
-                        <ol @if ($ubah) wire:sort="urutKartu" wire:sort:group="kartu" wire:sort:group-id="{{ $kolom->id }}" @endif
+                        <ol @if ($ubah) wire:sort="urutKartu" wire:sort:group="kartu" wire:sort:group-id="{{ $kolom->id }}" wire:sort:config="{ delay: 220, delayOnTouchOnly: true, touchStartThreshold: 6 }" @endif
                             class="flex min-h-[10px] flex-col gap-2 overflow-y-auto px-2 py-1" aria-label="Kartu di {{ $kolom->nama }}">
                             @foreach ($kolom->kartu as $kartu)
                                 @php $tenggat = $kartu->keadaanTenggat(); @endphp

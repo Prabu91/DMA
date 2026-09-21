@@ -67,9 +67,14 @@
                         <span class="mt-1 h-8 w-1.5 shrink-0 rounded-full {{ Warna::board($kartu->board?->warna) }}"></span>
                         <span class="min-w-0 flex-1">
                             <span class="block break-words font-medium text-ink">{{ $kartu->judul }}</span>
-                            <span class="mt-0.5 block text-xs text-ink-muted">
-                                {{ $kartu->board?->nama }} · {{ $kartu->kolom?->nama }}
-                                @if ($kartu->diarsipkan_at) · <span class="text-[#AE2E24]">diarsipkan</span> @endif
+                            <span class="mt-1 flex flex-wrap items-center gap-1 text-xs text-ink-muted">
+                                <span class="inline-flex items-center gap-1 rounded bg-page px-1.5 py-0.5">
+                                    <span class="h-2 w-2 shrink-0 rounded-full {{ Warna::board($kartu->board?->warna) }}"></span>
+                                    <span class="font-medium text-ink">{{ $kartu->board?->nama }}</span>
+                                </span>
+                                <span aria-hidden="true">›</span>
+                                <span class="rounded bg-page px-1.5 py-0.5 font-medium text-ink">{{ $kartu->kolom?->nama }}</span>
+                                @if ($kartu->diarsipkan_at)<span class="rounded bg-[#FFECEB] px-1.5 py-0.5 text-[#AE2E24]">diarsipkan</span>@endif
                             </span>
                             @if ($kartu->label->isNotEmpty() || $tenggat || $kartu->anggota->isNotEmpty())
                                 <span class="mt-1.5 flex flex-wrap items-center gap-1.5">

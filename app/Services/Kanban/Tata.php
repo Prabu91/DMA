@@ -184,14 +184,33 @@ class Tata
         Storage::disk('local')->delete($berkas);
     }
 
-    /** Hapus satu list. Hanya untuk list yang sudah tidak punya kartu sama sekali. */
+    /**
+     * Hapus satu list beserta seluruh kartu di dalamnya (termasuk yang
+     * diarsipkan). Kartu order tidak ikut dihapus — lihat hapusKolomDitolak().
+     */
     public function hapusKolom(Kolom $kolom, User $oleh): void
     {
-        abort_if(Kartu::where('kolom_id', $kolom->id)->exists(), 422);
+        abort_if($this->adaKartuOrder($kolom), 422);
 
+        $berkas = Lampiran::whereIn('kartu_id', Kartu::where('kolom_id', $kolom->id)->select('id'))
+            ->whereNotNull('path')->pluck('path')->all();
+        $jumlah = Kartu::where('kolom_id', $kolom->id)->count();
         $nama = $kolom->nama;
-        $kolom->delete();
-        $kolom->board->catat('kolom_dihapus', $nama, null, $oleh->id);
+        $board = $kolom->board;
+
+        DB::transaction(function () use ($kolom) {
+            // Kartu, checklist, komentar, dan lampirannya ikut lewat foreign key.
+            $kolom->delete();
+        });
+
+        Storage::disk('local')->delete($berkas);
+        $board->catat('kolom_dihapus', $jumlah ? $nama.' ('.$jumlah.' kartu)' : $nama, null, $oleh->id);
+    }
+
+    /** Kartu order tidak boleh ikut terhapus: kartunya akan dibuat ulang oleh sinkron order. */
+    public function adaKartuOrder(Kolom $kolom): bool
+    {
+        return Kartu::where('kolom_id', $kolom->id)->whereNotNull('order_id')->exists();
     }
 
     /** Urutan kartu yang bisa dipilih di menu list (padanan "Sort by" Trello). */

@@ -59,7 +59,7 @@
                         ])>{{ $tanggal->day }}</span>
                     </div>
 
-                    <ul @if ($this->bolehUbah) wire:sort="ubahTenggatKalender" wire:sort:group="kalender" wire:sort:group-id="{{ $kunci }}" @endif
+                    <ul @if ($this->bolehUbah) wire:sort="ubahTenggatKalender" wire:sort:group="kalender" wire:sort:group-id="{{ $kunci }}" wire:sort:config="{ delay: 220, delayOnTouchOnly: true, touchStartThreshold: 6 }" @endif
                         class="min-h-[2.5rem] space-y-1" aria-label="Kartu bertenggat {{ $tanggal->format('d-m-Y') }}">
                         @foreach ($kartuHari as $kartu)
                             @php $keadaan = $kartu->keadaanTenggat(); @endphp
