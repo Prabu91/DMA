@@ -11,7 +11,8 @@
     ];
 @endphp
 
-<div class="flex h-full flex-col {{ Warna::board($board->warna) }}"
+<div class="flex h-full flex-col bg-cover bg-center {{ Warna::board($board->warna) }}"
+     @if ($board->latar_path) style="background-image: url('{{ route('kanban.latar', $board) }}')" @endif
      x-data="{
         menu: false,
         saring: false,
@@ -331,12 +332,22 @@
                                     class="group rounded-lg bg-card shadow-[0_1px_1px_rgba(9,30,66,.25)] hover:ring-2 hover:ring-brand/60">
                                     <button type="button" wire:click="bukaKartu({{ $kartu->id }})"
                                             class="block w-full overflow-hidden rounded-lg text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-brand">
-                                        @if ($kartu->coverLampiran?->isGambar())
+                                        @if ($kartu->coverLampiran?->isGambar() && $kartu->cover_penuh)
+                                            {{-- Sampul penuh: judul dibaca di atas gambar, seperti "full cover" Trello. --}}
+                                            <span class="relative block min-h-[9rem] w-full">
+                                                <img src="{{ route('kanban.lampiran', ['lampiran' => $kartu->coverLampiran, 'kecil' => 1]) }}" alt="" loading="lazy"
+                                                     class="absolute inset-0 h-full w-full object-cover">
+                                                <span class="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent"></span>
+                                                <span class="absolute inset-x-0 bottom-0 block px-3 pb-2 pt-6 text-sm font-medium text-white">
+                                                    {{ $kartu->judul }}
+                                                </span>
+                                            </span>
+                                        @elseif ($kartu->coverLampiran?->isGambar())
                                             <img src="{{ route('kanban.lampiran', ['lampiran' => $kartu->coverLampiran, 'kecil' => 1]) }}" alt="" loading="lazy" class="max-h-40 w-full object-cover">
                                         @elseif ($kartu->cover_warna)
                                             <span class="block h-8 {{ Warna::labelLatar($kartu->cover_warna) }}"></span>
                                         @endif
-                                        <span class="block px-3 pb-2 pt-2">
+                                        <span @class(['block px-3 pb-2 pt-2', 'hidden' => $kartu->coverLampiran?->isGambar() && $kartu->cover_penuh])>
                                             @if ($kartu->label->isNotEmpty())
                                                 <span class="mb-1.5 flex flex-wrap gap-1">
                                                     @foreach ($kartu->label as $l)
@@ -511,7 +522,9 @@
                     @endif
                     @if ($kelola)
                         <button type="button" x-on:click="bagian = 'warna'" class="flex min-h-[40px] w-full items-center gap-3 rounded-lg px-3 text-left hover:bg-page">
-                            <span class="h-5 w-7 rounded {{ Warna::board($board->warna) }}"></span> Ganti latar
+                            <span class="h-5 w-7 rounded bg-cover bg-center {{ Warna::board($board->warna) }}"
+                                  @if ($board->latar_path) style="background-image: url('{{ route('kanban.latar', $board) }}')" @endif></span>
+                            Ganti latar
                         </button>
                     @endif
                     <button type="button" x-on:click="bagian = 'label'" class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left hover:bg-page">Label</button>
@@ -539,11 +552,28 @@
 
                 {{-- Warna --}}
                 @if ($kelola)
-                    <div x-show="bagian === 'warna'" x-cloak class="grid grid-cols-3 gap-2">
+                    <div x-show="bagian === 'warna'" x-cloak>
+                        <div class="mb-4 rounded-lg bg-page p-3">
+                            <p class="text-xs font-medium text-ink-muted">Foto latar</p>
+                            <label class="mt-2 flex min-h-[38px] cursor-pointer items-center justify-center rounded-md bg-card px-3 text-sm font-medium text-ink ring-1 ring-line hover:bg-page focus-within:ring-2 focus-within:ring-brand">
+                                <span wire:loading.remove wire:target="latar">{{ $board->latar_path ? 'Ganti foto latar' : 'Unggah foto latar' }}</span>
+                                <span wire:loading wire:target="latar">Mengunggah…</span>
+                                <input type="file" wire:model="latar" accept="image/*" class="sr-only">
+                            </label>
+                            <p class="mt-1 text-[11px] text-ink-muted">Foto otomatis dikecilkan ke 1600px supaya board tetap ringan dibuka.</p>
+                            @error('latar')<p class="mt-1 text-xs text-[#AE2E24]">{{ $message }}</p>@enderror
+                            @if ($board->latar_path)
+                                <button type="button" wire:click="hapusLatar" class="mt-2 text-xs text-navy underline">Hapus foto latar</button>
+                            @endif
+                        </div>
+
+                        <p class="mb-1.5 text-xs font-medium text-ink-muted">Warna latar</p>
+                        <div class="grid grid-cols-3 gap-2">
                         @foreach (Warna::BOARD as $k => [$t, $kelas])
                             <button type="button" wire:click="ubahWarna('{{ $k }}')" aria-pressed="{{ $board->warna === $k ? 'true' : 'false' }}"
                                     class="flex h-16 items-end rounded-lg p-2 text-xs font-medium text-white {{ $kelas }} {{ $board->warna === $k ? 'ring-2 ring-ink ring-offset-2' : '' }}">{{ $t }}</button>
                         @endforeach
+                        </div>
                     </div>
                 @endif
 

@@ -688,13 +688,36 @@ class DetailKartu extends Component
         $this->segarkan();
     }
 
+    public function ubahNamaLampiran(int $id, string $nama): void
+    {
+        $kartu = $this->wajibUbah();
+        $lampiran = Lampiran::where('kartu_id', $kartu->id)->findOrFail($id);
+        $nama = mb_substr(trim($nama), 0, 255);
+
+        if ($nama !== '') {
+            $lampiran->update(['nama' => $nama]);
+        }
+
+        $this->segarkan(false);
+    }
+
+    /** Sampul gambar bisa ditampilkan biasa (di atas judul) atau memenuhi kartu. */
+    public function toggleSampulPenuh(): void
+    {
+        $kartu = $this->wajibUbah();
+        abort_unless($kartu->cover_lampiran_id, 422);
+
+        $kartu->update(['cover_penuh' => ! $kartu->cover_penuh]);
+        $this->segarkan();
+    }
+
     public function jadikanSampul(?int $lampiranId): void
     {
         $kartu = $this->wajibUbah();
         if ($lampiranId !== null) {
             abort_unless(Lampiran::where('kartu_id', $kartu->id)->whereKey($lampiranId)->first()?->isGambar(), 422);
         }
-        $kartu->update(['cover_lampiran_id' => $lampiranId, 'cover_warna' => null]);
+        $kartu->update(['cover_lampiran_id' => $lampiranId, 'cover_warna' => null, 'cover_penuh' => $lampiranId ? $kartu->cover_penuh : false]);
         $this->segarkan();
     }
 
@@ -702,7 +725,7 @@ class DetailKartu extends Component
     {
         $kartu = $this->wajibUbah();
         abort_unless($warna === null || array_key_exists($warna, Warna::LABEL), 422);
-        $kartu->update(['cover_warna' => $warna, 'cover_lampiran_id' => null]);
+        $kartu->update(['cover_warna' => $warna, 'cover_lampiran_id' => null, 'cover_penuh' => false]);
         $this->segarkan();
     }
 

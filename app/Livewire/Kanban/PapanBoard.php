@@ -11,6 +11,7 @@ use App\Models\Kanban\Label;
 use App\Models\Kanban\Saringan;
 use App\Models\User;
 use App\Notifications\KanbanKabar;
+use App\Services\Kanban\Gambar;
 use App\Services\Kanban\Kabar;
 use App\Services\Kanban\Tata;
 use App\Support\Kanban\Akses;
@@ -20,12 +21,14 @@ use App\Support\Kanban\Warna;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 /**
@@ -37,6 +40,7 @@ use Livewire\WithPagination;
 #[Layout('layouts.kanban')]
 class PapanBoard extends Component
 {
+    use WithFileUploads;
     use WithPagination;
 
     public const TAMPILAN = [
@@ -117,6 +121,8 @@ class PapanBoard extends Component
     public ?int $anggotaBaru = null;
 
     public string $namaSaringan = '';
+
+    public $latar = null;
 
     public string $namaSalinanBoard = '';
 
@@ -724,6 +730,46 @@ class PapanBoard extends Component
         $this->wajibKelola();
         $this->validate(['namaBoard' => ['required', 'string', 'max:120']]);
         $this->board->update(['nama' => trim($this->namaBoard)]);
+    }
+
+    /** Unggah latar board (hanya pengelola); gambar dikecilkan dulu agar ringan dibuka. */
+    public function updatedLatar(): void
+    {
+        $this->wajibKelola();
+        $this->validate(
+            ['latar' => ['image', 'max:'.(int) config('kanban.maks_lampiran_kb')]],
+            ['latar.image' => 'Latar board harus berupa gambar.'],
+        );
+
+        $path = $this->latar->store('kanban/latar/'.$this->board->id, 'local');
+        $kecil = app(Gambar::class)->kecilkan($path, (string) $this->latar->getMimeType(), Gambar::SISI_LATAR);
+
+        if ($kecil) {
+            Storage::disk('local')->delete($path);
+            $path = $kecil;
+        }
+
+        $lama = $this->board->latar_path;
+        $this->board->update(['latar_path' => $path]);
+        if ($lama) {
+            Storage::disk('local')->delete($lama);
+        }
+
+        $this->reset('latar');
+        $this->pesan = 'Latar board diperbarui.';
+        $this->segarkan();
+    }
+
+    public function hapusLatar(): void
+    {
+        $this->wajibKelola();
+
+        if ($lama = $this->board->latar_path) {
+            $this->board->update(['latar_path' => null]);
+            Storage::disk('local')->delete($lama);
+        }
+
+        $this->segarkan();
     }
 
     public function ubahWarna(string $warna): void

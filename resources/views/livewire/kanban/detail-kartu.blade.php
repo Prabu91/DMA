@@ -11,6 +11,7 @@
      x-data="{
         pewaktu: null,
         seret: false,
+        pratinjau: null,
         bolehUnggah: @js($ubah),
         init() {
             // Ikut memantau perubahan rekan (komentar, checklist) selama kartu terbuka.
@@ -51,8 +52,21 @@
      x-on:dragleave="if ($event.relatedTarget === null) seret = false"
      x-on:drop.prevent.stop="unggah($event.dataTransfer?.files)"
      x-on:paste="unggah($event.clipboardData?.files)"
-     x-on:keydown.escape="$wire.tutup()"
+     x-on:keydown.escape="pratinjau ? pratinjau = null : $wire.tutup()"
      x-on:keydown.window="pintasan($event)">
+
+    {{-- Pratinjau gambar lampiran, tanpa meninggalkan kartu. --}}
+    <div x-show="pratinjau" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4"
+         x-on:click="pratinjau = null" role="dialog" aria-modal="true" aria-label="Pratinjau lampiran">
+        <figure class="max-h-full max-w-4xl" x-on:click.stop>
+            <img :src="pratinjau?.url" :alt="pratinjau?.nama" class="max-h-[80vh] w-auto rounded-lg bg-card object-contain">
+            <figcaption class="mt-2 flex flex-wrap items-center gap-3 text-sm text-white">
+                <span class="min-w-0 flex-1 truncate" x-text="pratinjau?.nama"></span>
+                <a :href="pratinjau?.unduh" class="underline">Unduh</a>
+                <button type="button" x-on:click="pratinjau = null" class="rounded-md bg-white/15 px-3 py-1.5">Tutup</button>
+            </figcaption>
+        </figure>
+    </div>
 
     {{-- Seret berkas ke mana saja di kartu untuk melampirkan. --}}
     <div x-show="seret" x-cloak class="pointer-events-none fixed inset-0 z-[60] flex items-center justify-center bg-navy/50 p-6">
@@ -212,16 +226,27 @@
                             <ul class="mt-2 space-y-2 px-2">
                                 @foreach ($k->lampiran as $lp)
                                     <li wire:key="lp-{{ $lp->id }}" class="flex gap-3">
-                                        <a href="{{ $lp->isTautan() ? $lp->url : route('kanban.lampiran', $lp) }}" target="_blank" rel="noopener noreferrer"
-                                           class="flex h-16 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md bg-[#DCDFE4] text-xs font-semibold text-ink-muted">
-                                            @if ($lp->isGambar())
+                                        @if ($lp->isGambar())
+                                            <button type="button"
+                                                    x-on:click="pratinjau = { url: @js(route('kanban.lampiran', $lp)), unduh: @js(route('kanban.lampiran', ['lampiran' => $lp, 'unduh' => 1])), nama: @js($lp->nama) }"
+                                                    class="flex h-16 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md bg-[#DCDFE4] hover:ring-2 hover:ring-brand"
+                                                    aria-label="Pratinjau {{ $lp->nama }}">
                                                 <img src="{{ route('kanban.lampiran', ['lampiran' => $lp, 'kecil' => 1]) }}" alt="" loading="lazy" class="h-full w-full object-cover">
-                                            @else
+                                            </button>
+                                        @else
+                                            <a href="{{ $lp->isTautan() ? $lp->url : route('kanban.lampiran', $lp) }}" target="_blank" rel="noopener noreferrer"
+                                               class="flex h-16 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md bg-[#DCDFE4] text-xs font-semibold text-ink-muted">
                                                 {{ $lp->ekstensi() }}
-                                            @endif
-                                        </a>
+                                            </a>
+                                        @endif
                                         <div class="min-w-0 flex-1 text-sm">
-                                            <a href="{{ $lp->isTautan() ? $lp->url : route('kanban.lampiran', $lp) }}" target="_blank" rel="noopener noreferrer" class="block truncate font-medium hover:underline">{{ $lp->nama }}</a>
+                                            @if ($ubah)
+                                                <input type="text" value="{{ $lp->nama }}" aria-label="Nama lampiran"
+                                                       x-on:change="$wire.ubahNamaLampiran({{ $lp->id }}, $event.target.value)"
+                                                       class="block w-full truncate rounded-md border-0 bg-transparent px-1 py-0.5 font-medium hover:bg-page focus:bg-card focus:ring-2 focus:ring-brand">
+                                            @else
+                                                <span class="block truncate font-medium">{{ $lp->nama }}</span>
+                                            @endif
                                             <p class="truncate text-xs text-ink-muted">
                                                 {{ $lp->created_at?->diffForHumans() }} · {{ $lp->pengunggah?->nama ?? $lp->pengunggah?->name }}
                                                 @if ($lp->isTautan()) · {{ $lp->url }} @else · {{ \Illuminate\Support\Number::fileSize((int) $lp->ukuran) }} @endif
@@ -233,6 +258,7 @@
                                                 @if ($ubah && $lp->isGambar())
                                                     @if ((int) $k->cover_lampiran_id === $lp->id)
                                                         <button type="button" wire:click="jadikanSampul(null)" class="text-navy underline">Lepas sampul</button>
+                                                        <button type="button" wire:click="toggleSampulPenuh" class="text-navy underline">{{ $k->cover_penuh ? 'Sampul ukuran biasa' : 'Sampul ukuran penuh' }}</button>
                                                     @else
                                                         <button type="button" wire:click="jadikanSampul({{ $lp->id }})" class="text-navy underline">Jadikan sampul</button>
                                                     @endif
@@ -667,6 +693,10 @@
                                         @endforeach
                                     </div>
                                     <p class="mt-2 text-xs text-ink-muted">Gambar dari lampiran juga bisa jadi sampul.</p>
+                                    @if ($k->cover_lampiran_id)
+                                        <button type="button" wire:click="toggleSampulPenuh"
+                                                class="mt-2 h-8 w-full rounded-md bg-[#E9EBEE] text-xs font-medium">{{ $k->cover_penuh ? 'Ubah ke ukuran biasa' : 'Ubah ke ukuran penuh' }}</button>
+                                    @endif
                                     @if ($k->cover_warna || $k->cover_lampiran_id)
                                         <button type="button" wire:click="warnaSampul(null)" class="mt-2 h-8 w-full rounded-md bg-[#E9EBEE] text-xs font-medium">Lepas sampul</button>
                                     @endif

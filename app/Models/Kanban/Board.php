@@ -22,7 +22,7 @@ class Board extends Model
         'privat' => 'Hanya anggota',
     ];
 
-    protected $fillable = ['nama', 'deskripsi', 'warna', 'jenis', 'visibilitas', 'dibuat_oleh', 'diarsipkan_at'];
+    protected $fillable = ['nama', 'deskripsi', 'warna', 'latar_path', 'jenis', 'visibilitas', 'dibuat_oleh', 'diarsipkan_at'];
 
     protected function casts(): array
     {

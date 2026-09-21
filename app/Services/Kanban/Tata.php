@@ -169,7 +169,9 @@ class Tata
     public function hapusBoard(Board $board, User $oleh): void
     {
         $berkas = Lampiran::whereIn('kartu_id', Kartu::where('board_id', $board->id)->select('id'))
-            ->whereNotNull('path')->pluck('path')->all();
+            ->get(['path', 'thumb_path'])
+            ->flatMap(fn ($l) => array_filter([$l->path, $l->thumb_path]))
+            ->all();
 
         DB::transaction(function () use ($board) {
             // Kabar yang menunjuk board ini ikut dibersihkan agar lonceng tidak menggantung.
@@ -182,7 +184,7 @@ class Tata
             $board->delete();
         });
 
-        Storage::disk('local')->delete($berkas);
+        Storage::disk('local')->delete(array_filter([...$berkas, $board->latar_path]));
     }
 
     /**
@@ -194,7 +196,9 @@ class Tata
         abort_if($this->adaKartuOrder($kolom), 422);
 
         $berkas = Lampiran::whereIn('kartu_id', Kartu::where('kolom_id', $kolom->id)->select('id'))
-            ->whereNotNull('path')->pluck('path')->all();
+            ->get(['path', 'thumb_path'])
+            ->flatMap(fn ($l) => array_filter([$l->path, $l->thumb_path]))
+            ->all();
         $jumlah = Kartu::where('kolom_id', $kolom->id)->count();
         $nama = $kolom->nama;
         $board = $kolom->board;

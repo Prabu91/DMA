@@ -18,8 +18,13 @@ class Gambar
     /** Sisi terpanjang versi kecil (piksel). */
     public const SISI = 480;
 
-    public function kecilkan(string $path, string $mime): ?string
+    /** Sisi terpanjang latar board. */
+    public const SISI_LATAR = 1600;
+
+    public function kecilkan(string $path, string $mime, ?int $sisi = null): ?string
     {
+        $sisi ??= self::SISI;
+
         if (! function_exists('imagecreatefromstring') || ! str_starts_with($mime, 'image/')) {
             return null;
         }
@@ -33,7 +38,7 @@ class Gambar
 
             $lebar = imagesx($asal);
             $tinggi = imagesy($asal);
-            $skala = min(1, self::SISI / max($lebar, $tinggi));
+            $skala = min(1, $sisi / max($lebar, $tinggi));
 
             // Gambar yang sudah kecil tidak perlu digandakan.
             if ($skala >= 1) {
