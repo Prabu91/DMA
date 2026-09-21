@@ -17,14 +17,14 @@
         saring: false,
         pewaktu: null,
         init() {
-            // Segarkan papan berkala supaya perubahan rekan ikut tampil.
+            // Periksa perubahan rekan tiap 5 detik; papan hanya digambar ulang bila memang berubah.
             this.pewaktu = setInterval(() => {
                 const aktif = document.activeElement?.tagName;
                 if (document.hidden || document.body.classList.contains('sorting')) return;
                 if (['INPUT', 'TEXTAREA', 'SELECT'].includes(aktif)) return;
-                if (this.menu || $wire.kartuId) return;
-                $wire.$refresh();
-            }, 15000);
+                if (this.menu) return;
+                $wire.cek();
+            }, 5000);
         },
         destroy() { clearInterval(this.pewaktu); },
      }">

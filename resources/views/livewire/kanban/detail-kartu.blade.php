@@ -8,7 +8,18 @@
 @endphp
 
 <div class="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="judul-kartu"
-     x-data x-on:keydown.escape="$wire.tutup()">
+     x-data="{
+        pewaktu: null,
+        init() {
+            // Ikut memantau perubahan rekan (komentar, checklist) selama kartu terbuka.
+            this.pewaktu = setInterval(() => {
+                const aktif = document.activeElement?.tagName;
+                if (document.hidden || ['INPUT', 'TEXTAREA', 'SELECT'].includes(aktif)) return;
+                $wire.cek();
+            }, 8000);
+        },
+        destroy() { clearInterval(this.pewaktu); },
+     }" x-on:keydown.escape="$wire.tutup()">
     <div class="fixed inset-0 bg-black/50" wire:click="tutup"></div>
 
     <div class="relative mx-auto my-0 w-full max-w-3xl bg-[#F1F2F4] text-ink sm:my-12 sm:rounded-2xl">

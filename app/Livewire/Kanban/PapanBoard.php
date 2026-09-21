@@ -6,6 +6,7 @@ use App\Models\Kanban\Aktivitas;
 use App\Models\Kanban\Board;
 use App\Models\Kanban\Kartu;
 use App\Models\Kanban\Kolom;
+use App\Models\Kanban\Komentar;
 use App\Models\Kanban\Label;
 use App\Models\User;
 use App\Services\Kanban\Tata;
@@ -58,6 +59,9 @@ class PapanBoard extends Component
     public string $judulKartuBaru = '';
 
     public ?string $pesan = null;
+
+    /** Sidik jari isi board; dipakai agar pemeriksaan berkala tidak menggambar ulang tanpa perlu. */
+    public ?string $cap = null;
 
     // Menu board.
     public string $namaLabelBaru = '';
@@ -188,6 +192,39 @@ class PapanBoard extends Component
         return Aktivitas::where('board_id', $this->board->id)
             ->with(['pelaku:id,nama,name', 'kartu:id,judul'])
             ->latest('created_at')->latest('id')->limit(40)->get();
+    }
+
+    /**
+     * Sidik jari isi board: berubah begitu ada kartu, list, komentar, atau
+     * aktivitas baru. Query-nya ringan supaya aman dipanggil tiap beberapa detik.
+     */
+    private function capBoard(): string
+    {
+        $kartu = Kartu::where('board_id', $this->board->id)
+            ->selectRaw('count(*) as jml, max(updated_at) as terakhir')->first();
+        $kolom = Kolom::where('board_id', $this->board->id)
+            ->selectRaw('count(*) as jml, max(updated_at) as terakhir')->first();
+        $lain = Aktivitas::where('board_id', $this->board->id)->max('id');
+        $komentar = Komentar::whereIn('kartu_id', Kartu::where('board_id', $this->board->id)->select('id'))->max('id');
+
+        return implode('|', [
+            $kartu->jml, $kartu->terakhir, $kolom->jml, $kolom->terakhir, $lain, $komentar, $this->board->updated_at,
+        ]);
+    }
+
+    /**
+     * Dipanggil berkala dari papan. Bila tidak ada perubahan, render dilewati
+     * sehingga yang bolak-balik hanya permintaan kecil tanpa HTML.
+     */
+    public function cek(): void
+    {
+        if ($this->capBoard() === $this->cap) {
+            $this->skipRender();
+
+            return;
+        }
+
+        $this->segarkan();
     }
 
     private function segarkan(): void
@@ -540,6 +577,9 @@ class PapanBoard extends Component
 
     public function render()
     {
+        // Disetel saat menggambar supaya cap selalu mewakili yang dilihat pengguna.
+        $this->cap = $this->capBoard();
+
         return view('livewire.kanban.papan-board')->title($this->board->nama);
     }
 }

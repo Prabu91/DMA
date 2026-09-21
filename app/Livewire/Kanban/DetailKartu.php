@@ -65,6 +65,9 @@ class DetailKartu extends Component
 
     public int $pindahUrutan = 1;
 
+    /** Sidik jari isi kartu, untuk pemeriksaan berkala tanpa gambar ulang. */
+    public ?string $cap = null;
+
     public string $judulSalinan = '';
 
     public ?int $salinKolom = null;
@@ -179,6 +182,36 @@ class DetailKartu extends Component
 
         return Kolom::where('board_id', $this->pindahBoard)->whereNull('diarsipkan_at')->orderBy('posisi')
             ->withCount(['kartu'])->get();
+    }
+
+    private function capKartu(): string
+    {
+        $k = $this->kartu;
+
+        return implode('|', [
+            $k->updated_at,
+            $k->komentar()->max('id'),
+            $k->lampiran()->max('id'),
+            $k->checklistItem()->max('kanban_checklist_item.id'),
+            $k->checklistItem()->whereNotNull('selesai_at')->count(),
+            $k->aktivitas()->max('id'),
+            $k->anggota()->count(),
+            $k->label()->count(),
+        ]);
+    }
+
+    /** Dipanggil berkala saat kartu terbuka; hanya menggambar ulang bila ada perubahan. */
+    public function cek(): void
+    {
+        unset($this->kartu);
+
+        if ($this->capKartu() === $this->cap) {
+            $this->skipRender();
+
+            return;
+        }
+
+        $this->segarkan(false);
     }
 
     private function segarkan(bool $papan = true): void
@@ -644,6 +677,8 @@ class DetailKartu extends Component
 
     public function render()
     {
+        $this->cap = $this->capKartu();
+
         return view('livewire.kanban.detail-kartu');
     }
 }

@@ -603,4 +603,41 @@ class KanbanTest extends TestCase
             ->test(DetailKartu::class, ['kartuId' => $kartu->id])
             ->assertForbidden();
     }
+
+    // ---------------- Pembaruan berkala ----------------
+
+    public function test_pemeriksaan_berkala_melewati_render_bila_tidak_ada_perubahan(): void
+    {
+        $user = $this->staf();
+        $board = $this->boardBebas($user);
+        $todo = $board->kolom()->first();
+
+        $papan = Livewire::actingAs($user)->test(PapanBoard::class, ['board' => $board]);
+        $cap = $papan->get('cap');
+        $this->assertNotNull($cap);
+
+        $papan->call('cek')->assertSet('cap', $cap);
+
+        // Rekan menambah kartu: cap berubah dan kartunya ikut tampil.
+        $this->tata()->tambahKartu($todo, 'Kartu rekan', $this->staf('marketing', 'Rekan'));
+
+        $papan->call('cek')
+            ->assertSeeHtml(self::kartu('Kartu rekan'))
+            ->assertNotSet('cap', $cap);
+    }
+
+    public function test_detail_kartu_ikut_memeriksa_perubahan(): void
+    {
+        $user = $this->staf();
+        $board = $this->boardBebas($user);
+        $kartu = $this->tata()->tambahKartu($board->kolom()->first(), 'SD Harapan', $user);
+
+        $detail = Livewire::actingAs($user)->test(DetailKartu::class, ['kartuId' => $kartu->id]);
+        $cap = $detail->get('cap');
+        $detail->call('cek')->assertSet('cap', $cap);
+
+        Komentar::create(['kartu_id' => $kartu->id, 'user_id' => $user->id, 'isi' => 'Komentar rekan']);
+
+        $detail->call('cek')->assertSee('Komentar rekan')->assertNotSet('cap', $cap);
+    }
 }
