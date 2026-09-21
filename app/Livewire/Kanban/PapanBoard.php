@@ -8,6 +8,7 @@ use App\Models\Kanban\Kartu;
 use App\Models\Kanban\Kolom;
 use App\Models\Kanban\Komentar;
 use App\Models\Kanban\Label;
+use App\Models\Kanban\Saringan;
 use App\Models\User;
 use App\Notifications\KanbanKabar;
 use App\Services\Kanban\Kabar;
@@ -115,6 +116,8 @@ class PapanBoard extends Component
 
     public ?int $anggotaBaru = null;
 
+    public string $namaSaringan = '';
+
     public string $namaSalinanBoard = '';
 
     public bool $salinDenganKartu = true;
@@ -133,6 +136,12 @@ class PapanBoard extends Component
             $this->tampilan = 'papan';
         }
         $this->namaSalinanBoard = mb_substr($board->nama.' (salinan)', 0, 120);
+
+        // Catatan "baru dibuka" per orang, dipakai di halaman Semua board.
+        DB::table('kanban_kunjungan')->updateOrInsert(
+            ['user_id' => auth()->id(), 'board_id' => $board->id],
+            ['dibuka_at' => now()],
+        );
 
         if ($board->isOrder()) {
             $tersimpan = OtomasiOrder::aturan();
@@ -196,7 +205,13 @@ class PapanBoard extends Component
         return Kartu::query()
             ->where('board_id', $this->board->id)
             ->whereNull('diarsipkan_at')
-            ->when(trim($this->cari) !== '', fn ($q) => $q->where('judul', 'ilike', '%'.trim($this->cari).'%'))
+            ->when(trim($this->cari) !== '', function ($q) {
+                $kata = trim($this->cari);
+                // Mengetik "#123" langsung menuju kartu bernomor itu.
+                preg_match('/^#?(\d+)$/', $kata, $cocok)
+                    ? $q->where(fn ($w) => $w->whereKey((int) $cocok[1])->orWhere('judul', 'ilike', '%'.$kata.'%'))
+                    : $q->where('judul', 'ilike', '%'.$kata.'%');
+            })
             ->when($this->saringLabel, fn ($q) => $q->whereHas('label', fn ($l) => $l->whereIn('kanban_label.id', $this->saringLabel)))
             ->when($this->saringAnggota, fn ($q) => $q->whereHas('anggota', fn ($a) => $a->whereIn('users.id', $this->saringAnggota)))
             ->when($this->saringTenggat === 'tanpa', fn ($q) => $q->whereNull('tenggat_pada'))
@@ -389,7 +404,7 @@ class PapanBoard extends Component
 
     private function segarkan(): void
     {
-        unset($this->templat, $this->kolom, $this->baris, $this->kalender, $this->tanpaTenggat, $this->bulanAktif, $this->arsip, $this->aktivitas, $this->labelBoard, $this->anggotaBoard, $this->calonAnggota, $this->sayaAnggota, $this->sayaBintang, $this->bolehUbah, $this->bolehKelola);
+        unset($this->saringanTersimpan, $this->templat, $this->kolom, $this->baris, $this->kalender, $this->tanpaTenggat, $this->bulanAktif, $this->arsip, $this->aktivitas, $this->labelBoard, $this->anggotaBoard, $this->calonAnggota, $this->sayaAnggota, $this->sayaBintang, $this->bolehUbah, $this->bolehKelola);
     }
 
     private function wajibUbah(): void
@@ -882,6 +897,53 @@ class PapanBoard extends Component
     {
         $this->bulan = now()->format('Y-m');
         unset($this->bulanAktif, $this->kalender);
+    }
+
+    /** Saringan yang pernah disimpan orang ini di board ini. */
+    #[Computed]
+    public function saringanTersimpan(): Collection
+    {
+        return Saringan::where('board_id', $this->board->id)
+            ->where('user_id', auth()->id())
+            ->orderBy('nama')->get();
+    }
+
+    public function simpanSaringan(): void
+    {
+        $this->validate(['namaSaringan' => ['required', 'string', 'max:60']], ['namaSaringan.required' => 'Beri nama saringannya.']);
+        abort_unless($this->adaSaringan, 422);
+
+        Saringan::updateOrCreate(
+            ['board_id' => $this->board->id, 'user_id' => auth()->id(), 'nama' => trim($this->namaSaringan)],
+            ['isi' => [
+                'cari' => $this->cari,
+                'label' => $this->saringLabel,
+                'anggota' => $this->saringAnggota,
+                'tenggat' => $this->saringTenggat,
+            ]],
+        );
+
+        $this->reset('namaSaringan');
+        unset($this->saringanTersimpan);
+    }
+
+    public function pakaiSaringan(int $id): void
+    {
+        $saringan = Saringan::where('board_id', $this->board->id)->where('user_id', auth()->id())->findOrFail($id);
+
+        $this->cari = (string) ($saringan->isi['cari'] ?? '');
+        $this->saringLabel = array_map('intval', $saringan->isi['label'] ?? []);
+        $this->saringAnggota = array_map('intval', $saringan->isi['anggota'] ?? []);
+        $this->saringTenggat = (string) ($saringan->isi['tenggat'] ?? '');
+
+        $this->resetPage();
+        $this->segarkan();
+    }
+
+    public function hapusSaringan(int $id): void
+    {
+        Saringan::where('board_id', $this->board->id)->where('user_id', auth()->id())->findOrFail($id)->delete();
+        unset($this->saringanTersimpan);
     }
 
     public function bersihkanSaringan(): void

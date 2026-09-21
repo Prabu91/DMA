@@ -7,6 +7,7 @@ use App\Services\Kanban\Tata;
 use App\Support\Kanban\Akses;
 use App\Support\Kanban\Warna;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -34,6 +35,8 @@ class Beranda extends Component
     {
         $user = auth()->user();
 
+        $kunjungan = DB::table('kanban_kunjungan')->where('user_id', $user->id)->pluck('dibuka_at', 'board_id');
+
         return Board::query()
             ->with(['anggota' => fn ($q) => $q->whereKey($user->id)])
             ->withCount(['kartu' => fn ($q) => $q->whereNull('diarsipkan_at')])
@@ -42,11 +45,12 @@ class Beranda extends Component
             ->orderBy('nama')
             ->get()
             ->filter(fn (Board $b) => Akses::bolehLihat($user, $b))
-            ->map(function (Board $b) use ($user) {
+            ->map(function (Board $b) use ($user, $kunjungan) {
                 $baris = $b->anggota->first();
                 $b->setAttribute('saya_bintang', (bool) $baris?->pivot?->berbintang);
                 $b->setAttribute('saya_anggota', $baris !== null && $baris->pivot->peran !== 'pengamat');
                 $b->setAttribute('saya_kelola', Akses::bolehKelola($user, $b));
+                $b->setAttribute('dibuka_at', $kunjungan[$b->id] ?? null);
 
                 return $b;
             })
@@ -62,8 +66,12 @@ class Beranda extends Component
             return [['judul' => 'Board diarsipkan', 'board' => $semua]];
         }
 
+        $baru = $semua->filter(fn ($b) => $b->dibuka_at !== null)
+            ->sortByDesc('dibuka_at')->take(4)->values();
+
         return array_values(array_filter([
             ['judul' => 'Berbintang', 'board' => $semua->where('saya_bintang', true)->values()],
+            ['judul' => 'Baru dibuka', 'board' => $baru],
             ['judul' => 'Board Anda', 'board' => $semua->filter(fn ($b) => $b->saya_anggota || $b->isOrder())->values()],
             ['judul' => 'Board lain di workspace', 'board' => $semua->filter(fn ($b) => ! $b->saya_anggota && ! $b->isOrder())->values()],
         ], fn ($k) => $k['board']->isNotEmpty()));

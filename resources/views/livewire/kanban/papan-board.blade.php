@@ -38,6 +38,8 @@
             if (e.key === '2') { $wire.gantiTampilan('tabel'); return }
             if (e.key === '3') { $wire.gantiTampilan('kalender'); return }
             if (e.key === 'n') { e.preventDefault(); $wire.mulaiTambahKartuPertama(); return }
+            if (e.key === 'x') { $wire.bersihkanSaringan(); return }
+            if (e.key === 's') { $wire.bintang(); return }
         },
         toggleLipat(id) {
             this.lipat = this.terlipat(id) ? this.lipat.filter(x => x !== id) : [...this.lipat, id];
@@ -128,8 +130,24 @@
                             <button type="button" wire:click="bersihkanSaringan" class="text-xs text-navy underline">Bersihkan</button>
                         @endif
                     </div>
+                    @if ($this->saringanTersimpan->isNotEmpty())
+                        <div class="mt-3">
+                            <p class="text-xs font-medium text-ink-muted">Saringan tersimpan</p>
+                            <ul class="mt-1 space-y-1">
+                                @foreach ($this->saringanTersimpan as $sim)
+                                    <li wire:key="sim-{{ $sim->id }}" class="flex items-center gap-1">
+                                        <button type="button" wire:click="pakaiSaringan({{ $sim->id }})"
+                                                class="min-h-[32px] flex-1 truncate rounded-md bg-page px-2 text-left text-sm hover:bg-line">{{ $sim->nama }}</button>
+                                        <button type="button" wire:click="hapusSaringan({{ $sim->id }})" aria-label="Hapus saringan {{ $sim->nama }}"
+                                                class="flex h-8 w-8 items-center justify-center rounded-md text-ink-muted hover:bg-page hover:text-[#AE2E24]">✕</button>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+
                     <label for="cari-kartu" class="mt-3 block text-xs font-medium text-ink-muted">Kata kunci</label>
-                    <input id="cari-kartu" type="search" wire:model.live.debounce.400ms="cari" placeholder="Cari judul kartu…"
+                    <input id="cari-kartu" type="search" wire:model.live.debounce.400ms="cari" placeholder="Judul kartu, atau #123"
                            class="mt-1 block min-h-[40px] w-full rounded-lg border-line text-sm focus:border-brand focus:ring-brand/30">
 
                     <fieldset class="mt-4">
@@ -151,6 +169,18 @@
                                 </label>
                             @endforeach
                         </fieldset>
+                    @endif
+
+                    @if ($this->adaSaringan)
+                        <form wire:submit="simpanSaringan" class="mt-4 rounded-lg bg-page p-3">
+                            <label for="nama-saringan" class="text-xs font-medium text-ink-muted">Simpan saringan ini</label>
+                            <div class="mt-1 flex gap-2">
+                                <input id="nama-saringan" type="text" wire:model="namaSaringan" placeholder="mis. Revisi saya"
+                                       class="block min-h-[36px] min-w-0 flex-1 rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
+                                <button type="submit" class="h-9 shrink-0 rounded-md bg-navy px-3 text-sm font-medium text-white">Simpan</button>
+                            </div>
+                            @error('namaSaringan')<p class="mt-1 text-xs text-[#AE2E24]">{{ $message }}</p>@enderror
+                        </form>
                     @endif
 
                     @if ($this->anggotaBoard->isNotEmpty())
@@ -316,14 +346,12 @@
                                             @endif
                                             <span class="block break-words text-sm text-ink">{{ $kartu->judul }}</span>
 
-                                            @php
-                                                $adaLencana = $tenggat || $kartu->deskripsi || $kartu->komentar_count || $kartu->lampiran_count || $kartu->checklist_item_count || $kartu->order_id;
-                                            @endphp
-                                            @if ($adaLencana || $kartu->anggota->isNotEmpty())
+                                            @if (true)
                                                 <span class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
                                                     @if ($kartu->templat)
                                                         <span class="rounded bg-[#5E4DB2] px-1.5 py-0.5 font-medium text-white">Templat</span>
                                                     @endif
+                                                    <span class="text-ink-muted/80" title="Nomor kartu">#{{ $kartu->id }}</span>
                                                     @if ($kartu->order_id)
                                                         <span class="rounded bg-navy/10 px-1.5 py-0.5 font-medium text-navy">{{ $kartu->order?->isSusulan() ? 'Susulan' : 'Order' }}</span>
                                                     @endif
@@ -703,6 +731,8 @@
                     '/' => 'Cari kartu di board ini',
                     'f' => 'Buka / tutup penyaring',
                     'm' => 'Buka / tutup menu board',
+                    'x' => 'Bersihkan saringan',
+                    's' => 'Beri / hapus bintang board',
                     '1 2 3' => 'Tampilan papan, tabel, kalender',
                     '?' => 'Tampilkan pintasan ini',
                 ] as $tombol => $arti)

@@ -99,7 +99,8 @@
                 @else
                     <h2 id="judul-kartu" class="px-2 py-1 text-xl font-semibold">{{ $k->judul }}</h2>
                 @endif
-                <p class="px-2 text-sm text-ink-muted">di list <span class="font-medium text-ink">{{ $k->kolom?->nama }}</span> · board {{ $k->board->nama }}
+                <p class="px-2 text-sm text-ink-muted"><span class="font-mono" title="Nomor kartu — bisa dicari dengan mengetik #{{ $k->id }}">#{{ $k->id }}</span>
+                    · di list <span class="font-medium text-ink">{{ $k->kolom?->nama }}</span> · board {{ $k->board->nama }}
                     @if ($k->templat)<span class="ml-1 rounded bg-[#5E4DB2] px-1.5 py-0.5 text-xs font-medium text-white">Templat</span>@endif
                     @if ($this->mengikuti)<span class="ml-1 rounded bg-[#E9EBEE] px-1.5 py-0.5 text-xs text-ink">Diikuti</span>@endif
                 </p>

@@ -23,7 +23,7 @@
             <div>
                 <label for="cari-kartu-saya" class="sr-only">Cari kartu</label>
                 <input id="cari-kartu-saya" type="search" wire:model.live.debounce.400ms="cari"
-                       placeholder="Cari judul atau deskripsi kartu…"
+                       placeholder="Cari judul, deskripsi, atau #123…"
                        class="block min-h-[42px] w-full rounded-lg border-line text-sm focus:border-brand focus:ring-brand/30">
             </div>
             <div>
@@ -66,7 +66,9 @@
                        class="flex gap-3 px-4 py-3 hover:bg-page">
                         <span class="mt-1 h-8 w-1.5 shrink-0 rounded-full {{ Warna::board($kartu->board?->warna) }}"></span>
                         <span class="min-w-0 flex-1">
-                            <span class="block break-words font-medium text-ink">{{ $kartu->judul }}</span>
+                            <span class="block break-words font-medium text-ink">
+                                <span class="font-mono text-xs text-ink-muted">#{{ $kartu->id }}</span> {{ $kartu->judul }}
+                            </span>
                             <span class="mt-1 flex flex-wrap items-center gap-1 text-xs text-ink-muted">
                                 <span class="inline-flex items-center gap-1 rounded bg-page px-1.5 py-0.5">
                                     <span class="h-2 w-2 shrink-0 rounded-full {{ Warna::board($kartu->board?->warna) }}"></span>

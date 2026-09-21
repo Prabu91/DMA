@@ -56,6 +56,7 @@
                     @php $tenggat = $kartu->keadaanTenggat(); @endphp
                     <tr wire:key="baris-{{ $kartu->id }}" class="cursor-pointer align-top hover:bg-page" wire:click="bukaKartu({{ $kartu->id }})">
                         <td class="px-3 py-2">
+                            <span class="mr-1 font-mono text-xs text-ink-muted">#{{ $kartu->id }}</span>
                             <button type="button" class="text-left font-medium text-ink hover:underline">{{ $kartu->judul }}</button>
                             @if ($kartu->order_id)
                                 <span class="ml-1 rounded bg-navy/10 px-1.5 py-0.5 text-[11px] font-medium text-navy">{{ $kartu->order?->isSusulan() ? 'Susulan' : 'Order' }}</span>

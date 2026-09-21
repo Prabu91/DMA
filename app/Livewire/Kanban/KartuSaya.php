@@ -73,8 +73,15 @@ class KartuSaya extends Component
             ->when($this->tab === 'saya', fn ($q) => $q->whereHas('anggota', fn ($a) => $a->whereKey($user->id)))
             ->when($this->tab === 'ikuti', fn ($q) => $q->whereHas('pengikut', fn ($a) => $a->whereKey($user->id)))
             ->when(trim($this->cari) !== '', function (Builder $q) {
-                $kata = '%'.trim($this->cari).'%';
-                $q->where(fn ($w) => $w->where('judul', 'ilike', $kata)->orWhere('deskripsi', 'ilike', $kata));
+                $kata = trim($this->cari);
+                $suka = '%'.$kata.'%';
+                // "#123" mencari nomor kartu; selebihnya judul & deskripsi.
+                $q->where(function ($w) use ($kata, $suka) {
+                    $w->where('judul', 'ilike', $suka)->orWhere('deskripsi', 'ilike', $suka);
+                    if (preg_match('/^#?(\d+)$/', $kata, $cocok)) {
+                        $w->orWhere('kanban_kartu.id', (int) $cocok[1]);
+                    }
+                });
             })
             ->when($this->saringTenggat === 'lewat', fn ($q) => $q->whereNull('tenggat_selesai_at')->whereNotNull('tenggat_pada')->where('tenggat_pada', '<', now()))
             ->when($this->saringTenggat === 'minggu', fn ($q) => $q->whereNull('tenggat_selesai_at')->whereBetween('tenggat_pada', [now(), now()->addWeek()]))
