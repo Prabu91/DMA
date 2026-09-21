@@ -73,6 +73,18 @@
                 <button type="button" wire:click="gabung" class="h-9 rounded-md bg-white px-3 text-sm font-medium text-ink hover:bg-white/90">Gabung board</button>
             @endif
 
+            {{-- Tampilan --}}
+            <div class="flex items-center rounded-md bg-white/15 p-0.5" role="group" aria-label="Tampilan board">
+                @foreach (\App\Livewire\Kanban\PapanBoard::TAMPILAN as $kunci => $labelTampilan)
+                    <button type="button" wire:click="gantiTampilan('{{ $kunci }}')" aria-pressed="{{ $tampilan === $kunci ? 'true' : 'false' }}"
+                            @class([
+                                'h-8 rounded px-2.5 text-sm',
+                                'bg-white font-medium text-ink' => $tampilan === $kunci,
+                                'text-white/90 hover:bg-white/15' => $tampilan !== $kunci,
+                            ])>{{ $labelTampilan }}</button>
+                @endforeach
+            </div>
+
             {{-- Saring --}}
             <div class="relative">
                 <button type="button" x-on:click="saring = ! saring" :aria-expanded="saring"
@@ -142,6 +154,7 @@
     @endif
 
     {{-- List & kartu --}}
+    @if ($tampilan === 'papan')
     <div class="min-h-0 flex-1 overflow-x-auto overflow-y-hidden">
         <div class="flex h-full items-start gap-3 p-3 sm:px-4">
             <ol @if ($ubah) wire:sort="urutKolom" wire:sort:config="{ handle: '.pegangan-list' }" @endif
@@ -321,6 +334,11 @@
             @endif
         </div>
     </div>
+    @elseif ($tampilan === 'tabel')
+        @include('livewire.kanban.partials.tabel')
+    @else
+        @include('livewire.kanban.partials.kalender')
+    @endif
 
     {{-- Menu board (panel samping) --}}
     <div x-show="menu" x-cloak class="fixed inset-0 z-40" x-on:keydown.escape.window="menu = false">

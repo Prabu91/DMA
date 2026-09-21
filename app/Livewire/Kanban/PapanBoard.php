@@ -14,6 +14,7 @@ use App\Support\Kanban\Akses;
 use App\Support\Kanban\OtomasiOrder;
 use App\Support\Kanban\Posisi;
 use App\Support\Kanban\Warna;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
@@ -31,6 +32,19 @@ use Livewire\Component;
 #[Layout('layouts.kanban')]
 class PapanBoard extends Component
 {
+    public const TAMPILAN = [
+        'papan' => 'Papan',
+        'tabel' => 'Tabel',
+        'kalender' => 'Kalender',
+    ];
+
+    public const URUT_TABEL = [
+        'list' => 'List',
+        'judul' => 'Judul',
+        'tenggat' => 'Tenggat',
+        'dibuat' => 'Dibuat',
+    ];
+
     public Board $board;
 
     #[Url(as: 'kartu')]
@@ -48,6 +62,18 @@ class PapanBoard extends Component
 
     #[Url(as: 'tenggat')]
     public string $saringTenggat = '';
+
+    /** Tampilan board: papan (kanban), tabel, atau kalender. */
+    #[Url(as: 'tampilan')]
+    public string $tampilan = 'papan';
+
+    /** Bulan yang sedang dilihat di kalender (format Y-m). */
+    #[Url(as: 'bulan')]
+    public ?string $bulan = null;
+
+    public string $urutTabel = 'list';
+
+    public string $arahTabel = 'asc';
 
     // Isian.
     public string $namaBoard = '';
@@ -83,6 +109,10 @@ class PapanBoard extends Component
 
         $this->board = $board;
         $this->namaBoard = $board->nama;
+
+        if (! array_key_exists($this->tampilan, self::TAMPILAN)) {
+            $this->tampilan = 'papan';
+        }
         $this->namaSalinanBoard = mb_substr($board->nama.' (salinan)', 0, 120);
 
         if ($board->isOrder()) {
@@ -141,15 +171,12 @@ class PapanBoard extends Component
             ->get(['id', 'nama', 'name']);
     }
 
-    #[Computed]
-    public function kolom(): Collection
+    /** Kartu aktif board ini sesudah penyaring — dipakai papan, tabel, dan kalender. */
+    private function kartuTersaring()
     {
-        $kolom = $this->board->kolom()->get();
-
-        $kartu = Kartu::query()
+        return Kartu::query()
             ->where('board_id', $this->board->id)
             ->whereNull('diarsipkan_at')
-            ->whereIn('kolom_id', $kolom->pluck('id'))
             ->with(['label', 'anggota:id,nama,name', 'coverLampiran', 'order:id,booking_code,status,order_induk_id'])
             ->withCount([
                 'komentar',
@@ -163,12 +190,76 @@ class PapanBoard extends Component
             ->when($this->saringTenggat === 'tanpa', fn ($q) => $q->whereNull('tenggat_pada'))
             ->when($this->saringTenggat === 'lewat', fn ($q) => $q->whereNull('tenggat_selesai_at')->where('tenggat_pada', '<', now()))
             ->when($this->saringTenggat === 'segera', fn ($q) => $q->whereNull('tenggat_selesai_at')->whereBetween('tenggat_pada', [now(), now()->addDay()]))
-            ->when($this->saringTenggat === 'selesai', fn ($q) => $q->whereNotNull('tenggat_selesai_at'))
+            ->when($this->saringTenggat === 'selesai', fn ($q) => $q->whereNotNull('tenggat_selesai_at'));
+    }
+
+    #[Computed]
+    public function kolom(): Collection
+    {
+        $kolom = $this->board->kolom()->get();
+
+        $kartu = $this->kartuTersaring()
+            ->whereIn('kolom_id', $kolom->pluck('id'))
             ->orderBy('posisi')
             ->get()
             ->groupBy('kolom_id');
 
         return $kolom->each(fn (Kolom $k) => $k->setRelation('kartu', $kartu->get($k->id, collect())));
+    }
+
+    /** Baris tampilan tabel, terurut sesuai pilihan kepala kolom. */
+    #[Computed]
+    public function baris(): Collection
+    {
+        $arah = $this->arahTabel === 'desc' ? 'desc' : 'asc';
+
+        return $this->kartuTersaring()
+            ->with('kolom:id,nama,posisi')
+            ->when($this->urutTabel === 'judul', fn ($q) => $q->orderBy('judul', $arah))
+            ->when($this->urutTabel === 'dibuat', fn ($q) => $q->orderBy('created_at', $arah))
+            ->when($this->urutTabel === 'tenggat', fn ($q) => $q->orderByRaw('tenggat_pada is null')->orderBy('tenggat_pada', $arah))
+            ->when($this->urutTabel === 'list', fn ($q) => $q->orderBy(
+                Kolom::select('posisi')->whereColumn('kanban_kolom.id', 'kanban_kartu.kolom_id'), $arah
+            )->orderBy('posisi'))
+            ->limit(500)
+            ->get();
+    }
+
+    /** Bulan yang sedang dilihat kalender. */
+    #[Computed]
+    public function bulanAktif(): Carbon
+    {
+        try {
+            return $this->bulan ? Carbon::createFromFormat('Y-m', $this->bulan)->startOfMonth() : now()->startOfMonth();
+        } catch (\Throwable) {
+            return now()->startOfMonth();
+        }
+    }
+
+    /**
+     * Kartu bertenggat pada bulan aktif, dikelompokkan per tanggal (Y-m-d)
+     * supaya gampang ditaruh di kotak kalender.
+     */
+    #[Computed]
+    public function kalender(): Collection
+    {
+        $mulai = $this->bulanAktif->copy()->startOfWeek();
+        $selesai = $this->bulanAktif->copy()->endOfMonth()->endOfWeek();
+
+        return $this->kartuTersaring()
+            ->with('kolom:id,nama')
+            ->whereNotNull('tenggat_pada')
+            ->whereBetween('tenggat_pada', [$mulai, $selesai])
+            ->orderBy('tenggat_pada')
+            ->get()
+            ->groupBy(fn (Kartu $k) => $k->tenggat_pada->format('Y-m-d'));
+    }
+
+    /** Kartu bertenggat di luar bulan aktif tidak hilang: ditunjukkan jumlahnya. */
+    #[Computed]
+    public function tanpaTenggat(): int
+    {
+        return (clone $this->kartuTersaring())->whereNull('tenggat_pada')->count();
     }
 
     #[Computed]
@@ -229,7 +320,7 @@ class PapanBoard extends Component
 
     private function segarkan(): void
     {
-        unset($this->templat, $this->kolom, $this->arsip, $this->aktivitas, $this->labelBoard, $this->anggotaBoard, $this->calonAnggota, $this->sayaAnggota, $this->sayaBintang, $this->bolehUbah, $this->bolehKelola);
+        unset($this->templat, $this->kolom, $this->baris, $this->kalender, $this->tanpaTenggat, $this->bulanAktif, $this->arsip, $this->aktivitas, $this->labelBoard, $this->anggotaBoard, $this->calonAnggota, $this->sayaAnggota, $this->sayaBintang, $this->bolehUbah, $this->bolehKelola);
     }
 
     private function wajibUbah(): void
@@ -562,6 +653,36 @@ class PapanBoard extends Component
         $this->pesan = 'Otomasi board Order disimpan.';
     }
 
+    public function gantiTampilan(string $tampilan): void
+    {
+        $this->tampilan = array_key_exists($tampilan, self::TAMPILAN) ? $tampilan : 'papan';
+        $this->segarkan();
+    }
+
+    /** Klik kepala kolom tabel: urutkan, klik lagi untuk membalik arah. */
+    public function urutkan(string $kolom): void
+    {
+        if (! array_key_exists($kolom, self::URUT_TABEL)) {
+            return;
+        }
+
+        $this->arahTabel = $this->urutTabel === $kolom && $this->arahTabel === 'asc' ? 'desc' : 'asc';
+        $this->urutTabel = $kolom;
+        unset($this->baris);
+    }
+
+    public function geserBulan(int $langkah): void
+    {
+        $this->bulan = $this->bulanAktif->copy()->addMonths($langkah)->format('Y-m');
+        unset($this->bulanAktif, $this->kalender);
+    }
+
+    public function bulanIni(): void
+    {
+        $this->bulan = now()->format('Y-m');
+        unset($this->bulanAktif, $this->kalender);
+    }
+
     public function bersihkanSaringan(): void
     {
         $this->reset(['cari', 'saringLabel', 'saringAnggota', 'saringTenggat']);
@@ -571,7 +692,7 @@ class PapanBoard extends Component
     public function updated(string $properti): void
     {
         if (in_array($properti, ['cari', 'saringTenggat'], true) || str_starts_with($properti, 'saring')) {
-            unset($this->kolom);
+            unset($this->kolom, $this->baris, $this->kalender, $this->tanpaTenggat);
         }
     }
 
