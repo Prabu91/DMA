@@ -17,7 +17,7 @@ class Kartu extends Model
     protected $fillable = [
         'board_id', 'kolom_id', 'posisi', 'judul', 'deskripsi', 'order_id',
         'cover_warna', 'cover_lampiran_id', 'mulai_pada', 'tenggat_pada',
-        'tenggat_selesai_at', 'dibuat_oleh', 'diarsipkan_at',
+        'tenggat_selesai_at', 'diingatkan_at', 'dibuat_oleh', 'diarsipkan_at',
     ];
 
     protected function casts(): array
@@ -27,6 +27,7 @@ class Kartu extends Model
             'mulai_pada' => 'date',
             'tenggat_pada' => 'datetime',
             'tenggat_selesai_at' => 'datetime',
+            'diingatkan_at' => 'datetime',
             'diarsipkan_at' => 'datetime',
         ];
     }
@@ -54,6 +55,12 @@ class Kartu extends Model
     public function anggota(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'kanban_kartu_anggota', 'kartu_id', 'user_id');
+    }
+
+    /** Orang yang dikabari perubahan kartu ini (lonceng & email). */
+    public function pengikut(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'kanban_kartu_pengikut', 'kartu_id', 'user_id')->withPivot('created_at');
     }
 
     public function checklist(): HasMany

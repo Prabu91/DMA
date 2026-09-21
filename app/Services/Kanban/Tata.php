@@ -67,6 +67,11 @@ class Tata
             'dibuat_oleh' => $oleh?->id,
         ], $isian));
 
+        if ($oleh) {
+            // Pembuat kartu otomatis mengikutinya, seperti di Trello.
+            app(Kabar::class)->ikut($kartu, $oleh);
+        }
+
         $kolom->board->catat('kartu_dibuat', 'ke list '.$kolom->nama, $kartu, $oleh?->id);
 
         return $kartu;

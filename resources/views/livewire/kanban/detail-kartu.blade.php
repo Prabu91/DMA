@@ -48,7 +48,9 @@
                 @else
                     <h2 id="judul-kartu" class="px-2 py-1 text-xl font-semibold">{{ $k->judul }}</h2>
                 @endif
-                <p class="px-2 text-sm text-ink-muted">di list <span class="font-medium text-ink">{{ $k->kolom?->nama }}</span> · board {{ $k->board->nama }}</p>
+                <p class="px-2 text-sm text-ink-muted">di list <span class="font-medium text-ink">{{ $k->kolom?->nama }}</span> · board {{ $k->board->nama }}
+                    @if ($this->mengikuti)<span class="ml-1 rounded bg-[#E9EBEE] px-1.5 py-0.5 text-xs text-ink">Diikuti</span>@endif
+                </p>
             </div>
 
             <div class="mt-5 grid gap-6 md:grid-cols-[minmax(0,1fr)_11rem]">
@@ -265,8 +267,42 @@
                                 <x-avatar :name="auth()->user()->nama ?? auth()->user()->name" size="sm" />
                                 <div class="min-w-0 flex-1">
                                     <label for="komentar-baru" class="sr-only">Tulis komentar</label>
-                                    <textarea id="komentar-baru" wire:model="komentarBaru" rows="2" placeholder="Tulis komentar…"
-                                              class="block w-full rounded-lg border-line bg-white text-sm focus:border-brand focus:ring-brand/30"></textarea>
+                                    <div class="relative"
+                                         x-data="{
+                                            daftar: @js($this->namaCalon),
+                                            cocok: [],
+                                            cari() {
+                                                const el = $refs.komentar;
+                                                const m = el.value.slice(0, el.selectionStart).match(/@([\p{L}\p{N}]*)$/u);
+                                                this.cocok = m
+                                                    ? this.daftar.filter(n => n.toLowerCase().includes(m[1].toLowerCase())).slice(0, 6)
+                                                    : [];
+                                            },
+                                            pilih(nama) {
+                                                const el = $refs.komentar;
+                                                const akhir = el.selectionStart;
+                                                const sebelum = el.value.slice(0, akhir).replace(/@([\p{L}\p{N}]*)$/u, '@' + nama.replace(/\s+/g, '') + ' ');
+                                                el.value = sebelum + el.value.slice(akhir);
+                                                el.dispatchEvent(new Event('input'));
+                                                el.focus();
+                                                el.selectionStart = el.selectionEnd = sebelum.length;
+                                                this.cocok = [];
+                                            },
+                                         }">
+                                        <textarea id="komentar-baru" x-ref="komentar" wire:model="komentarBaru" rows="2"
+                                                  placeholder="Tulis komentar… ketik @ untuk menyebut rekan"
+                                                  x-on:input="cari()" x-on:keydown.escape.stop="cocok = []" x-on:blur="setTimeout(() => cocok = [], 150)"
+                                                  class="block w-full rounded-lg border-line bg-white text-sm focus:border-brand focus:ring-brand/30"></textarea>
+                                        <ul x-show="cocok.length" x-cloak
+                                            class="absolute z-20 mt-1 w-56 overflow-hidden rounded-lg border border-line bg-card py-1 text-sm shadow-lg">
+                                            <template x-for="nama in cocok" :key="nama">
+                                                <li>
+                                                    <button type="button" x-on:click="pilih(nama)"
+                                                            class="block w-full px-3 py-2 text-left hover:bg-page" x-text="'@' + nama"></button>
+                                                </li>
+                                            </template>
+                                        </ul>
+                                    </div>
                                     @error('komentarBaru')<p class="mt-1 text-xs text-[#AE2E24]">{{ $message }}</p>@enderror
                                     <button type="submit" class="mt-2 h-9 rounded-md bg-navy px-3 text-sm font-medium text-white hover:bg-navy-900">Kirim</button>
                                 </div>
@@ -495,6 +531,11 @@
                                 </form>
                             </div>
 
+                            <button type="button" wire:click="toggleIkut" class="{{ $tombol }}" aria-pressed="{{ $this->mengikuti ? 'true' : 'false' }}">
+                                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" /><circle cx="12" cy="12" r="2.5" /></svg>
+                                {{ $this->mengikuti ? 'Berhenti ikuti' : 'Ikuti' }}
+                                @if ($this->mengikuti)<span class="ml-auto text-navy" aria-hidden="true">✓</span>@endif
+                            </button>
                             <button type="button" wire:click="arsipkan" class="{{ $tombol }}">Arsipkan</button>
                         </div>
                     </aside>

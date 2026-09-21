@@ -10,3 +10,6 @@ Artisan::command('inspire', function () {
 
 // Bersihkan order di sampah yang lewat masa retensi (butuh cron scheduler aktif).
 Schedule::command('orders:purge-trash')->dailyAt('02:30');
+
+// Pengingat tenggat kartu kanban (butuh cron scheduler aktif).
+Schedule::command('kanban:ingatkan-tenggat')->hourly();

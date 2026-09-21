@@ -12,6 +12,8 @@ use App\Models\Kanban\Komentar;
 use App\Models\Kanban\Label;
 use App\Models\Kanban\Lampiran;
 use App\Models\User;
+use App\Notifications\KanbanKabar;
+use App\Services\Kanban\Kabar;
 use App\Services\Kanban\Tata;
 use App\Support\Kanban\Akses;
 use App\Support\Kanban\Posisi;
@@ -129,6 +131,15 @@ class DetailKartu extends Component
             : $board->anggota()->wherePivot('peran', '!=', 'pengamat')->orderByRaw('coalesce(nama, name)')->get(['users.id', 'nama', 'name']);
     }
 
+    /** Nama yang bisa disebut dengan @ di komentar (untuk pelengkap otomatis). */
+    #[Computed]
+    public function namaCalon(): array
+    {
+        return $this->kabar()->calon($this->kartu->board)
+            ->map(fn ($u) => $u->nama ?? $u->name)
+            ->filter()->values()->all();
+    }
+
     /** Riwayat: komentar & aktivitas digabung, terbaru di atas. */
     #[Computed]
     public function riwayat(): Collection
@@ -181,6 +192,27 @@ class DetailKartu extends Component
         $this->kartu->board->catat($aksi, $keterangan, $this->kartu);
     }
 
+    private function kabar(): Kabar
+    {
+        return app(Kabar::class);
+    }
+
+    #[Computed]
+    public function mengikuti(): bool
+    {
+        return $this->kabar()->mengikuti($this->kartu, auth()->id());
+    }
+
+    /** Ikuti / berhenti ikuti kartu — penentu siapa yang dapat lonceng & email. */
+    public function toggleIkut(): void
+    {
+        $this->mengikuti
+            ? $this->kabar()->berhentiIkut($this->kartu, auth()->id())
+            : $this->kabar()->ikut($this->kartu, auth()->id());
+
+        unset($this->mengikuti);
+    }
+
     public function tutup(): void
     {
         $this->dispatch('kartu-ditutup');
@@ -207,6 +239,9 @@ class DetailKartu extends Component
         $kartu = $this->wajibUbah();
         $this->validate(['deskripsi' => ['nullable', 'string', 'max:20000']]);
         $kartu->update(['deskripsi' => trim($this->deskripsi) ?: null]);
+        if (trim($this->deskripsi) !== '') {
+            $this->kabar()->deskripsi($kartu, $this->deskripsi, auth()->user());
+        }
         $this->ubahDeskripsi = false;
         $this->segarkan();
     }
@@ -248,6 +283,9 @@ class DetailKartu extends Component
         $hasil = $kartu->anggota()->toggle([$userId]);
         $user = User::find($userId);
         $this->catat($hasil['attached'] ? 'anggota_kartu_ditambah' : 'anggota_kartu_dilepas', $user?->nama ?? $user?->name);
+        if ($hasil['attached'] && $user) {
+            $this->kabar()->ditugaskan($kartu, $user, auth()->user());
+        }
         $this->segarkan();
     }
 
@@ -267,8 +305,9 @@ class DetailKartu extends Component
         $kartu->update([
             'mulai_pada' => $this->mulai ?: null,
             'tenggat_pada' => $tenggatBaru,
-            // Tenggat yang digeser dianggap belum selesai lagi.
+            // Tenggat yang digeser dianggap belum selesai lagi, dan boleh diingatkan lagi.
             'tenggat_selesai_at' => $berubah ? null : $kartu->tenggat_selesai_at,
+            'diingatkan_at' => $berubah ? null : $kartu->diingatkan_at,
         ]);
         if ($berubah) {
             $this->catat('tenggat_diubah', $tenggatBaru ? $tenggatBaru->translatedFormat('j M Y H:i') : 'dihapus');
@@ -391,7 +430,9 @@ class DetailKartu extends Component
     {
         $kartu = $this->wajibUbah();
         $this->validate(['komentarBaru' => ['required', 'string', 'max:5000']], ['komentarBaru.required' => 'Tulis komentar dulu.']);
-        Komentar::create(['kartu_id' => $kartu->id, 'user_id' => auth()->id(), 'isi' => trim($this->komentarBaru)]);
+        $isi = trim($this->komentarBaru);
+        Komentar::create(['kartu_id' => $kartu->id, 'user_id' => auth()->id(), 'isi' => $isi]);
+        $this->kabar()->komentar($kartu, $isi, auth()->user());
         $this->reset('komentarBaru');
         $this->segarkan();
     }
@@ -517,6 +558,7 @@ class DetailKartu extends Component
         $kolom = Kolom::where('board_id', $board->id)->whereNull('diarsipkan_at')->findOrFail($this->pindahKolom);
 
         app(Tata::class)->pindahKartu($kartu, $kolom, $this->pindahUrutan - 1, auth()->user());
+        $this->kabar()->perubahan($kartu, KanbanKabar::KARTU_PINDAH, auth()->user(), 'ke list '.$kolom->nama);
         $this->segarkan();
     }
 
@@ -525,6 +567,7 @@ class DetailKartu extends Component
         $kartu = $this->wajibUbah();
         $kartu->update(['diarsipkan_at' => now()]);
         $this->catat('kartu_diarsipkan');
+        $this->kabar()->perubahan($kartu, KanbanKabar::KARTU_DIARSIPKAN, auth()->user());
         $this->segarkan();
     }
 

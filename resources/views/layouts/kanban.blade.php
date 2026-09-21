@@ -38,6 +38,7 @@
                     @php $saya = auth()->user(); @endphp
                     <a href="{{ rtrim(config('app.url'), '/') }}/app/dashboard"
                        class="hidden rounded-md px-2 py-1.5 text-sm text-white/85 hover:bg-white/10 hover:text-white md:block">Panel staf ↗</a>
+                    <livewire:kanban.lonceng />
                     <div class="relative">
                         <button type="button" x-on:click="buka = ! buka" x-on:keydown.escape.window="buka = false"
                                 aria-haspopup="menu" :aria-expanded="buka"
