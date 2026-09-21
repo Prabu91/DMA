@@ -313,7 +313,7 @@
                 <button type="button" x-show="bagian !== 'utama'" x-on:click="bagian = 'utama'" aria-label="Kembali"
                         class="flex h-9 w-9 items-center justify-center rounded-md hover:bg-page">‹</button>
                 <h2 class="flex-1 text-center font-semibold"
-                    x-text="({ utama: 'Menu', warna: 'Ganti latar', label: 'Label', anggota: 'Anggota', arsip: 'Item diarsipkan', aktivitas: 'Aktivitas' })[bagian]">Menu</h2>
+                    x-text="({ utama: 'Menu', warna: 'Ganti latar', label: 'Label', anggota: 'Anggota', otomasi: 'Otomasi kartu order', arsip: 'Item diarsipkan', aktivitas: 'Aktivitas' })[bagian]">Menu</h2>
                 <button type="button" x-on:click="menu = false" aria-label="Tutup menu" class="flex h-9 w-9 items-center justify-center rounded-md hover:bg-page">✕</button>
             </div>
 
@@ -341,6 +341,9 @@
                     @endif
                     <button type="button" x-on:click="bagian = 'label'" class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left hover:bg-page">Label</button>
                     <button type="button" x-on:click="bagian = 'anggota'" class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left hover:bg-page">Anggota ({{ $this->anggotaBoard->count() }})</button>
+                    @if ($board->isOrder() && \App\Support\Kanban\Akses::admin(auth()->user()))
+                        <button type="button" x-on:click="bagian = 'otomasi'" class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left hover:bg-page">Otomasi kartu order</button>
+                    @endif
                     <button type="button" x-on:click="bagian = 'arsip'" class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left hover:bg-page">Item diarsipkan</button>
                     <button type="button" x-on:click="bagian = 'aktivitas'" class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left hover:bg-page">Aktivitas</button>
                     @if ($kelola && ! $board->isOrder() && ! $board->diarsipkan_at)
@@ -433,6 +436,29 @@
                         </form>
                     @endif
                 </div>
+
+                {{-- Otomasi (board Order) --}}
+                @if ($board->isOrder() && \App\Support\Kanban\Akses::admin(auth()->user()))
+                    <form x-show="bagian === 'otomasi'" x-cloak wire:submit="simpanOtomasi">
+                        <p class="mb-3 rounded-lg bg-page px-3 py-2 text-xs text-ink-muted">
+                            Pilih list tujuan tiap milestone order. Kartu pindah sendiri saat milestone tercapai,
+                            selama kartunya masih di board ini. Kosongkan bila tidak ingin dipindahkan.
+                        </p>
+                        @foreach (\App\Support\Kanban\OtomasiOrder::PEMICU as $pemicu => $labelPemicu)
+                            <div class="mb-3" wire:key="oto-{{ $pemicu }}">
+                                <label for="oto-{{ $pemicu }}" class="block text-xs font-medium text-ink-muted">{{ $labelPemicu }}</label>
+                                <select id="oto-{{ $pemicu }}" wire:model="otomasi.{{ $pemicu }}"
+                                        class="mt-1 block min-h-[40px] w-full rounded-lg border-line text-sm focus:border-brand focus:ring-brand/30">
+                                    <option value="">— tidak dipindahkan —</option>
+                                    @foreach ($this->kolom as $kol)
+                                        <option value="{{ $kol->id }}">{{ $kol->nama }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @endforeach
+                        <button type="submit" class="h-9 rounded-md bg-navy px-3 text-sm font-medium text-white hover:bg-navy-900">Simpan otomasi</button>
+                    </form>
+                @endif
 
                 {{-- Arsip --}}
                 <div x-show="bagian === 'arsip'" x-cloak class="space-y-5">

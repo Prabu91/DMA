@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\Kanban\SinkronOrder;
 use App\Services\Kanban\Tata;
 use App\Support\Kanban\Akses;
+use App\Support\Kanban\OtomasiOrder;
 use App\Support\OrderStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -254,5 +255,89 @@ class KanbanOrderTest extends TestCase
 
         $this->assertModelExists($order);
         $this->assertNull($this->kartu($order));
+    }
+
+    // ---------------- Otomasi milestone (padanan Butler) ----------------
+
+    public function test_otomasi_memindahkan_kartu_saat_milestone_tercapai(): void
+    {
+        $admin = $this->staf('super_admin', 'Super');
+        $board = Board::order();
+        $tata = app(Tata::class);
+        $siapEvent = $tata->tambahKolom($board, 'Siap event', $admin);
+        $selesai = $tata->tambahKolom($board, 'Event selesai', $admin);
+
+        Livewire::actingAs($admin)->test(PapanBoard::class, ['board' => $board])
+            ->set('otomasi.dp', (string) $siapEvent->id)
+            ->set('otomasi.hari_h', (string) $selesai->id)
+            ->call('simpanOtomasi')
+            ->assertSee('Otomasi board Order disimpan.');
+
+        $order = $this->order();
+        $kartu = $this->kartu($order);
+        $this->assertSame($this->shanty->id, $kartu->kolom->marketing_id, 'awalnya di list marketing');
+
+        $order->update(['status' => OrderStatus::DP]);
+        $this->assertSame($siapEvent->id, $this->kartu($order)->kolom_id);
+
+        $order->update(['konfirmasi_hh_at' => now(), 'event_status' => OrderStatus::EVENT_SELESAI]);
+        $this->assertSame($selesai->id, $this->kartu($order)->kolom_id);
+        $this->assertDatabaseHas('kanban_aktivitas', [
+            'kartu_id' => $kartu->id,
+            'aksi' => 'kartu_pindah',
+            'keterangan' => 'otomatis (Konfirmasi Hari-H (event selesai)) ke list Event selesai',
+        ]);
+    }
+
+    public function test_otomasi_tidak_berlaku_bila_kartu_sudah_dipindah_ke_board_lain(): void
+    {
+        $admin = $this->staf('super_admin', 'Super');
+        $siap = app(Tata::class)->tambahKolom(Board::order(), 'Siap event', $admin);
+        OtomasiOrder::simpan(['dp' => $siap->id]);
+
+        $order = $this->order();
+        $lain = app(Tata::class)->buatBoard('Lain', 'hijau', 'workspace', $admin);
+        $kolomLain = app(Tata::class)->tambahKolom($lain, 'Masuk', $admin);
+        $this->kartu($order)->update(['board_id' => $lain->id, 'kolom_id' => $kolomLain->id]);
+
+        $order->update(['status' => OrderStatus::DP]);
+
+        $this->assertSame($kolomLain->id, $this->kartu($order)->kolom_id);
+    }
+
+    public function test_otomasi_hanya_bisa_diatur_admin_pusat_di_board_order(): void
+    {
+        $board = Board::order();
+        $siap = app(Tata::class)->tambahKolom($board, 'Siap event', $this->shanty);
+
+        Livewire::actingAs($this->shanty)->test(PapanBoard::class, ['board' => $board])
+            ->set('otomasi.dp', (string) $siap->id)
+            ->call('simpanOtomasi')->assertForbidden();
+
+        // List dari board lain ditolak.
+        $admin = $this->staf('super_admin', 'Super');
+        $lain = app(Tata::class)->buatBoard('Lain', 'hijau', 'workspace', $admin);
+        $kolomLain = app(Tata::class)->tambahKolom($lain, 'Masuk', $admin);
+        Livewire::actingAs($admin)->test(PapanBoard::class, ['board' => $board])
+            ->set('otomasi.dp', (string) $kolomLain->id)
+            ->call('simpanOtomasi')->assertStatus(422);
+
+        $this->assertSame([], OtomasiOrder::aturan());
+    }
+
+    public function test_otomasi_tidak_memaksa_kartu_yang_sudah_di_list_tujuan(): void
+    {
+        $admin = $this->staf('super_admin', 'Super');
+        $siap = app(Tata::class)->tambahKolom(Board::order(), 'Siap event', $admin);
+        OtomasiOrder::simpan(['dp' => $siap->id, 'lunas' => $siap->id]);
+
+        $order = $this->order();
+        $order->update(['status' => OrderStatus::DP]);
+        $posisi = $this->kartu($order)->posisi;
+
+        $order->update(['status' => OrderStatus::LUNAS]);
+
+        $this->assertSame($siap->id, $this->kartu($order)->kolom_id);
+        $this->assertSame($posisi, $this->kartu($order)->posisi, 'kartu tidak dipindah ulang');
     }
 }

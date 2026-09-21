@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\Order;
 use App\Services\Kanban\SinkronOrder;
+use App\Support\Kanban\OtomasiOrder;
 use Throwable;
 
 /**
@@ -14,6 +15,12 @@ class OrderKanbanObserver
 {
     private const KOLOM_PENTING = ['sekolah_id', 'marketing_id', 'status', 'order_induk_id'];
 
+    /** Kolom yang memicu otomasi board Order (lihat OtomasiOrder). */
+    private function kolomDiawasi(): array
+    {
+        return array_unique(array_merge(self::KOLOM_PENTING, OtomasiOrder::KOLOM_DIAWASI));
+    }
+
     public function created(Order $order): void
     {
         $this->sinkron($order);
@@ -21,7 +28,7 @@ class OrderKanbanObserver
 
     public function updated(Order $order): void
     {
-        if ($order->wasChanged(self::KOLOM_PENTING)) {
+        if ($order->wasChanged($this->kolomDiawasi())) {
             $this->sinkron($order);
         }
     }

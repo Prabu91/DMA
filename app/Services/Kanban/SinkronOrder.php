@@ -9,6 +9,7 @@ use App\Models\Kanban\Label;
 use App\Models\Order;
 use App\Models\Sekolah;
 use App\Models\User;
+use App\Support\Kanban\OtomasiOrder;
 use App\Support\Kanban\Posisi;
 use App\Support\OrderStatus;
 use Illuminate\Support\Facades\DB;
@@ -100,6 +101,10 @@ class SinkronOrder
             }
         }
 
+        if (! $mati && ! $kartu->diarsipkan_at && ! isset($ubah['kolom_id'])) {
+            $ubah += $this->otomasi($kartu, $order);
+        }
+
         if ($mati && ! $kartu->diarsipkan_at) {
             $ubah['diarsipkan_at'] = now();
             $board->catat('kartu_diarsipkan', $order->trashed() ? 'order dihapus' : 'order dibatalkan', $kartu);
@@ -111,6 +116,37 @@ class SinkronOrder
         if ($ubah) {
             $kartu->update($ubah);
         }
+    }
+
+    /**
+     * Otomasi milestone: pindahkan kartu ke list yang diatur admin (padanan
+     * Butler). Hanya berlaku selama kartu masih di board Order.
+     *
+     * @return array<string, mixed>
+     */
+    private function otomasi(Kartu $kartu, Order $order): array
+    {
+        if (! $kartu->board?->isOrder()) {
+            return [];
+        }
+
+        foreach (OtomasiOrder::pemicuOrder($order) as $pemicu) {
+            $tujuanId = OtomasiOrder::tujuan($pemicu);
+            $tujuan = $tujuanId ? Kolom::where('board_id', $kartu->board_id)->whereNull('diarsipkan_at')->find($tujuanId) : null;
+
+            if (! $tujuan || (int) $tujuan->id === (int) $kartu->kolom_id) {
+                continue;
+            }
+
+            $kartu->board->catat('kartu_pindah', 'otomatis ('.OtomasiOrder::label($pemicu).') ke list '.$tujuan->nama, $kartu);
+
+            return [
+                'kolom_id' => $tujuan->id,
+                'posisi' => (float) Kartu::where('kolom_id', $tujuan->id)->whereNull('diarsipkan_at')->max('posisi') + Posisi::JARAK,
+            ];
+        }
+
+        return [];
     }
 
     /** Hanya pulihkan kartu yang diarsipkan karena order batal/dihapus, bukan yang diarsipkan orang. */

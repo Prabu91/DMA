@@ -10,6 +10,7 @@ use App\Models\Kanban\Label;
 use App\Models\User;
 use App\Services\Kanban\Tata;
 use App\Support\Kanban\Akses;
+use App\Support\Kanban\OtomasiOrder;
 use App\Support\Kanban\Posisi;
 use App\Support\Kanban\Warna;
 use Illuminate\Support\Collection;
@@ -65,12 +66,22 @@ class PapanBoard extends Component
 
     public ?int $anggotaBaru = null;
 
+    /** Otomasi board Order: pemicu => id list tujuan (kosong = tidak dipindahkan). */
+    public array $otomasi = [];
+
     public function mount(Board $board): void
     {
         abort_unless(Akses::bolehLihat(auth()->user(), $board), 403);
 
         $this->board = $board;
         $this->namaBoard = $board->nama;
+
+        if ($board->isOrder()) {
+            $tersimpan = OtomasiOrder::aturan();
+            foreach (array_keys(OtomasiOrder::PEMICU) as $pemicu) {
+                $this->otomasi[$pemicu] = (string) ($tersimpan[$pemicu] ?? '');
+            }
+        }
     }
 
     // ---------------- Data ----------------
@@ -437,6 +448,20 @@ class PapanBoard extends Component
         Label::where('board_id', $this->board->id)->findOrFail($labelId)->delete();
         $this->saringLabel = array_values(array_diff($this->saringLabel, [$labelId]));
         $this->segarkan();
+    }
+
+    /** Simpan otomasi board Order (hanya admin pusat). */
+    public function simpanOtomasi(): void
+    {
+        abort_unless($this->board->isOrder() && Akses::admin(auth()->user()), 403);
+
+        $idList = $this->kolom->pluck('id')->map(fn ($id) => (string) $id)->all();
+        foreach ($this->otomasi as $pemicu => $nilai) {
+            abort_unless($nilai === '' || in_array((string) $nilai, $idList, true), 422);
+        }
+
+        OtomasiOrder::simpan($this->otomasi);
+        $this->pesan = 'Otomasi board Order disimpan.';
     }
 
     public function bersihkanSaringan(): void
