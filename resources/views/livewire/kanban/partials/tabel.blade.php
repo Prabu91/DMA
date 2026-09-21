@@ -4,8 +4,24 @@
 @endphp
 
 {{-- Tampilan tabel: semua kartu board dalam satu daftar yang bisa diurutkan. --}}
-<div class="min-h-0 flex-1 overflow-auto p-3 sm:px-4">
-    <div class="overflow-hidden rounded-xl bg-card">
+<div class="min-h-0 flex-1 overflow-y-auto p-3 sm:px-4">
+    {{-- Kotak cari khusus tabel; memakai penyaring yang sama dengan papan. --}}
+    <div class="mb-3 flex flex-wrap items-center gap-2">
+        <div class="relative min-w-0 flex-1 sm:max-w-sm">
+            <label for="cari-tabel" class="sr-only">Cari kartu di board ini</label>
+            <input id="cari-tabel" type="search" wire:model.live.debounce.400ms="cari"
+                   placeholder="Cari judul kartu di board ini…"
+                   class="block min-h-[40px] w-full rounded-lg border-0 bg-white/95 text-sm text-ink placeholder:text-ink-muted focus:ring-2 focus:ring-brand">
+        </div>
+        @if ($this->adaSaringan)
+            <button type="button" wire:click="bersihkanSaringan"
+                    class="min-h-[40px] rounded-lg bg-white/20 px-3 text-sm text-white hover:bg-white/30">Bersihkan saringan</button>
+        @endif
+        <span class="ml-auto text-xs text-white/90">{{ $this->baris->total() }} kartu</span>
+    </div>
+
+    {{-- overflow-x-auto (bukan hidden) supaya tabel bisa digeser ke samping di HP. --}}
+    <div class="overflow-x-auto rounded-xl bg-card">
         <table class="w-full min-w-[46rem] border-collapse text-sm">
             <caption class="sr-only">Semua kartu di board {{ $board->nama }}</caption>
             <thead class="bg-[#F1F2F4] text-left text-xs text-ink-muted">
@@ -91,5 +107,6 @@
             </tbody>
         </table>
     </div>
-    <p class="mt-2 px-1 text-xs text-white/90">{{ $this->baris->count() }} kartu ditampilkan. Klik baris untuk membuka kartu.</p>
+    <div class="mt-3 text-white [&_a]:text-white [&_span]:text-white/80">{{ $this->baris->links() }}</div>
+    <p class="mt-2 px-1 text-xs text-white/90">Klik baris untuk membuka kartu. Di layar kecil, tabel bisa digeser ke samping.</p>
 </div>

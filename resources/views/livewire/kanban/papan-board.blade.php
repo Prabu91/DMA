@@ -45,14 +45,14 @@
         },
         init() {
             this.muatLipat();
-            // Periksa perubahan rekan tiap 5 detik; papan hanya digambar ulang bila memang berubah.
+            // Periksa perubahan rekan tiap 10 detik; papan hanya digambar ulang bila memang berubah.
             this.pewaktu = setInterval(() => {
                 const aktif = document.activeElement?.tagName;
                 if (document.hidden || document.body.classList.contains('sorting')) return;
                 if (['INPUT', 'TEXTAREA', 'SELECT'].includes(aktif)) return;
                 if (this.menu) return;
                 $wire.cek();
-            }, 5000);
+            }, 10000);
         },
         destroy() { clearInterval(this.pewaktu); },
      }" x-on:keydown.window="pintasan($event)">
@@ -202,7 +202,7 @@
                             <button type="button" x-on:click="toggleLipat({{ $kolom->id }})"
                                     aria-label="Buka kembali list {{ $kolom->nama }}"
                                     class="flex h-8 w-8 items-center justify-center rounded-md text-ink-muted hover:bg-line hover:text-ink">»</button>
-                            <span class="rounded bg-line px-1.5 text-xs text-ink-muted">{{ $kolom->kartu->count() }}</span>
+                            <span class="rounded bg-line px-1.5 text-xs text-ink-muted">{{ $kolom->jumlah_kartu }}</span>
                             <span class="mt-1 whitespace-nowrap text-sm font-semibold [writing-mode:vertical-rl]">{{ $kolom->nama }}</span>
                         </div>
 
@@ -221,7 +221,8 @@
                                            class="block w-full rounded-md border-brand px-2 py-1 text-sm font-semibold focus:ring-brand/30">
                                 @endif
                             </div>
-                            <span class="mt-1.5 shrink-0 rounded px-1.5 text-xs text-ink-muted">{{ $kolom->kartu->count() }}</span>
+                            <span class="mt-1.5 shrink-0 rounded px-1.5 text-xs text-ink-muted"
+                                  title="{{ $kolom->jumlah_kartu }} kartu di list ini">{{ $kolom->jumlah_kartu }}</span>
                             @if ($ubah)
                                 <div class="relative shrink-0" x-data="{ buka: false }">
                                     <button type="button" x-on:click="buka = ! buka" aria-label="Menu list {{ $kolom->nama }}"
@@ -301,7 +302,7 @@
                                     <button type="button" wire:click="bukaKartu({{ $kartu->id }})"
                                             class="block w-full overflow-hidden rounded-lg text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-brand">
                                         @if ($kartu->coverLampiran?->isGambar())
-                                            <img src="{{ route('kanban.lampiran', $kartu->coverLampiran) }}" alt="" loading="lazy" class="max-h-40 w-full object-cover">
+                                            <img src="{{ route('kanban.lampiran', ['lampiran' => $kartu->coverLampiran, 'kecil' => 1]) }}" alt="" loading="lazy" class="max-h-40 w-full object-cover">
                                         @elseif ($kartu->cover_warna)
                                             <span class="block h-8 {{ Warna::labelLatar($kartu->cover_warna) }}"></span>
                                         @endif
@@ -366,6 +367,15 @@
                                 </li>
                             @endforeach
                         </ol>
+
+                        @php $sisaKartu = $kolom->jumlah_kartu - $kolom->kartu->count(); @endphp
+                        @if ($sisaKartu > 0)
+                            <button type="button" wire:click="muatLagi({{ $kolom->id }})"
+                                    class="mx-2 mt-1 flex min-h-[34px] items-center justify-center rounded-lg bg-line/70 text-xs font-medium text-ink hover:bg-line">
+                                <span wire:loading.remove wire:target="muatLagi({{ $kolom->id }})">Muat {{ min($sisaKartu, \App\Livewire\Kanban\PapanBoard::BATAS_TAMBAH) }} kartu lagi ({{ $sisaKartu }} tersisa)</span>
+                                <span wire:loading wire:target="muatLagi({{ $kolom->id }})">Memuat…</span>
+                            </button>
+                        @endif
 
                         @if ($ubah)
                             @if ($tambahKartuDi === $kolom->id)

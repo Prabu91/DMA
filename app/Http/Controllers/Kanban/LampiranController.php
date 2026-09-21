@@ -22,15 +22,19 @@ class LampiranController extends Controller
         if ($lampiran->isTautan()) {
             return redirect()->away($lampiran->url);
         }
-        abort_unless(Storage::disk('local')->exists($lampiran->path), 404);
+        // ?kecil=1 dipakai sampul kartu & daftar lampiran supaya tidak mengunduh berkas asli.
+        $berkas = $request->boolean('kecil') ? $lampiran->pathKecil() : $lampiran->path;
+        abort_unless($berkas && Storage::disk('local')->exists($berkas), 404);
 
         $disposisi = $request->boolean('unduh') || ! $lampiran->isGambar() && $lampiran->mime !== 'application/pdf'
             ? 'attachment'
             : 'inline';
 
-        return Storage::disk('local')->response($lampiran->path, $lampiran->nama, [
+        return Storage::disk('local')->response($berkas, $lampiran->nama, [
             'Content-Type' => $lampiran->mime ?: 'application/octet-stream',
             'X-Content-Type-Options' => 'nosniff',
+            // Berkas lampiran tidak pernah berubah isinya, jadi aman disimpan peramban.
+            'Cache-Control' => 'private, max-age=604800',
         ], $disposisi);
     }
 }

@@ -65,7 +65,7 @@
     <div class="relative mx-auto my-0 w-full max-w-3xl bg-[#F1F2F4] text-ink sm:my-12 sm:rounded-2xl">
         @if ($k->coverLampiran?->isGambar())
             <div class="flex h-40 items-center justify-center overflow-hidden bg-[#DCDFE4] sm:rounded-t-2xl">
-                <img src="{{ route('kanban.lampiran', $k->coverLampiran) }}" alt="" class="h-full object-contain">
+                <img src="{{ route('kanban.lampiran', ['lampiran' => $k->coverLampiran, 'kecil' => 1]) }}" alt="" class="h-full object-contain">
             </div>
         @elseif ($k->cover_warna)
             <div class="h-24 sm:rounded-t-2xl {{ Warna::labelLatar($k->cover_warna) }}"></div>
@@ -214,7 +214,7 @@
                                         <a href="{{ $lp->isTautan() ? $lp->url : route('kanban.lampiran', $lp) }}" target="_blank" rel="noopener noreferrer"
                                            class="flex h-16 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md bg-[#DCDFE4] text-xs font-semibold text-ink-muted">
                                             @if ($lp->isGambar())
-                                                <img src="{{ route('kanban.lampiran', $lp) }}" alt="" loading="lazy" class="h-full w-full object-cover">
+                                                <img src="{{ route('kanban.lampiran', ['lampiran' => $lp, 'kecil' => 1]) }}" alt="" loading="lazy" class="h-full w-full object-cover">
                                             @else
                                                 {{ $lp->ekstensi() }}
                                             @endif

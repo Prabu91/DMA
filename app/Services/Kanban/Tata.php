@@ -151,6 +151,7 @@ class Tata
                 'user_id' => $oleh->id,
                 'nama' => $lampiran->nama,
                 'path' => $path,
+                'thumb_path' => app(Gambar::class)->kecilkan($path, (string) $lampiran->mime),
                 'mime' => $lampiran->mime,
                 'ukuran' => $lampiran->ukuran,
             ]);

@@ -14,6 +14,7 @@ use App\Models\Kanban\Lampiran;
 use App\Models\Kanban\Reaksi;
 use App\Models\User;
 use App\Notifications\KanbanKabar;
+use App\Services\Kanban\Gambar;
 use App\Services\Kanban\Kabar;
 use App\Services\Kanban\Tata;
 use App\Support\Kanban\Akses;
@@ -598,12 +599,14 @@ class DetailKartu extends Component
 
         foreach ($this->berkas as $file) {
             $path = $file->store('kanban/'.$kartu->board_id.'/'.$kartu->id, 'local');
+            $mime = $file->getMimeType();
             $lampiran = Lampiran::create([
                 'kartu_id' => $kartu->id,
                 'user_id' => auth()->id(),
                 'nama' => mb_substr($file->getClientOriginalName(), 0, 255),
                 'path' => $path,
-                'mime' => $file->getMimeType(),
+                'thumb_path' => app(Gambar::class)->kecilkan($path, (string) $mime),
+                'mime' => $mime,
                 'ukuran' => $file->getSize(),
             ]);
             // Gambar pertama otomatis jadi sampul, seperti Trello.
@@ -679,7 +682,7 @@ class DetailKartu extends Component
             $lampiran->delete();
         });
         if (! $lampiran->isTautan()) {
-            Storage::disk('local')->delete($lampiran->path);
+            Storage::disk('local')->delete(array_filter([$lampiran->path, $lampiran->thumb_path]));
         }
 
         $this->segarkan();

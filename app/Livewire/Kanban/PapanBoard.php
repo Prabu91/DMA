@@ -18,12 +18,14 @@ use App\Support\Kanban\Posisi;
 use App\Support\Kanban\Warna;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 /**
  * Satu board: list & kartu yang bisa diseret seperti Trello.
@@ -34,11 +36,20 @@ use Livewire\Component;
 #[Layout('layouts.kanban')]
 class PapanBoard extends Component
 {
+    use WithPagination;
+
     public const TAMPILAN = [
         'papan' => 'Papan',
         'tabel' => 'Tabel',
         'kalender' => 'Kalender',
     ];
+
+    /** Kartu yang dimuat saat board dibuka, lalu tambahannya tiap "Muat lebih banyak". */
+    public const BATAS_AWAL = 25;
+
+    public const BATAS_TAMBAH = 50;
+
+    public const BATAS_TABEL = 25;
 
     public const URUT_TABEL = [
         'list' => 'List',
@@ -75,6 +86,9 @@ class PapanBoard extends Component
 
     /** Berapa baris aktivitas yang ditampilkan di menu board. */
     public int $jumlahAktivitas = 20;
+
+    /** Batas tampil per list: [kolom_id => jumlah]. */
+    public array $batasKartu = [];
 
     public string $urutTabel = 'list';
 
@@ -176,19 +190,12 @@ class PapanBoard extends Component
             ->get(['id', 'nama', 'name']);
     }
 
-    /** Kartu aktif board ini sesudah penyaring — dipakai papan, tabel, dan kalender. */
-    private function kartuTersaring()
+    /** Kartu aktif board ini sesudah penyaring, tanpa relasi — ringan untuk menghitung. */
+    private function kartuDisaring()
     {
         return Kartu::query()
             ->where('board_id', $this->board->id)
             ->whereNull('diarsipkan_at')
-            ->with(['label', 'anggota:id,nama,name', 'coverLampiran', 'order:id,booking_code,status,order_induk_id'])
-            ->withCount([
-                'komentar',
-                'lampiran',
-                'checklistItem',
-                'checklistItem as checklist_selesai_count' => fn ($q) => $q->whereNotNull('selesai_at'),
-            ])
             ->when(trim($this->cari) !== '', fn ($q) => $q->where('judul', 'ilike', '%'.trim($this->cari).'%'))
             ->when($this->saringLabel, fn ($q) => $q->whereHas('label', fn ($l) => $l->whereIn('kanban_label.id', $this->saringLabel)))
             ->when($this->saringAnggota, fn ($q) => $q->whereHas('anggota', fn ($a) => $a->whereIn('users.id', $this->saringAnggota)))
@@ -198,23 +205,81 @@ class PapanBoard extends Component
             ->when($this->saringTenggat === 'selesai', fn ($q) => $q->whereNotNull('tenggat_selesai_at'));
     }
 
+    /** Sama seperti kartuDisaring(), plus relasi & hitungan untuk lencana kartu. */
+    private function kartuTersaring()
+    {
+        return $this->kartuDisaring()
+            ->with(['label', 'anggota:id,nama,name', 'coverLampiran', 'order:id,booking_code,status,order_induk_id'])
+            ->withCount([
+                'komentar',
+                'lampiran',
+                'checklistItem',
+                'checklistItem as checklist_selesai_count' => fn ($q) => $q->whereNotNull('selesai_at'),
+            ]);
+    }
+
+    /**
+     * Papan hanya memuat sebagian kartu tiap list (sisanya lewat "Muat lebih
+     * banyak"). Tanpa ini, board dengan ribuan kartu akan berat dibuka,
+     * terutama di HP.
+     */
     #[Computed]
     public function kolom(): Collection
     {
         $kolom = $this->board->kolom()->get();
+        $kolomId = $kolom->pluck('id')->all();
 
-        $kartu = $this->kartuTersaring()
-            ->whereIn('kolom_id', $kolom->pluck('id'))
-            ->orderBy('posisi')
+        if (! $kolomId) {
+            return $kolom;
+        }
+
+        // Ambil id kartu teratas per list lewat row_number, lalu barulah relasinya dimuat.
+        $dasar = $this->kartuDisaring()->whereIn('kolom_id', $kolomId)->toBase()
+            ->select('kanban_kartu.id', 'kanban_kartu.kolom_id')
+            ->selectRaw('row_number() over (partition by kanban_kartu.kolom_id order by kanban_kartu.posisi) as urutan');
+
+        $id = DB::query()->fromSub($dasar, 'k')
+            ->where('urutan', '<=', $this->batasTerbesar())
             ->get()
-            ->groupBy('kolom_id');
+            ->filter(fn ($b) => $b->urutan <= $this->batasKolom((int) $b->kolom_id))
+            ->pluck('id')
+            ->all();
 
-        return $kolom->each(fn (Kolom $k) => $k->setRelation('kartu', $kartu->get($k->id, collect())));
+        $kartu = $id
+            ? $this->kartuTersaring()->whereIn('kanban_kartu.id', $id)->orderBy('posisi')->get()->groupBy('kolom_id')
+            : collect();
+
+        $jumlah = $this->kartuDisaring()->whereIn('kolom_id', $kolomId)
+            ->selectRaw('kolom_id, count(*) as jml')->groupBy('kolom_id')->pluck('jml', 'kolom_id');
+
+        return $kolom->each(function (Kolom $k) use ($kartu, $jumlah) {
+            $k->setRelation('kartu', $kartu->get($k->id, collect()));
+            $k->setAttribute('jumlah_kartu', (int) ($jumlah[$k->id] ?? 0));
+        });
     }
 
-    /** Baris tampilan tabel, terurut sesuai pilihan kepala kolom. */
+    /** Batas kartu yang ditampilkan untuk satu list. */
+    public function batasKolom(int $kolomId): int
+    {
+        return (int) ($this->batasKartu[$kolomId] ?? self::BATAS_AWAL);
+    }
+
+    private function batasTerbesar(): int
+    {
+        return (int) max(self::BATAS_AWAL, $this->batasKartu ? max($this->batasKartu) : 0);
+    }
+
+    /** Tombol "Muat lebih banyak" di kaki list. */
+    public function muatLagi(int $kolomId): void
+    {
+        $kolom = $this->kolomMilikBoard($kolomId);
+        $this->batasKartu[$kolom->id] = $this->batasKolom($kolom->id) + self::BATAS_TAMBAH;
+        unset($this->kolom);
+    }
+
+    /** Baris tampilan tabel, terurut sesuai pilihan kepala kolom, per halaman. */
     #[Computed]
-    public function baris(): Collection
+    public function baris()
     {
         $arah = $this->arahTabel === 'desc' ? 'desc' : 'asc';
 
@@ -226,8 +291,7 @@ class PapanBoard extends Component
             ->when($this->urutTabel === 'list', fn ($q) => $q->orderBy(
                 Kolom::select('posisi')->whereColumn('kanban_kolom.id', 'kanban_kartu.kolom_id'), $arah
             )->orderBy('posisi'))
-            ->limit(500)
-            ->get();
+            ->paginate(self::BATAS_TABEL);
     }
 
     /** Bulan yang sedang dilihat kalender. */
@@ -804,6 +868,7 @@ class PapanBoard extends Component
 
         $this->arahTabel = $this->urutTabel === $kolom && $this->arahTabel === 'asc' ? 'desc' : 'asc';
         $this->urutTabel = $kolom;
+        $this->resetPage();
         unset($this->baris);
     }
 
@@ -828,6 +893,7 @@ class PapanBoard extends Component
     public function updated(string $properti): void
     {
         if (in_array($properti, ['cari', 'saringTenggat'], true) || str_starts_with($properti, 'saring')) {
+            $this->resetPage();
             unset($this->kolom, $this->baris, $this->kalender, $this->tanpaTenggat);
         }
     }

@@ -10,7 +10,7 @@ class Lampiran extends Model
 {
     protected $table = 'kanban_lampiran';
 
-    protected $fillable = ['kartu_id', 'user_id', 'nama', 'path', 'url', 'mime', 'ukuran'];
+    protected $fillable = ['kartu_id', 'user_id', 'nama', 'path', 'thumb_path', 'url', 'mime', 'ukuran'];
 
     public function kartu(): BelongsTo
     {
@@ -20,6 +20,12 @@ class Lampiran extends Model
     public function pengunggah(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /** Berkas yang dipakai untuk pratinjau kecil (sampul kartu, daftar lampiran). */
+    public function pathKecil(): ?string
+    {
+        return $this->thumb_path ?: $this->path;
     }
 
     /** Lampiran tautan (mis. Google Drive) tidak punya berkas di disk. */
