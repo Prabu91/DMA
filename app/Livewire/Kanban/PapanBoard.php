@@ -73,6 +73,9 @@ class PapanBoard extends Component
     #[Url(as: 'bulan')]
     public ?string $bulan = null;
 
+    /** Berapa baris aktivitas yang ditampilkan di menu board. */
+    public int $jumlahAktivitas = 20;
+
     public string $urutTabel = 'list';
 
     public string $arahTabel = 'asc';
@@ -284,7 +287,7 @@ class PapanBoard extends Component
     {
         return Aktivitas::where('board_id', $this->board->id)
             ->with(['pelaku:id,nama,name', 'kartu:id,judul'])
-            ->latest('created_at')->latest('id')->limit(40)->get();
+            ->latest('created_at')->latest('id')->limit($this->jumlahAktivitas)->get();
     }
 
     /**
@@ -742,6 +745,13 @@ class PapanBoard extends Component
 
         OtomasiOrder::simpan($this->otomasi);
         $this->pesan = 'Otomasi board Order disimpan.';
+    }
+
+    /** Tombol "Muat lebih banyak" di panel aktivitas. */
+    public function aktivitasLagi(): void
+    {
+        $this->jumlahAktivitas = min($this->jumlahAktivitas + 20, 200);
+        unset($this->aktivitas);
     }
 
     public function gantiTampilan(string $tampilan): void

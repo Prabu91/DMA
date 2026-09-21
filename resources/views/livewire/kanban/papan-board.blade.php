@@ -476,6 +476,7 @@
                         <button type="button" x-on:click="bagian = 'otomasi'" class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left hover:bg-page">Otomasi kartu order</button>
                     @endif
                     <button type="button" x-on:click="bagian = 'salin'" class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left hover:bg-page">Salin board</button>
+                    <a href="{{ route('kanban.ekspor', $board) }}" class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left hover:bg-page">Unduh CSV (semua kartu)</a>
                     <button type="button" x-on:click="bagian = 'arsip'" class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left hover:bg-page">Item diarsipkan</button>
                     <button type="button" x-on:click="bagian = 'aktivitas'" class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left hover:bg-page">Aktivitas</button>
                     @if ($kelola && ! $board->isOrder() && ! $board->diarsipkan_at)
@@ -653,6 +654,13 @@
                     @empty
                         <li class="text-ink-muted">Belum ada aktivitas.</li>
                     @endforelse
+
+                    @if ($this->aktivitas->count() >= $jumlahAktivitas && $jumlahAktivitas < 200)
+                        <li>
+                            <button type="button" wire:click="aktivitasLagi"
+                                    class="min-h-[36px] w-full rounded-lg bg-page text-sm font-medium text-navy hover:bg-line">Muat lebih banyak</button>
+                        </li>
+                    @endif
                 </ol>
             </div>
         </aside>

@@ -60,6 +60,10 @@ class DetailKartu extends Component
 
     public array $berkas = [];
 
+    public string $tautanUrl = '';
+
+    public string $tautanNama = '';
+
     public ?int $pindahBoard = null;
 
     public ?int $pindahKolom = null;
@@ -613,6 +617,55 @@ class DetailKartu extends Component
         $this->segarkan();
     }
 
+    /** Lampirkan tautan, mis. folder Google Drive (padanan "Attach a link"). */
+    public function tambahTautan(): void
+    {
+        $kartu = $this->wajibUbah();
+        $this->validate([
+            'tautanUrl' => ['required', 'url', 'max:2048', 'starts_with:http://,https://'],
+            'tautanNama' => ['nullable', 'string', 'max:255'],
+        ], [
+            'tautanUrl.required' => 'Tempel tautannya dulu.',
+            'tautanUrl.url' => 'Tautan tidak dikenali.',
+            'tautanUrl.starts_with' => 'Tautan harus diawali http:// atau https://.',
+        ]);
+
+        $lampiran = Lampiran::create([
+            'kartu_id' => $kartu->id,
+            'user_id' => auth()->id(),
+            'nama' => mb_substr(trim($this->tautanNama) ?: $this->tautanUrl, 0, 255),
+            'url' => $this->tautanUrl,
+        ]);
+
+        $this->catat('lampiran', $lampiran->nama);
+        $this->reset(['tautanUrl', 'tautanNama']);
+        $this->segarkan();
+    }
+
+    /** Seret item checklist: boleh pindah urutan dan pindah checklist dalam kartu yang sama. */
+    public function urutItem(int|string $itemId, int $posisi, int|string $checklistId): void
+    {
+        $this->wajibUbah();
+        $item = $this->itemMilikKartu((int) $itemId);
+        $checklist = $this->checklistMilikKartu((int) $checklistId);
+
+        $lain = ChecklistItem::where('checklist_id', $checklist->id)
+            ->whereKeyNot($item->id)->orderBy('posisi')->pluck('posisi')->all();
+
+        $baru = Posisi::untukIndeks($lain, $posisi);
+        if ($baru === null) {
+            foreach (ChecklistItem::where('checklist_id', $checklist->id)->orderBy('posisi')->get() as $i => $lama) {
+                $lama->update(['posisi' => ($i + 1) * Posisi::JARAK]);
+            }
+            $lain = ChecklistItem::where('checklist_id', $checklist->id)
+                ->whereKeyNot($item->id)->orderBy('posisi')->pluck('posisi')->all();
+            $baru = Posisi::untukIndeks($lain, $posisi);
+        }
+
+        $item->update(['checklist_id' => $checklist->id, 'posisi' => $baru]);
+        $this->segarkan();
+    }
+
     public function hapusLampiran(int $id): void
     {
         $kartu = $this->wajibUbah();
@@ -625,7 +678,10 @@ class DetailKartu extends Component
             }
             $lampiran->delete();
         });
-        Storage::disk('local')->delete($lampiran->path);
+        if (! $lampiran->isTautan()) {
+            Storage::disk('local')->delete($lampiran->path);
+        }
+
         $this->segarkan();
     }
 
@@ -737,7 +793,7 @@ class DetailKartu extends Component
         abort_unless(Akses::bolehUbah(auth()->user(), $kartu->board), 403);
         abort_unless($kartu->diarsipkan_at !== null && $kartu->order_id === null, 422);
 
-        $paths = $kartu->lampiran->pluck('path')->all();
+        $paths = $kartu->lampiran->reject->isTautan()->pluck('path')->all();
         $kartu->board->catat('kartu_dihapus', $kartu->judul);
         $kartu->delete();
         Storage::disk('local')->delete($paths);

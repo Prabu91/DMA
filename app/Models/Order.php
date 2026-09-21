@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Kanban\Kartu;
 use App\Models\Scopes\CabangScope;
 use App\Observers\OrderKanbanObserver;
 use App\Services\Notifications\FonnteService;
@@ -400,7 +401,7 @@ class Order extends Model
     /** Kartu order ini di board Order (kanban). */
     public function kartuKanban(): HasOne
     {
-        return $this->hasOne(\App\Models\Kanban\Kartu::class);
+        return $this->hasOne(Kartu::class);
     }
 
     public function timEvent(): BelongsToMany

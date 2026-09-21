@@ -211,8 +211,8 @@
                             <ul class="mt-2 space-y-2 px-2">
                                 @foreach ($k->lampiran as $lp)
                                     <li wire:key="lp-{{ $lp->id }}" class="flex gap-3">
-                                        <a href="{{ route('kanban.lampiran', $lp) }}" target="_blank" rel="noopener"
-                                           class="flex h-16 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md bg-[#DCDFE4] text-sm font-semibold text-ink-muted">
+                                        <a href="{{ $lp->isTautan() ? $lp->url : route('kanban.lampiran', $lp) }}" target="_blank" rel="noopener noreferrer"
+                                           class="flex h-16 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md bg-[#DCDFE4] text-xs font-semibold text-ink-muted">
                                             @if ($lp->isGambar())
                                                 <img src="{{ route('kanban.lampiran', $lp) }}" alt="" loading="lazy" class="h-full w-full object-cover">
                                             @else
@@ -220,10 +220,15 @@
                                             @endif
                                         </a>
                                         <div class="min-w-0 flex-1 text-sm">
-                                            <a href="{{ route('kanban.lampiran', $lp) }}" target="_blank" rel="noopener" class="block truncate font-medium hover:underline">{{ $lp->nama }}</a>
-                                            <p class="text-xs text-ink-muted">{{ $lp->created_at?->diffForHumans() }} · {{ $lp->pengunggah?->nama ?? $lp->pengunggah?->name }} · {{ \Illuminate\Support\Number::fileSize((int) $lp->ukuran) }}</p>
+                                            <a href="{{ $lp->isTautan() ? $lp->url : route('kanban.lampiran', $lp) }}" target="_blank" rel="noopener noreferrer" class="block truncate font-medium hover:underline">{{ $lp->nama }}</a>
+                                            <p class="truncate text-xs text-ink-muted">
+                                                {{ $lp->created_at?->diffForHumans() }} · {{ $lp->pengunggah?->nama ?? $lp->pengunggah?->name }}
+                                                @if ($lp->isTautan()) · {{ $lp->url }} @else · {{ \Illuminate\Support\Number::fileSize((int) $lp->ukuran) }} @endif
+                                            </p>
                                             <div class="mt-1 flex flex-wrap gap-x-3 text-xs">
-                                                <a href="{{ route('kanban.lampiran', ['lampiran' => $lp, 'unduh' => 1]) }}" class="text-navy underline">Unduh</a>
+                                                @unless ($lp->isTautan())
+                                                    <a href="{{ route('kanban.lampiran', ['lampiran' => $lp, 'unduh' => 1]) }}" class="text-navy underline">Unduh</a>
+                                                @endunless
                                                 @if ($ubah && $lp->isGambar())
                                                     @if ((int) $k->cover_lampiran_id === $lp->id)
                                                         <button type="button" wire:click="jadikanSampul(null)" class="text-navy underline">Lepas sampul</button>
@@ -273,9 +278,9 @@
                                     <div class="h-full rounded-full {{ $persen === 100 ? 'bg-[#1F845A]' : 'bg-navy' }}" style="width: {{ $persen }}%"></div>
                                 </div>
                             </div>
-                            <ul class="mt-1">
+                            <ul @if ($ubah) wire:sort="urutItem" wire:sort:group="checklist" wire:sort:group-id="{{ $cl->id }}" @endif class="mt-1 min-h-[1.5rem]">
                                 @foreach ($cl->item as $it)
-                                    <li wire:key="it-{{ $it->id }}" class="group flex items-start gap-2 rounded-md px-2 py-1 hover:bg-[#E9EBEE]"
+                                    <li wire:key="it-{{ $it->id }}" wire:sort:item="{{ $it->id }}" class="group flex items-start gap-2 rounded-md px-2 py-1 hover:bg-[#E9EBEE]"
                                         @if ($it->selesai_at) x-show="! sembunyi" @endif
                                         x-data="{ ubah: false, teks: @js($it->teks) }">
                                         <input type="checkbox" @checked($it->selesai_at) @disabled(! $ubah) wire:click="toggleItem({{ $it->id }})"
@@ -629,6 +634,22 @@
                                     <input type="file" wire:model="berkas" multiple class="sr-only">
                                 </label>
                                 <p class="mt-1 text-[11px] text-ink-muted">Bisa juga seret berkas ke kartu, atau tempel gambar (Ctrl+V).</p>
+
+                                <div class="relative mt-1.5" x-data="{ buka: false }">
+                                    <button type="button" x-on:click="buka = ! buka" :aria-expanded="buka" class="{{ $tombol }}">Lampirkan tautan</button>
+                                    <form x-show="buka" x-cloak x-on:click.outside="buka = false" x-on:keydown.escape.stop="buka = false" data-panel-kartu class="{{ $panel }}"
+                                          wire:submit="tambahTautan" x-on:submit="buka = false">
+                                        <h4 class="text-center font-semibold">Lampirkan tautan</h4>
+                                        <label for="tautan-url" class="mt-2 block text-xs font-medium text-ink-muted">Alamat</label>
+                                        <input id="tautan-url" type="url" wire:model="tautanUrl" placeholder="https://drive.google.com/…"
+                                               class="mt-1 block min-h-[36px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
+                                        @error('tautanUrl')<p class="mt-1 text-xs text-[#AE2E24]">{{ $message }}</p>@enderror
+                                        <label for="tautan-nama" class="mt-2 block text-xs font-medium text-ink-muted">Nama tampilan (opsional)</label>
+                                        <input id="tautan-nama" type="text" wire:model="tautanNama" placeholder="mis. Folder hasil edit"
+                                               class="mt-1 block min-h-[36px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
+                                        <button type="submit" class="mt-3 h-9 rounded-md bg-navy px-3 text-sm font-medium text-white">Lampirkan</button>
+                                    </form>
+                                </div>
                                 @error('berkas')<p class="mt-1 text-xs text-[#AE2E24]">{{ $message }}</p>@enderror
                                 @error('berkas.*')<p class="mt-1 text-xs text-[#AE2E24]">{{ $message }}</p>@enderror
                             </div>
