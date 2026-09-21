@@ -26,6 +26,8 @@ class Beranda extends Component
 
     public bool $lihatArsip = false;
 
+    public ?string $pesan = null;
+
     /** Board yang boleh dilihat pengguna, dengan status bintang & keanggotaannya. */
     #[Computed]
     public function board(): Collection
@@ -111,6 +113,20 @@ class Beranda extends Component
 
         $board->update(['diarsipkan_at' => null]);
         $board->catat('board_dipulihkan');
+        unset($this->board, $this->kelompok);
+    }
+
+    /** Hapus board yang sudah diarsipkan, beserta semua list & kartunya. */
+    public function hapus(int $boardId): void
+    {
+        $board = Board::findOrFail($boardId);
+        abort_unless(Akses::bolehKelola(auth()->user(), $board), 403);
+        abort_if($board->isOrder() || $board->diarsipkan_at === null, 422);
+
+        $nama = $board->nama;
+        app(Tata::class)->hapusBoard($board, auth()->user());
+
+        $this->pesan = 'Board "'.$nama.'" dihapus permanen.';
         unset($this->board, $this->kelompok);
     }
 

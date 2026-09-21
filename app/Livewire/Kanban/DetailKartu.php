@@ -786,12 +786,15 @@ class DetailKartu extends Component
         $this->segarkan();
     }
 
-    /** Hapus permanen — hanya kartu yang sudah diarsipkan, dan bukan kartu order. */
+    /**
+     * Hapus permanen. Kartu order tidak bisa dihapus: kartunya akan dibuat
+     * ulang begitu order itu berubah, jadi yang berlaku hanya arsip.
+     */
     public function hapus(): void
     {
         $kartu = $this->kartu;
         abort_unless(Akses::bolehUbah(auth()->user(), $kartu->board), 403);
-        abort_unless($kartu->diarsipkan_at !== null && $kartu->order_id === null, 422);
+        abort_unless($kartu->order_id === null, 422);
 
         $paths = $kartu->lampiran->reject->isTautan()->pluck('path')->all();
         $kartu->board->catat('kartu_dihapus', $kartu->judul);

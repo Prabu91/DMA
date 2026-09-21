@@ -278,6 +278,9 @@
                                         <button type="button" x-on:click="buka = false" wire:click="arsipkanSemuaKartu({{ $kolom->id }})"
                                                 wire:confirm="Arsipkan semua kartu di list &quot;{{ $kolom->nama }}&quot;? Kartu bisa dipulihkan dari menu board."
                                                 class="block w-full border-t border-line px-3 py-2 text-left text-[#AE2E24] hover:bg-page">Arsipkan semua kartu</button>
+                                        <button type="button" x-on:click="buka = false" wire:click="hapusKolom({{ $kolom->id }})"
+                                                wire:confirm="Hapus list &quot;{{ $kolom->nama }}&quot; selamanya? Hanya bisa untuk list yang sudah kosong."
+                                                class="block w-full px-3 py-2 text-left text-[#AE2E24] hover:bg-page">Hapus list</button>
                                         <button type="button" x-on:click="buka = false" wire:click="arsipkanKolom({{ $kolom->id }})"
                                                 wire:confirm="Arsipkan list &quot;{{ $kolom->nama }}&quot; beserta kartunya? List bisa dipulihkan dari menu board."
                                                 class="block w-full px-3 py-2 text-left text-[#AE2E24] hover:bg-page">Arsipkan list</button>
@@ -479,11 +482,17 @@
                     <a href="{{ route('kanban.ekspor', $board) }}" class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left hover:bg-page">Unduh CSV (semua kartu)</a>
                     <button type="button" x-on:click="bagian = 'arsip'" class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left hover:bg-page">Item diarsipkan</button>
                     <button type="button" x-on:click="bagian = 'aktivitas'" class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left hover:bg-page">Aktivitas</button>
-                    @if ($kelola && ! $board->isOrder() && ! $board->diarsipkan_at)
+                    @if ($kelola && ! $board->isOrder())
                         <hr class="my-2 border-line">
-                        <button type="button" wire:click="arsipkanBoard"
-                                wire:confirm="Arsipkan board ini? Board bisa dipulihkan dari halaman Semua board."
-                                class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left text-[#AE2E24] hover:bg-page">Arsipkan board</button>
+                        @if ($board->diarsipkan_at)
+                            <button type="button" wire:click="hapusBoard"
+                                    wire:confirm="Hapus board ini selamanya beserta semua list, kartu, komentar, dan lampirannya? Tindakan ini tidak bisa dibatalkan."
+                                    class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left text-[#AE2E24] hover:bg-page">Hapus board permanen</button>
+                        @else
+                            <button type="button" wire:click="arsipkanBoard"
+                                    wire:confirm="Arsipkan board ini? Board bisa dipulihkan dari halaman Semua board."
+                                    class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left text-[#AE2E24] hover:bg-page">Arsipkan board</button>
+                        @endif
                     @endif
                 </div>
 

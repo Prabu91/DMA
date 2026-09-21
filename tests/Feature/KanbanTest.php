@@ -573,11 +573,6 @@ class KanbanTest extends TestCase
     {
         [$user, $board, $kartu] = $this->kartuUji();
 
-        $detail = Livewire::actingAs($user)->test(DetailKartu::class, ['kartuId' => $kartu->id]);
-
-        // Belum diarsipkan → tidak bisa dihapus.
-        $detail->call('hapus')->assertStatus(422);
-
         Livewire::actingAs($user)->test(DetailKartu::class, ['kartuId' => $kartu->id])
             ->call('arsipkan')->assertSee('Kartu ini diarsipkan.')
             ->call('toggleLabel', $board->label()->first()->id)->assertForbidden();

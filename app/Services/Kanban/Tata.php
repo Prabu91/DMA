@@ -10,6 +10,7 @@ use App\Models\Kanban\Kolom;
 use App\Models\Kanban\Label;
 use App\Models\Kanban\Lampiran;
 use App\Models\User;
+use App\Notifications\KanbanKabar;
 use App\Support\Kanban\Posisi;
 use App\Support\Kanban\Warna;
 use Illuminate\Support\Facades\DB;
@@ -158,6 +159,39 @@ class Tata
                 $salinan->update(['cover_lampiran_id' => $baru->id]);
             }
         }
+    }
+
+    /**
+     * Hapus board beserta seluruh isinya. Tidak bisa dibatalkan — dipakai
+     * sesudah board diarsipkan, sama seperti "Delete board" di Trello.
+     */
+    public function hapusBoard(Board $board, User $oleh): void
+    {
+        $berkas = Lampiran::whereIn('kartu_id', Kartu::where('board_id', $board->id)->select('id'))
+            ->whereNotNull('path')->pluck('path')->all();
+
+        DB::transaction(function () use ($board) {
+            // Kabar yang menunjuk board ini ikut dibersihkan agar lonceng tidak menggantung.
+            DB::table('notifications')
+                ->where('type', KanbanKabar::class)
+                ->whereRaw("data::jsonb->>'board_id' = ?", [(string) $board->id])
+                ->delete();
+
+            // Sisanya (list, kartu, label, komentar, lampiran, aktivitas) ikut lewat foreign key.
+            $board->delete();
+        });
+
+        Storage::disk('local')->delete($berkas);
+    }
+
+    /** Hapus satu list. Hanya untuk list yang sudah tidak punya kartu sama sekali. */
+    public function hapusKolom(Kolom $kolom, User $oleh): void
+    {
+        abort_if(Kartu::where('kolom_id', $kolom->id)->exists(), 422);
+
+        $nama = $kolom->nama;
+        $kolom->delete();
+        $kolom->board->catat('kolom_dihapus', $nama, null, $oleh->id);
     }
 
     /** Urutan kartu yang bisa dipilih di menu list (padanan "Sort by" Trello). */

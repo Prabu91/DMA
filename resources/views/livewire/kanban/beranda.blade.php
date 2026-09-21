@@ -16,6 +16,13 @@
             </div>
         </div>
 
+        @if ($pesan)
+            <div class="mb-4 flex items-center justify-between gap-3 rounded-lg border border-line bg-card px-4 py-3 text-sm text-ink" role="status">
+                <span>{{ $pesan }}</span>
+                <button type="button" wire:click="$set('pesan', null)" class="font-medium text-navy underline">Tutup</button>
+            </div>
+        @endif
+
         @forelse ($this->kelompok as $kel)
             <section class="mb-8" wire:key="kel-{{ $loop->index }}">
                 <h2 class="mb-3 text-sm font-semibold text-ink">{{ $kel['judul'] }}</h2>
@@ -34,8 +41,15 @@
                             </a>
                             @if ($lihatArsip)
                                 @if ($b->saya_kelola)
-                                    <button type="button" wire:click="pulihkan({{ $b->id }})"
-                                            class="absolute right-2 top-2 rounded-md bg-white/90 px-2 py-1 text-xs font-medium text-ink hover:bg-white">Pulihkan</button>
+                                    <div class="absolute right-2 top-2 flex gap-1">
+                                        <button type="button" wire:click="pulihkan({{ $b->id }})"
+                                                class="rounded-md bg-white/90 px-2 py-1 text-xs font-medium text-ink hover:bg-white">Pulihkan</button>
+                                        @unless ($b->isOrder())
+                                            <button type="button" wire:click="hapus({{ $b->id }})"
+                                                    wire:confirm="Hapus board &quot;{{ $b->nama }}&quot; selamanya beserta semua list, kartu, komentar, dan lampirannya? Tindakan ini tidak bisa dibatalkan."
+                                                    class="rounded-md bg-[#C9372C] px-2 py-1 text-xs font-medium text-white hover:bg-[#AE2E24]">Hapus</button>
+                                        @endunless
+                                    </div>
                                 @endif
                             @else
                                 <button type="button" wire:click="bintang({{ $b->id }})"

@@ -765,6 +765,11 @@
                                 @if ($this->mengikuti)<span class="ml-auto text-navy" aria-hidden="true">✓</span>@endif
                             </button>
                             <button type="button" wire:click="arsipkan" class="{{ $tombol }}">Arsipkan</button>
+                            @unless ($k->order_id)
+                                <button type="button" wire:click="hapus"
+                                        wire:confirm="Hapus kartu ini selamanya beserta checklist, komentar, dan lampirannya? Tindakan ini tidak bisa dibatalkan."
+                                        class="{{ $tombol }} !bg-[#FFECEB] !text-[#AE2E24] hover:!bg-[#FFD5D2]">Hapus kartu</button>
+                            @endunless
                         </div>
                     </aside>
                 @endif
