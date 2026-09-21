@@ -21,6 +21,8 @@ class KanbanKabar extends Notification
 
     public const TENGGAT = 'tenggat';
 
+    public const TENGGAT_DIUBAH = 'tenggat_diubah';
+
     public const KARTU_PINDAH = 'kartu_pindah';
 
     public const KARTU_DIARSIPKAN = 'kartu_diarsipkan';
@@ -48,6 +50,7 @@ class KanbanKabar extends Notification
             self::KOMENTAR => $siapa.' berkomentar',
             self::DITUGASKAN => $siapa.' menugaskan Anda',
             self::TENGGAT => 'Tenggat sudah dekat',
+            self::TENGGAT_DIUBAH => $siapa.' mengubah tenggat',
             self::KARTU_PINDAH => $siapa.' memindahkan kartu',
             self::KARTU_DIARSIPKAN => $siapa.' mengarsipkan kartu',
             default => 'Ada perubahan',

@@ -9,6 +9,8 @@ use App\Models\Kanban\Kolom;
 use App\Models\Kanban\Komentar;
 use App\Models\Kanban\Label;
 use App\Models\User;
+use App\Notifications\KanbanKabar;
+use App\Services\Kanban\Kabar;
 use App\Services\Kanban\Tata;
 use App\Support\Kanban\Akses;
 use App\Support\Kanban\OtomasiOrder;
@@ -363,6 +365,41 @@ class PapanBoard extends Component
             $posisi,
             auth()->user(),
         );
+        $this->segarkan();
+    }
+
+    /**
+     * Seret kartu di kalender: tanggal tenggat ikut tanggal kotak yang
+     * dituju, jamnya dipertahankan (kartu tanpa jam diberi 12:00).
+     */
+    public function ubahTenggatKalender(int|string $kartuId, int $posisi, string $tanggal): void
+    {
+        $this->wajibUbah();
+
+        try {
+            $hari = Carbon::createFromFormat('Y-m-d', $tanggal, config('app.timezone'))->startOfDay();
+        } catch (\Throwable) {
+            abort(422);
+        }
+
+        abort_unless($hari->format('Y-m-d') === $tanggal, 422);
+
+        $kartu = $this->kartuMilikBoard((int) $kartuId);
+        $lama = $kartu->tenggat_pada;
+        $baru = $hari->setTime((int) ($lama?->hour ?? 12), (int) ($lama?->minute ?? 0));
+
+        if ($lama && $baru->equalTo($lama)) {
+            return;
+        }
+
+        $kartu->update([
+            'tenggat_pada' => $baru,
+            // Tenggat bergeser: pengingat boleh berbunyi lagi.
+            'diingatkan_at' => null,
+        ]);
+
+        $this->board->catat('tenggat_diubah', $baru->translatedFormat('j M Y, H:i'), $kartu);
+        app(Kabar::class)->perubahan($kartu, KanbanKabar::TENGGAT_DIUBAH, auth()->user(), $baru->translatedFormat('j M Y, H:i'));
         $this->segarkan();
     }
 

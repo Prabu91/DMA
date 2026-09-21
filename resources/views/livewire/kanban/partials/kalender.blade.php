@@ -21,6 +21,9 @@
         <button type="button" wire:click="geserBulan(1)" aria-label="Bulan berikutnya"
                 class="flex h-9 w-9 items-center justify-center rounded-md bg-white/15 hover:bg-white/25">›</button>
         <button type="button" wire:click="bulanIni" class="h-9 rounded-md bg-white/15 px-3 text-sm hover:bg-white/25">Bulan ini</button>
+        @if ($this->bolehUbah)
+            <span class="hidden text-xs text-white/80 sm:inline">Seret kartu ke tanggal lain untuk mengganti tenggat.</span>
+        @endif
         @if ($this->tanpaTenggat)
             <span class="ml-auto rounded-md bg-white/15 px-2.5 py-1.5 text-xs">{{ $this->tanpaTenggat }} kartu tanpa tenggat (tidak tampil di kalender)</span>
         @endif
@@ -56,10 +59,11 @@
                         ])>{{ $tanggal->day }}</span>
                     </div>
 
-                    <ul class="space-y-1">
+                    <ul @if ($this->bolehUbah) wire:sort="ubahTenggatKalender" wire:sort:group="kalender" wire:sort:group-id="{{ $kunci }}" @endif
+                        class="min-h-[2.5rem] space-y-1" aria-label="Kartu bertenggat {{ $tanggal->format('d-m-Y') }}">
                         @foreach ($kartuHari as $kartu)
                             @php $keadaan = $kartu->keadaanTenggat(); @endphp
-                            <li wire:key="kal-{{ $kartu->id }}">
+                            <li wire:key="kal-{{ $kartu->id }}" wire:sort:item="{{ $kartu->id }}">
                                 <button type="button" wire:click="bukaKartu({{ $kartu->id }})"
                                         @class([
                                             'block w-full truncate rounded px-1.5 py-1 text-left text-[11px] hover:ring-2 hover:ring-brand/60',

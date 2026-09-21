@@ -7,9 +7,13 @@ use App\Models\Cabang;
 use App\Models\Kanban\Board;
 use App\Models\Kanban\Kartu;
 use App\Models\User;
+use App\Notifications\KanbanKabar;
+use App\Services\Kanban\Kabar;
 use App\Services\Kanban\Tata;
 use App\Support\Kanban\Akses;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
@@ -170,6 +174,88 @@ class KanbanTampilanTest extends TestCase
         $this->assertSame(
             ['SD Harapan', 'TK Pelita'],
             $kalender->get('kalender')->flatten()->pluck('judul')->sort()->values()->all()
+        );
+    }
+
+    // ---------------- Seret kartu di kalender ----------------
+
+    public function test_seret_kartu_ke_tanggal_lain_mengganti_tenggat_dan_menjaga_jamnya(): void
+    {
+        $kalender = $this->papan(['bulan' => '2026-06'])->call('gantiTampilan', 'kalender');
+
+        $kalender->call('ubahTenggatKalender', $this->nanti->id, 0, '2026-06-25');
+
+        $this->assertSame('2026-06-25 14:30', $this->nanti->fresh()->tenggat_pada->format('Y-m-d H:i'));
+        $this->assertDatabaseHas('kanban_aktivitas', [
+            'kartu_id' => $this->nanti->id,
+            'aksi' => 'tenggat_diubah',
+        ]);
+    }
+
+    public function test_seret_kartu_tanpa_tenggat_diberi_jam_dua_belas_siang(): void
+    {
+        $this->papan(['bulan' => '2026-06'])->call('gantiTampilan', 'kalender')
+            ->call('ubahTenggatKalender', $this->tanpa->id, 0, '2026-06-18');
+
+        $this->assertSame('2026-06-18 12:00', $this->tanpa->fresh()->tenggat_pada->format('Y-m-d H:i'));
+    }
+
+    public function test_seret_membuka_lagi_pengingat_tenggat(): void
+    {
+        $this->lewat->forceFill(['diingatkan_at' => now()])->save();
+
+        $this->papan()->call('ubahTenggatKalender', $this->lewat->id, 0, '2026-06-12');
+
+        $this->assertNull($this->lewat->fresh()->diingatkan_at);
+    }
+
+    public function test_seret_ke_tanggal_yang_sama_tidak_mengubah_apa_pun(): void
+    {
+        $this->papan()->call('ubahTenggatKalender', $this->lewat->id, 0, '2026-06-10');
+
+        $this->assertSame('2026-06-10 09:00', $this->lewat->fresh()->tenggat_pada->format('Y-m-d H:i'));
+        $this->assertDatabaseMissing('kanban_aktivitas', ['kartu_id' => $this->lewat->id, 'aksi' => 'tenggat_diubah']);
+    }
+
+    public function test_seret_menolak_tanggal_ngawur(): void
+    {
+        $this->papan()->call('ubahTenggatKalender', $this->lewat->id, 0, '31-06-2026')->assertStatus(422);
+        $this->assertSame('2026-06-10 09:00', $this->lewat->fresh()->tenggat_pada->format('Y-m-d H:i'));
+    }
+
+    public function test_seret_menolak_kartu_board_lain(): void
+    {
+        $lain = app(Tata::class);
+        $board2 = $lain->buatBoard('Lain', 'hijau', 'workspace', $this->faris);
+        $kartu = $lain->tambahKartu($lain->tambahKolom($board2, 'Masuk', $this->faris), 'Asing', $this->faris);
+
+        $this->expectException(ModelNotFoundException::class);
+        $this->papan()->call('ubahTenggatKalender', $kartu->id, 0, '2026-06-12');
+    }
+
+    public function test_yang_hanya_boleh_membaca_tidak_bisa_menyeret_di_kalender(): void
+    {
+        $tamu = User::factory()->create(['nama' => 'Tamu']);
+        $tamu->assignRole('tim_event');
+
+        Livewire::actingAs($tamu)->test(PapanBoard::class, ['board' => $this->board])
+            ->call('ubahTenggatKalender', $this->lewat->id, 0, '2026-06-12')
+            ->assertForbidden();
+    }
+
+    public function test_pengikut_dikabari_saat_tenggat_digeser(): void
+    {
+        Notification::fake();
+        $rekan = User::factory()->create(['nama' => 'Rekan']);
+        $rekan->assignRole('editor');
+        $this->board->anggota()->attach($rekan->id, ['peran' => 'anggota']);
+        app(Kabar::class)->ikut($this->lewat, $rekan);
+
+        $this->papan()->call('ubahTenggatKalender', $this->lewat->id, 0, '2026-06-12');
+
+        Notification::assertSentTo(
+            $rekan,
+            fn (KanbanKabar $k) => $k->jenis === KanbanKabar::TENGGAT_DIUBAH
         );
     }
 }
