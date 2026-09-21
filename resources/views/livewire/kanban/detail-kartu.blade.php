@@ -49,6 +49,7 @@
                     <h2 id="judul-kartu" class="px-2 py-1 text-xl font-semibold">{{ $k->judul }}</h2>
                 @endif
                 <p class="px-2 text-sm text-ink-muted">di list <span class="font-medium text-ink">{{ $k->kolom?->nama }}</span> · board {{ $k->board->nama }}
+                    @if ($k->templat)<span class="ml-1 rounded bg-[#5E4DB2] px-1.5 py-0.5 text-xs font-medium text-white">Templat</span>@endif
                     @if ($this->mengikuti)<span class="ml-1 rounded bg-[#E9EBEE] px-1.5 py-0.5 text-xs text-ink">Diikuti</span>@endif
                 </p>
             </div>
@@ -530,6 +531,45 @@
                                     <button type="submit" class="mt-3 h-9 rounded-md bg-navy px-3 text-sm font-medium text-white">Pindahkan</button>
                                 </form>
                             </div>
+
+                            <div class="relative" x-data="{ buka: false }">
+                                <button type="button" x-on:click="buka = ! buka" :aria-expanded="buka" class="{{ $tombol }}">Salin</button>
+                                <form x-show="buka" x-cloak x-on:click.outside="buka = false" x-on:keydown.escape.stop="buka = false" data-panel-kartu class="{{ $panel }}"
+                                      wire:submit="salin" x-on:submit="buka = false">
+                                    <h4 class="text-center font-semibold">Salin kartu</h4>
+                                    <label for="judul-salinan" class="mt-2 block text-xs font-medium text-ink-muted">Judul</label>
+                                    <textarea id="judul-salinan" wire:model="judulSalinan" rows="2"
+                                              class="mt-1 block w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30"></textarea>
+                                    @error('judulSalinan')<p class="mt-1 text-xs text-[#AE2E24]">{{ $message }}</p>@enderror
+
+                                    <label for="salin-kolom" class="mt-2 block text-xs font-medium text-ink-muted">List tujuan</label>
+                                    <select id="salin-kolom" wire:model="salinKolom"
+                                            class="mt-1 block min-h-[36px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
+                                        @foreach ($this->kolomTujuan as $kol)
+                                            <option value="{{ $kol->id }}">{{ $kol->nama }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('salinKolom')<p class="mt-1 text-xs text-[#AE2E24]">{{ $message }}</p>@enderror
+
+                                    <fieldset class="mt-3">
+                                        <legend class="text-xs font-medium text-ink-muted">Ikut disalin</legend>
+                                        @foreach (['label' => 'Label', 'anggota' => 'Anggota', 'checklist' => 'Checklist', 'lampiran' => 'Lampiran'] as $kunci => $labelBawa)
+                                            <label class="mt-1 flex min-h-[32px] items-center gap-2">
+                                                <input type="checkbox" wire:model="bawaSalinan" value="{{ $kunci }}" class="rounded text-brand focus:ring-brand/30">
+                                                {{ $labelBawa }}
+                                            </label>
+                                        @endforeach
+                                    </fieldset>
+                                    <button type="submit" class="mt-3 h-9 rounded-md bg-navy px-3 text-sm font-medium text-white">Buat salinan</button>
+                                </form>
+                            </div>
+
+                            @unless ($k->order_id)
+                                <button type="button" wire:click="toggleTemplat" class="{{ $tombol }}" aria-pressed="{{ $k->templat ? 'true' : 'false' }}">
+                                    {{ $k->templat ? 'Bukan templat lagi' : 'Jadikan templat' }}
+                                    @if ($k->templat)<span class="ml-auto text-navy" aria-hidden="true">✓</span>@endif
+                                </button>
+                            @endunless
 
                             <button type="button" wire:click="toggleIkut" class="{{ $tombol }}" aria-pressed="{{ $this->mengikuti ? 'true' : 'false' }}">
                                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" /><circle cx="12" cy="12" r="2.5" /></svg>

@@ -171,6 +171,7 @@
                                          class="absolute left-0 z-30 mt-1 w-52 rounded-xl border border-line bg-card py-1 text-sm shadow-lg">
                                         <button type="button" x-on:click="buka = false" wire:click="mulaiTambahKartu({{ $kolom->id }})" class="block w-full px-3 py-2 text-left hover:bg-page">Tambah kartu</button>
                                         <button type="button" x-on:click="buka = false; ubah = true; $nextTick(() => $refs.masukan.select())" class="block w-full px-3 py-2 text-left hover:bg-page">Ubah nama list</button>
+                                        <button type="button" x-on:click="buka = false" wire:click="salinKolom({{ $kolom->id }})" class="block w-full px-3 py-2 text-left hover:bg-page">Salin list</button>
                                         <button type="button" x-on:click="buka = false" wire:click="arsipkanKolom({{ $kolom->id }})"
                                                 wire:confirm="Arsipkan list &quot;{{ $kolom->nama }}&quot; beserta kartunya? List bisa dipulihkan dari menu board."
                                                 class="block w-full px-3 py-2 text-left text-[#AE2E24] hover:bg-page">Arsipkan list</button>
@@ -207,6 +208,9 @@
                                             @endphp
                                             @if ($adaLencana || $kartu->anggota->isNotEmpty())
                                                 <span class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
+                                                    @if ($kartu->templat)
+                                                        <span class="rounded bg-[#5E4DB2] px-1.5 py-0.5 font-medium text-white">Templat</span>
+                                                    @endif
                                                     @if ($kartu->order_id)
                                                         <span class="rounded bg-navy/10 px-1.5 py-0.5 font-medium text-navy">{{ $kartu->order?->isSusulan() ? 'Susulan' : 'Order' }}</span>
                                                     @endif
@@ -264,6 +268,21 @@
                                     <div class="mt-2 flex items-center gap-1">
                                         <button type="submit" class="h-9 rounded-md bg-navy px-3 text-sm font-medium text-white hover:bg-navy-900">Tambah kartu</button>
                                         <button type="button" wire:click="batalTambahKartu" aria-label="Batal" class="flex h-9 w-9 items-center justify-center rounded-md text-ink-muted hover:bg-line">✕</button>
+                                        @if ($this->templat->isNotEmpty())
+                                            <div class="relative ml-auto" x-data="{ buka: false }">
+                                                <button type="button" x-on:click="buka = ! buka" :aria-expanded="buka"
+                                                        class="h-9 rounded-md px-2 text-sm text-ink-muted hover:bg-line hover:text-ink">Dari templat</button>
+                                                <ul x-show="buka" x-cloak x-on:click.outside="buka = false"
+                                                    class="absolute right-0 z-30 mt-1 w-56 overflow-hidden rounded-xl border border-line bg-card py-1 text-sm shadow-lg">
+                                                    @foreach ($this->templat as $tpl)
+                                                        <li wire:key="tpl-{{ $kolom->id }}-{{ $tpl->id }}">
+                                                            <button type="button" x-on:click="buka = false" wire:click="dariTemplat({{ $tpl->id }}, {{ $kolom->id }})"
+                                                                    class="block w-full truncate px-3 py-2 text-left hover:bg-page">{{ $tpl->judul }}</button>
+                                                        </li>
+                                                    @endforeach
+                                                </ul>
+                                            </div>
+                                        @endif
                                     </div>
                                 </form>
                             @else
@@ -313,7 +332,7 @@
                 <button type="button" x-show="bagian !== 'utama'" x-on:click="bagian = 'utama'" aria-label="Kembali"
                         class="flex h-9 w-9 items-center justify-center rounded-md hover:bg-page">‹</button>
                 <h2 class="flex-1 text-center font-semibold"
-                    x-text="({ utama: 'Menu', warna: 'Ganti latar', label: 'Label', anggota: 'Anggota', otomasi: 'Otomasi kartu order', arsip: 'Item diarsipkan', aktivitas: 'Aktivitas' })[bagian]">Menu</h2>
+                    x-text="({ utama: 'Menu', warna: 'Ganti latar', label: 'Label', anggota: 'Anggota', salin: 'Salin board', otomasi: 'Otomasi kartu order', arsip: 'Item diarsipkan', aktivitas: 'Aktivitas' })[bagian]">Menu</h2>
                 <button type="button" x-on:click="menu = false" aria-label="Tutup menu" class="flex h-9 w-9 items-center justify-center rounded-md hover:bg-page">✕</button>
             </div>
 
@@ -344,6 +363,7 @@
                     @if ($board->isOrder() && \App\Support\Kanban\Akses::admin(auth()->user()))
                         <button type="button" x-on:click="bagian = 'otomasi'" class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left hover:bg-page">Otomasi kartu order</button>
                     @endif
+                    <button type="button" x-on:click="bagian = 'salin'" class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left hover:bg-page">Salin board</button>
                     <button type="button" x-on:click="bagian = 'arsip'" class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left hover:bg-page">Item diarsipkan</button>
                     <button type="button" x-on:click="bagian = 'aktivitas'" class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left hover:bg-page">Aktivitas</button>
                     @if ($kelola && ! $board->isOrder() && ! $board->diarsipkan_at)
@@ -459,6 +479,20 @@
                         <button type="submit" class="h-9 rounded-md bg-navy px-3 text-sm font-medium text-white hover:bg-navy-900">Simpan otomasi</button>
                     </form>
                 @endif
+
+                {{-- Salin board --}}
+                <form x-show="bagian === 'salin'" x-cloak wire:submit="salinBoard">
+                    <label for="nama-salinan-board" class="block text-xs font-medium text-ink-muted">Nama board baru</label>
+                    <input id="nama-salinan-board" type="text" wire:model="namaSalinanBoard"
+                           class="mt-1 block min-h-[40px] w-full rounded-lg border-line text-sm focus:border-brand focus:ring-brand/30">
+                    @error('namaSalinanBoard')<p class="mt-1 text-xs text-[#AE2E24]">{{ $message }}</p>@enderror
+                    <label class="mt-3 flex min-h-[36px] items-center gap-2">
+                        <input type="checkbox" wire:model="salinDenganKartu" class="rounded text-brand focus:ring-brand/30">
+                        Ikut salin kartunya
+                    </label>
+                    <p class="mt-1 text-xs text-ink-muted">Kartu order tidak ikut disalin karena satu order hanya boleh punya satu kartu.</p>
+                    <button type="submit" class="mt-3 h-9 rounded-md bg-navy px-3 text-sm font-medium text-white hover:bg-navy-900">Salin board</button>
+                </form>
 
                 {{-- Arsip --}}
                 <div x-show="bagian === 'arsip'" x-cloak class="space-y-5">

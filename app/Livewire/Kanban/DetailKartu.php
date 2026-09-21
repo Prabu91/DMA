@@ -65,6 +65,13 @@ class DetailKartu extends Component
 
     public int $pindahUrutan = 1;
 
+    public string $judulSalinan = '';
+
+    public ?int $salinKolom = null;
+
+    /** Yang ikut disalin: label, anggota, checklist, lampiran. */
+    public array $bawaSalinan = ['label', 'anggota', 'checklist'];
+
     public string $namaLabelBaru = '';
 
     public string $warnaLabelBaru = 'hijau';
@@ -87,6 +94,8 @@ class DetailKartu extends Component
         $this->tenggat = $k->tenggat_pada?->format('Y-m-d\TH:i');
         $this->pindahBoard = $k->board_id;
         $this->pindahKolom = $k->kolom_id;
+        $this->judulSalinan = $k->judul;
+        $this->salinKolom = $k->kolom_id;
     }
 
     // ---------------- Data ----------------
@@ -559,6 +568,35 @@ class DetailKartu extends Component
 
         app(Tata::class)->pindahKartu($kartu, $kolom, $this->pindahUrutan - 1, auth()->user());
         $this->kabar()->perubahan($kartu, KanbanKabar::KARTU_PINDAH, auth()->user(), 'ke list '.$kolom->nama);
+        $this->segarkan();
+    }
+
+    /** Salin kartu ke list pilihan, lalu buka salinannya (seperti Trello). */
+    public function salin(): void
+    {
+        $kartu = $this->wajibUbah();
+        $this->validate([
+            'judulSalinan' => ['required', 'string', 'max:255'],
+            'salinKolom' => ['required', 'integer'],
+        ], ['judulSalinan.required' => 'Beri judul salinan.', 'salinKolom.required' => 'Pilih list tujuan.']);
+
+        $kolom = Kolom::whereNull('diarsipkan_at')->findOrFail($this->salinKolom);
+        abort_unless(Akses::bolehUbah(auth()->user(), $kolom->board), 403);
+
+        $salinan = app(Tata::class)->salinKartu($kartu, $kolom, $this->judulSalinan, $this->bawaSalinan, auth()->user());
+
+        $this->dispatch('kartu-berubah');
+        $this->dispatch('buka-kartu', kartuId: $salinan->id);
+    }
+
+    /** Tandai kartu sebagai templat (cetakan kartu baru). */
+    public function toggleTemplat(): void
+    {
+        $kartu = $this->wajibUbah();
+        abort_if($kartu->order_id !== null, 422);
+
+        $kartu->update(['templat' => ! $kartu->templat]);
+        $this->catat($kartu->templat ? 'kartu_jadi_templat' : 'kartu_bukan_templat');
         $this->segarkan();
     }
 

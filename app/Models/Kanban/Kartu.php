@@ -15,7 +15,7 @@ class Kartu extends Model
     protected $table = 'kanban_kartu';
 
     protected $fillable = [
-        'board_id', 'kolom_id', 'posisi', 'judul', 'deskripsi', 'order_id',
+        'board_id', 'kolom_id', 'posisi', 'judul', 'deskripsi', 'order_id', 'templat',
         'cover_warna', 'cover_lampiran_id', 'mulai_pada', 'tenggat_pada',
         'tenggat_selesai_at', 'diingatkan_at', 'dibuat_oleh', 'diarsipkan_at',
     ];
@@ -24,6 +24,7 @@ class Kartu extends Model
     {
         return [
             'posisi' => 'float',
+            'templat' => 'boolean',
             'mulai_pada' => 'date',
             'tenggat_pada' => 'datetime',
             'tenggat_selesai_at' => 'datetime',

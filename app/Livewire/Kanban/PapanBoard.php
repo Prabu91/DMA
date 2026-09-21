@@ -66,6 +66,10 @@ class PapanBoard extends Component
 
     public ?int $anggotaBaru = null;
 
+    public string $namaSalinanBoard = '';
+
+    public bool $salinDenganKartu = true;
+
     /** Otomasi board Order: pemicu => id list tujuan (kosong = tidak dipindahkan). */
     public array $otomasi = [];
 
@@ -75,6 +79,7 @@ class PapanBoard extends Component
 
         $this->board = $board;
         $this->namaBoard = $board->nama;
+        $this->namaSalinanBoard = mb_substr($board->nama.' (salinan)', 0, 120);
 
         if ($board->isOrder()) {
             $tersimpan = OtomasiOrder::aturan();
@@ -187,7 +192,7 @@ class PapanBoard extends Component
 
     private function segarkan(): void
     {
-        unset($this->kolom, $this->arsip, $this->aktivitas, $this->labelBoard, $this->anggotaBoard, $this->calonAnggota, $this->sayaAnggota, $this->sayaBintang, $this->bolehUbah, $this->bolehKelola);
+        unset($this->templat, $this->kolom, $this->arsip, $this->aktivitas, $this->labelBoard, $this->anggotaBoard, $this->calonAnggota, $this->sayaAnggota, $this->sayaBintang, $this->bolehUbah, $this->bolehKelola);
     }
 
     private function wajibUbah(): void
@@ -310,6 +315,13 @@ class PapanBoard extends Component
         $this->kartuId = $this->kartuMilikBoard($kartuId)->id;
     }
 
+    #[On('buka-kartu')]
+    public function bukaKartuDariAnak(int $kartuId): void
+    {
+        $this->kartuId = $this->kartuMilikBoard($kartuId)->id;
+        $this->segarkan();
+    }
+
     #[On('kartu-ditutup')]
     public function tutupKartu(): void
     {
@@ -339,6 +351,44 @@ class PapanBoard extends Component
             'posisi' => (float) Kartu::where('kolom_id', $kartu->kolom_id)->whereNull('diarsipkan_at')->max('posisi') + Posisi::JARAK,
         ]);
         $this->board->catat('kartu_dipulihkan', null, $kartu);
+        $this->segarkan();
+    }
+
+    /** Kartu templat di board ini — cetakan untuk kartu baru. */
+    #[Computed]
+    public function templat(): Collection
+    {
+        return Kartu::where('board_id', $this->board->id)
+            ->where('templat', true)->whereNull('diarsipkan_at')
+            ->orderBy('judul')->get(['id', 'judul']);
+    }
+
+    /** Buat kartu baru dari kartu templat (padanan "Create card from template"). */
+    public function dariTemplat(int $templatId, int $kolomId): void
+    {
+        $this->wajibUbah();
+        $templat = Kartu::where('board_id', $this->board->id)->where('templat', true)->findOrFail($templatId);
+
+        $kartu = app(Tata::class)->salinKartu(
+            $templat,
+            $this->kolomMilikBoard($kolomId),
+            $templat->judul,
+            ['label', 'anggota', 'checklist', 'lampiran'],
+            auth()->user(),
+        );
+        $kartu->update(['templat' => false]);
+
+        $this->tambahKartuDi = null;
+        $this->kartuId = $kartu->id;
+        $this->segarkan();
+    }
+
+    public function salinKolom(int $kolomId): void
+    {
+        $this->wajibUbah();
+        $kolom = $this->kolomMilikBoard($kolomId);
+
+        app(Tata::class)->salinKolom($kolom, mb_substr($kolom->nama.' (salinan)', 0, 120), auth()->user());
         $this->segarkan();
     }
 
@@ -388,6 +438,17 @@ class PapanBoard extends Component
         abort_if($this->board->isOrder(), 422);
         abort_unless(array_key_exists($visibilitas, Board::VISIBILITAS), 422);
         $this->board->update(['visibilitas' => $visibilitas]);
+    }
+
+    /** Salin board ini jadi board baru (list selalu ikut, kartu opsional). */
+    public function salinBoard()
+    {
+        abort_unless(Akses::bolehLihat(auth()->user(), $this->board), 403);
+        $this->validate(['namaSalinanBoard' => ['required', 'string', 'max:120']], ['namaSalinanBoard.required' => 'Beri nama board baru.']);
+
+        $baru = app(Tata::class)->salinBoard($this->board, $this->namaSalinanBoard, $this->salinDenganKartu, auth()->user());
+
+        return $this->redirect(route('kanban.board', $baru), navigate: true);
     }
 
     public function arsipkanBoard()
