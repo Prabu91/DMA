@@ -47,7 +47,12 @@ class PapanBoard extends Component
         'papan' => 'Papan',
         'tabel' => 'Tabel',
         'kalender' => 'Kalender',
+        'linimasa' => 'Linimasa',
+        'dasbor' => 'Dasbor',
     ];
+
+    /** Panjang jendela linimasa (hari). */
+    public const HARI_LINIMASA = 42;
 
     /** Kartu yang dimuat saat board dibuka, lalu tambahannya tiap "Muat lebih banyak". */
     public const BATAS_AWAL = 25;
@@ -88,6 +93,10 @@ class PapanBoard extends Component
     /** Bulan yang sedang dilihat di kalender (format Y-m). */
     #[Url(as: 'bulan')]
     public ?string $bulan = null;
+
+    /** Awal jendela linimasa (format Y-m-d). */
+    #[Url(as: 'sejak')]
+    public ?string $sejak = null;
 
     /** Berapa baris aktivitas yang ditampilkan di menu board. */
     public int $jumlahAktivitas = 20;
@@ -345,6 +354,98 @@ class PapanBoard extends Component
             ->groupBy(fn (Kartu $k) => $k->tenggat_pada->format('Y-m-d'));
     }
 
+    /** Awal jendela linimasa — selalu jatuh di awal pekan. */
+    #[Computed]
+    public function awalLinimasa(): Carbon
+    {
+        try {
+            $awal = $this->sejak ? Carbon::createFromFormat('Y-m-d', $this->sejak) : now();
+        } catch (\Throwable) {
+            $awal = now();
+        }
+
+        return $awal->startOfWeek();
+    }
+
+    /**
+     * Kartu bertanggal yang jatuh di jendela linimasa, dikelompokkan per list.
+     * Kartu tanpa tanggal tidak punya batang, jadi tidak ikut ditampilkan.
+     */
+    #[Computed]
+    public function linimasa(): Collection
+    {
+        $awal = $this->awalLinimasa;
+        $akhir = $awal->copy()->addDays(self::HARI_LINIMASA - 1)->endOfDay();
+
+        return $this->kartuDisaring()
+            ->with(['kolom:id,nama,posisi', 'anggota:id,nama,name', 'label'])
+            ->where(function ($q) use ($awal, $akhir) {
+                $q->whereBetween('tenggat_pada', [$awal, $akhir])
+                    ->orWhereBetween('mulai_pada', [$awal->toDateString(), $akhir->toDateString()])
+                    ->orWhere(fn ($w) => $w->whereNotNull('mulai_pada')->where('mulai_pada', '<', $awal->toDateString())
+                        ->whereNotNull('tenggat_pada')->where('tenggat_pada', '>', $akhir));
+            })
+            ->orderByRaw('coalesce(mulai_pada, tenggat_pada::date)')
+            ->limit(300)
+            ->get()
+            ->groupBy('kolom_id');
+    }
+
+    public function geserLinimasa(int $pekan): void
+    {
+        $this->sejak = $this->awalLinimasa->copy()->addWeeks($pekan)->toDateString();
+        unset($this->awalLinimasa, $this->linimasa);
+    }
+
+    public function pekanIni(): void
+    {
+        $this->sejak = now()->startOfWeek()->toDateString();
+        unset($this->awalLinimasa, $this->linimasa);
+    }
+
+    /**
+     * Ringkasan board untuk dasbor: jumlah kartu per list, per anggota,
+     * per label, dan keadaan tenggatnya. Semua lewat hitungan, bukan
+     * memuat kartunya, supaya tetap ringan di board besar.
+     */
+    #[Computed]
+    public function dasbor(): array
+    {
+        $id = $this->kartuDisaring()->select('kanban_kartu.id');
+
+        $perKolom = $this->kartuDisaring()
+            ->selectRaw('kolom_id, count(*) as jml')->groupBy('kolom_id')->pluck('jml', 'kolom_id');
+
+        $perAnggota = DB::table('kanban_kartu_anggota')
+            ->join('users', 'users.id', '=', 'kanban_kartu_anggota.user_id')
+            ->whereIn('kartu_id', $id)
+            ->selectRaw('coalesce(users.nama, users.name) as nama, count(*) as jml')
+            ->groupByRaw('coalesce(users.nama, users.name)')->orderByDesc('jml')->limit(8)->get();
+
+        $perLabel = DB::table('kanban_kartu_label')
+            ->join('kanban_label', 'kanban_label.id', '=', 'kanban_kartu_label.label_id')
+            ->whereIn('kartu_id', $id)
+            ->selectRaw('kanban_label.nama, kanban_label.warna, count(*) as jml')
+            ->groupBy('kanban_label.nama', 'kanban_label.warna')->orderByDesc('jml')->limit(8)->get();
+
+        $hitung = fn (callable $saring) => (clone $this->kartuDisaring())->where($saring)->count();
+
+        return [
+            'total' => $this->kartuDisaring()->count(),
+            'lewat' => $hitung(fn ($q) => $q->whereNull('tenggat_selesai_at')->whereNotNull('tenggat_pada')->where('tenggat_pada', '<', now())),
+            'pekanIni' => $hitung(fn ($q) => $q->whereNull('tenggat_selesai_at')->whereBetween('tenggat_pada', [now(), now()->addWeek()])),
+            'selesai' => $hitung(fn ($q) => $q->whereNotNull('tenggat_selesai_at')),
+            'tanpaTenggat' => $hitung(fn ($q) => $q->whereNull('tenggat_pada')),
+            'tanpaAnggota' => $hitung(fn ($q) => $q->whereDoesntHave('anggota')),
+            'perKolom' => $this->board->kolom()->get()->map(fn ($k) => [
+                'nama' => $k->nama,
+                'jml' => (int) ($perKolom[$k->id] ?? 0),
+            ]),
+            'perAnggota' => $perAnggota,
+            'perLabel' => $perLabel,
+        ];
+    }
+
     /** Kartu bertenggat di luar bulan aktif tidak hilang: ditunjukkan jumlahnya. */
     #[Computed]
     public function tanpaTenggat(): int
@@ -410,7 +511,7 @@ class PapanBoard extends Component
 
     private function segarkan(): void
     {
-        unset($this->saringanTersimpan, $this->templat, $this->kolom, $this->baris, $this->kalender, $this->tanpaTenggat, $this->bulanAktif, $this->arsip, $this->aktivitas, $this->labelBoard, $this->anggotaBoard, $this->calonAnggota, $this->sayaAnggota, $this->sayaBintang, $this->bolehUbah, $this->bolehKelola);
+        unset($this->saringanTersimpan, $this->templat, $this->kolom, $this->baris, $this->kalender, $this->linimasa, $this->dasbor, $this->awalLinimasa, $this->tanpaTenggat, $this->bulanAktif, $this->arsip, $this->aktivitas, $this->labelBoard, $this->anggotaBoard, $this->calonAnggota, $this->sayaAnggota, $this->sayaBintang, $this->bolehUbah, $this->bolehKelola);
     }
 
     private function wajibUbah(): void
@@ -1002,7 +1103,7 @@ class PapanBoard extends Component
     {
         if (in_array($properti, ['cari', 'saringTenggat'], true) || str_starts_with($properti, 'saring')) {
             $this->resetPage();
-            unset($this->kolom, $this->baris, $this->kalender, $this->tanpaTenggat);
+            unset($this->kolom, $this->baris, $this->kalender, $this->linimasa, $this->dasbor, $this->tanpaTenggat);
         }
     }
 

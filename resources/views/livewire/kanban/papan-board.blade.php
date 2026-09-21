@@ -38,6 +38,8 @@
             if (e.key === '1') { $wire.gantiTampilan('papan'); return }
             if (e.key === '2') { $wire.gantiTampilan('tabel'); return }
             if (e.key === '3') { $wire.gantiTampilan('kalender'); return }
+            if (e.key === '4') { $wire.gantiTampilan('linimasa'); return }
+            if (e.key === '5') { $wire.gantiTampilan('dasbor'); return }
             if (e.key === 'n') { e.preventDefault(); $wire.mulaiTambahKartuPertama(); return }
             if (e.key === 'x') { $wire.bersihkanSaringan(); return }
             if (e.key === 's') { $wire.bintang(); return }
@@ -105,7 +107,7 @@
             @endif
 
             {{-- Tampilan --}}
-            <div class="order-last flex w-full items-center rounded-md bg-white/15 p-0.5 sm:order-none sm:w-auto" role="group" aria-label="Tampilan board">
+            <div class="order-last flex w-full items-center overflow-x-auto rounded-md bg-white/15 p-0.5 sm:order-none sm:w-auto" role="group" aria-label="Tampilan board">
                 @foreach (\App\Livewire\Kanban\PapanBoard::TAMPILAN as $kunci => $labelTampilan)
                     <button type="button" wire:click="gantiTampilan('{{ $kunci }}')" aria-pressed="{{ $tampilan === $kunci ? 'true' : 'false' }}"
                             @class([
@@ -485,6 +487,10 @@
     </div>
     @elseif ($tampilan === 'tabel')
         @include('livewire.kanban.partials.tabel')
+    @elseif ($tampilan === 'linimasa')
+        @include('livewire.kanban.partials.linimasa')
+    @elseif ($tampilan === 'dasbor')
+        @include('livewire.kanban.partials.dasbor')
     @else
         @include('livewire.kanban.partials.kalender')
     @endif
@@ -763,7 +769,7 @@
                     'm' => 'Buka / tutup menu board',
                     'x' => 'Bersihkan saringan',
                     's' => 'Beri / hapus bintang board',
-                    '1 2 3' => 'Tampilan papan, tabel, kalender',
+                    '1 … 5' => 'Tampilan papan, tabel, kalender, linimasa, dasbor',
                     '?' => 'Tampilkan pintasan ini',
                 ] as $tombol => $arti)
                     <dt><kbd class="rounded border border-line bg-page px-1.5 py-0.5 font-mono text-xs">{{ $tombol }}</kbd></dt>
