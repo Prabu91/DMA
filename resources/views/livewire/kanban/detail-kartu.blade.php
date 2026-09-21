@@ -21,6 +21,21 @@
             }, 8000);
         },
         destroy() { clearInterval(this.pewaktu); },
+        sedangMengetik(e) {
+            const t = e.target;
+            return t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName);
+        },
+        pintasan(e) {
+            if (e.ctrlKey || e.metaKey || e.altKey || this.sedangMengetik(e) || ! this.bolehUnggah) return;
+
+            if (e.key === ' ') { e.preventDefault(); $wire.toggleAnggota(@js(auth()->id())); return }
+            if (e.key === 'w') { $wire.toggleIkut(); return }
+            if (e.key === 'c') { $wire.arsipkan(); return }
+            if (e.key === 'e') {
+                e.preventDefault();
+                $wire.set('ubahDeskripsi', true).then(() => document.getElementById('deskripsi-kartu')?.focus());
+            }
+        },
         adaBerkas(e) {
             return this.bolehUnggah && Array.from(e.dataTransfer?.types ?? []).includes('Files');
         },
@@ -36,7 +51,8 @@
      x-on:dragleave="if ($event.relatedTarget === null) seret = false"
      x-on:drop.prevent.stop="unggah($event.dataTransfer?.files)"
      x-on:paste="unggah($event.clipboardData?.files)"
-     x-on:keydown.escape="$wire.tutup()">
+     x-on:keydown.escape="$wire.tutup()"
+     x-on:keydown.window="pintasan($event)">
 
     {{-- Seret berkas ke mana saja di kartu untuk melampirkan. --}}
     <div x-show="seret" x-cloak class="pointer-events-none fixed inset-0 z-[60] flex items-center justify-center bg-navy/50 p-6">
@@ -169,6 +185,7 @@
                                 <textarea id="deskripsi-kartu" wire:model="deskripsi" rows="6" x-init="$el.focus()"
                                           class="block w-full rounded-lg border-line text-sm focus:border-brand focus:ring-brand/30"
                                           placeholder="Tambahkan deskripsi yang lebih rinci…"></textarea>
+                                <p class="mt-1 text-[11px] text-ink-muted">Format: {{ \App\Support\Kanban\Teks::BANTUAN }}</p>
                                 @error('deskripsi')<p class="mt-1 text-xs text-[#AE2E24]">{{ $message }}</p>@enderror
                                 <div class="mt-2 flex gap-2">
                                     <button type="submit" class="h-9 rounded-md bg-navy px-3 text-sm font-medium text-white hover:bg-navy-900">Simpan</button>
@@ -176,7 +193,7 @@
                                 </div>
                             </form>
                         @elseif ($k->deskripsi)
-                            <div class="mt-2 whitespace-pre-line break-words px-2 text-sm leading-relaxed">{{ $k->deskripsi }}</div>
+                            <div class="isi-teks mt-2 break-words px-2 text-sm leading-relaxed">{!! \App\Support\Kanban\Teks::html($k->deskripsi) !!}</div>
                         @elseif ($ubah)
                             <button type="button" wire:click="$set('ubahDeskripsi', true)"
                                     class="mx-2 mt-2 block min-h-[56px] w-[calc(100%-1rem)] rounded-lg bg-[#E9EBEE] px-3 text-left text-sm text-ink-muted hover:bg-[#DCDFE4]">
@@ -423,6 +440,7 @@
                                             </template>
                                         </ul>
                                     </div>
+                                    <p class="mt-1 text-[11px] text-ink-muted">Format: {{ \App\Support\Kanban\Teks::BANTUAN }}</p>
                                     @error('komentarBaru')<p class="mt-1 text-xs text-[#AE2E24]">{{ $message }}</p>@enderror
                                     <button type="submit" class="mt-2 h-9 rounded-md bg-navy px-3 text-sm font-medium text-white hover:bg-navy-900">Kirim</button>
                                 </div>
@@ -448,7 +466,36 @@
                                                     </div>
                                                 </form>
                                             @else
-                                                <div class="mt-1 whitespace-pre-line break-words rounded-lg bg-white px-3 py-2 text-sm shadow-[0_1px_1px_rgba(9,30,66,.2)]">{{ $d->isi }}</div>
+                                                <div class="isi-teks mt-1 break-words rounded-lg bg-white px-3 py-2 text-sm shadow-[0_1px_1px_rgba(9,30,66,.2)]">{!! \App\Support\Kanban\Teks::html($d->isi) !!}</div>
+
+                                                @php $reaksi = $d->reaksi->groupBy('emoji'); @endphp
+                                                <div class="mt-1 flex flex-wrap items-center gap-1">
+                                                    @foreach ($reaksi as $emoji => $daftar)
+                                                        @php $sayaBereaksi = $daftar->contains('user_id', auth()->id()); @endphp
+                                                        <button type="button" @disabled(! $ubah) wire:click="toggleReaksi({{ $d->id }}, '{{ $emoji }}')"
+                                                                title="{{ $daftar->map(fn ($r) => $r->pemberi?->nama ?? $r->pemberi?->name)->filter()->join(', ') }}"
+                                                                @class([
+                                                                    'inline-flex h-6 items-center gap-1 rounded-full border px-2 text-xs',
+                                                                    'border-navy bg-navy/10 text-navy' => $sayaBereaksi,
+                                                                    'border-line bg-white text-ink-muted hover:bg-page' => ! $sayaBereaksi,
+                                                                ])>{{ $emoji }} {{ $daftar->count() }}</button>
+                                                    @endforeach
+
+                                                    @if ($ubah)
+                                                        <div class="relative" x-data="{ buka: false }">
+                                                            <button type="button" x-on:click="buka = ! buka" aria-label="Beri reaksi"
+                                                                    class="inline-flex h-6 items-center rounded-full border border-line bg-white px-2 text-xs text-ink-muted hover:bg-page">☺+</button>
+                                                            <div x-show="buka" x-cloak x-on:click.outside="buka = false" x-on:keydown.escape.stop="buka = false" data-panel-kartu
+                                                                 class="absolute left-0 z-20 mt-1 flex gap-1 rounded-xl border border-line bg-card p-1.5 shadow-lg">
+                                                                @foreach (\App\Models\Kanban\Reaksi::PILIHAN as $pilihan)
+                                                                    <button type="button" x-on:click="buka = false" wire:click="toggleReaksi({{ $d->id }}, '{{ $pilihan }}')"
+                                                                            aria-label="Reaksi {{ $pilihan }}"
+                                                                            class="flex h-8 w-8 items-center justify-center rounded-md text-base hover:bg-page">{{ $pilihan }}</button>
+                                                                @endforeach
+                                                            </div>
+                                                        </div>
+                                                    @endif
+                                                </div>
                                                 @if ($ubah)
                                                     <div class="mt-1 flex gap-3 text-xs text-ink-muted">
                                                         @if ((int) $d->user_id === (int) auth()->id())

@@ -16,12 +16,29 @@
         menu: false,
         saring: false,
         pewaktu: null,
+        bantuan: false,
         kunciLipat: 'kanban:lipat:{{ $board->id }}',
         lipat: [],
         muatLipat() {
             try { this.lipat = JSON.parse(localStorage.getItem(this.kunciLipat) ?? '[]') } catch (e) { this.lipat = [] }
         },
         terlipat(id) { return this.lipat.includes(id) },
+        sedangMengetik(e) {
+            const t = e.target;
+            return t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName);
+        },
+        pintasan(e) {
+            if (e.ctrlKey || e.metaKey || e.altKey || this.sedangMengetik(e) || $wire.kartuId) return;
+
+            if (e.key === '?') { this.bantuan = ! this.bantuan; return }
+            if (e.key === '/') { e.preventDefault(); this.saring = true; $nextTick(() => document.getElementById('cari-kartu')?.focus()); return }
+            if (e.key === 'f') { this.saring = ! this.saring; return }
+            if (e.key === 'm') { this.menu = ! this.menu; return }
+            if (e.key === '1') { $wire.gantiTampilan('papan'); return }
+            if (e.key === '2') { $wire.gantiTampilan('tabel'); return }
+            if (e.key === '3') { $wire.gantiTampilan('kalender'); return }
+            if (e.key === 'n') { e.preventDefault(); $wire.mulaiTambahKartuPertama(); return }
+        },
         toggleLipat(id) {
             this.lipat = this.terlipat(id) ? this.lipat.filter(x => x !== id) : [...this.lipat, id];
             try { localStorage.setItem(this.kunciLipat, JSON.stringify(this.lipat)) } catch (e) {}
@@ -38,7 +55,7 @@
             }, 5000);
         },
         destroy() { clearInterval(this.pewaktu); },
-     }">
+     }" x-on:keydown.window="pintasan($event)">
 
     {{-- Kepala board --}}
     <div class="flex shrink-0 flex-wrap items-center gap-1.5 bg-black/25 px-3 py-2 text-white sm:gap-2 sm:px-4">
@@ -149,6 +166,11 @@
                     @endif
                 </div>
             </div>
+
+            <button type="button" x-on:click="bantuan = true" aria-label="Pintasan papan ketik"
+                    class="hidden h-9 w-9 items-center justify-center rounded-md hover:bg-white/15 sm:flex">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2" /><path stroke-linecap="round" d="M7 10h.01M10 10h.01M13 10h.01M16 10h.01M7 14h10" /></svg>
+            </button>
 
             <button type="button" x-on:click="menu = true" aria-label="Menu board"
                     class="flex h-9 w-9 items-center justify-center rounded-md hover:bg-white/15">
@@ -634,6 +656,44 @@
                 </ol>
             </div>
         </aside>
+    </div>
+
+    {{-- Daftar pintasan papan ketik --}}
+    <div x-show="bantuan" x-cloak class="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+         x-on:keydown.escape.window="bantuan = false" role="dialog" aria-modal="true" aria-labelledby="judul-pintasan">
+        <div class="absolute inset-0 bg-ink/40" x-on:click="bantuan = false"></div>
+        <div class="relative w-full max-w-md rounded-t-2xl border border-line bg-card p-5 text-sm text-ink shadow-lg sm:rounded-2xl">
+            <div class="flex items-center justify-between">
+                <h2 id="judul-pintasan" class="text-base font-semibold">Pintasan papan ketik</h2>
+                <button type="button" x-on:click="bantuan = false" aria-label="Tutup" class="flex h-9 w-9 items-center justify-center rounded-md hover:bg-page">✕</button>
+            </div>
+            <dl class="mt-3 grid grid-cols-[4.5rem_minmax(0,1fr)] gap-y-2">
+                @foreach ([
+                    'n' => 'Tambah kartu di list pertama',
+                    '/' => 'Cari kartu di board ini',
+                    'f' => 'Buka / tutup penyaring',
+                    'm' => 'Buka / tutup menu board',
+                    '1 2 3' => 'Tampilan papan, tabel, kalender',
+                    '?' => 'Tampilkan pintasan ini',
+                ] as $tombol => $arti)
+                    <dt><kbd class="rounded border border-line bg-page px-1.5 py-0.5 font-mono text-xs">{{ $tombol }}</kbd></dt>
+                    <dd class="text-ink-muted">{{ $arti }}</dd>
+                @endforeach
+            </dl>
+            <h3 class="mt-4 text-sm font-semibold">Saat kartu terbuka</h3>
+            <dl class="mt-2 grid grid-cols-[4.5rem_minmax(0,1fr)] gap-y-2">
+                @foreach ([
+                    'spasi' => 'Tugaskan / lepaskan diri sendiri',
+                    'e' => 'Ubah deskripsi',
+                    'w' => 'Ikuti / berhenti ikuti',
+                    'c' => 'Arsipkan kartu',
+                    'esc' => 'Tutup kartu',
+                ] as $tombol => $arti)
+                    <dt><kbd class="rounded border border-line bg-page px-1.5 py-0.5 font-mono text-xs">{{ $tombol }}</kbd></dt>
+                    <dd class="text-ink-muted">{{ $arti }}</dd>
+                @endforeach
+            </dl>
+        </div>
     </div>
 
     @if ($kartuId)

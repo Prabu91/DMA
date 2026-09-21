@@ -502,6 +502,16 @@ class PapanBoard extends Component
         $this->resetErrorBag('judulKartuBaru');
     }
 
+    /** Dipakai pintasan "n": buka isian kartu baru di list pertama. */
+    public function mulaiTambahKartuPertama(): void
+    {
+        $kolom = $this->kolom->first();
+
+        if ($kolom) {
+            $this->mulaiTambahKartu($kolom->id);
+        }
+    }
+
     public function batalTambahKartu(): void
     {
         $this->tambahKartuDi = null;

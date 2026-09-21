@@ -21,6 +21,24 @@
             /* Saat diseret, kartu bayangan tampil miring seperti Trello. */
             .sortable-drag { transform: rotate(3deg); }
             .sortable-ghost { opacity: .35; }
+            /* Deskripsi & komentar berformat (Markdown). */
+            .isi-teks > *:first-child { margin-top: 0; }
+            .isi-teks > *:last-child { margin-bottom: 0; }
+            .isi-teks p, .isi-teks ul, .isi-teks ol, .isi-teks pre, .isi-teks blockquote { margin: .5rem 0; }
+            .isi-teks h1, .isi-teks h2, .isi-teks h3 { font-weight: 600; margin: .75rem 0 .35rem; }
+            .isi-teks h1 { font-size: 1.15rem; }
+            .isi-teks h2 { font-size: 1.05rem; }
+            .isi-teks h3 { font-size: 1rem; }
+            .isi-teks ul { list-style: disc; padding-left: 1.25rem; }
+            .isi-teks ol { list-style: decimal; padding-left: 1.4rem; }
+            .isi-teks li { margin: .15rem 0; }
+            .isi-teks a { color: #2E3192; text-decoration: underline; }
+            .isi-teks code { background: #E9EBEE; border-radius: .25rem; padding: .05rem .3rem; font-size: .9em; }
+            .isi-teks pre { background: #E9EBEE; border-radius: .5rem; padding: .6rem .75rem; overflow-x: auto; }
+            .isi-teks pre code { background: none; padding: 0; }
+            .isi-teks blockquote { border-left: 3px solid #DCDFE4; padding-left: .75rem; color: #7A7C86; }
+            .isi-teks hr { border-color: #DCDFE4; margin: .75rem 0; }
+            .isi-teks img { max-width: 100%; border-radius: .5rem; }
         </style>
     </head>
     <body class="font-sans antialiased">

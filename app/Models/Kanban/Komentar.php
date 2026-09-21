@@ -5,6 +5,7 @@ namespace App\Models\Kanban;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Komentar extends Model
 {
@@ -20,6 +21,11 @@ class Komentar extends Model
     public function kartu(): BelongsTo
     {
         return $this->belongsTo(Kartu::class);
+    }
+
+    public function reaksi(): HasMany
+    {
+        return $this->hasMany(Reaksi::class, 'komentar_id');
     }
 
     public function penulis(): BelongsTo

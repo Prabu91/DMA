@@ -11,6 +11,7 @@ use App\Models\Kanban\Kolom;
 use App\Models\Kanban\Komentar;
 use App\Models\Kanban\Label;
 use App\Models\Kanban\Lampiran;
+use App\Models\Kanban\Reaksi;
 use App\Models\User;
 use App\Notifications\KanbanKabar;
 use App\Services\Kanban\Kabar;
@@ -156,7 +157,7 @@ class DetailKartu extends Component
     #[Computed]
     public function riwayat(): Collection
     {
-        $komentar = Komentar::where('kartu_id', $this->kartuId)->with('penulis:id,nama,name')->get()
+        $komentar = Komentar::where('kartu_id', $this->kartuId)->with(['penulis:id,nama,name', 'reaksi.pemberi:id,nama,name'])->get()
             ->map(fn ($k) => ['jenis' => 'komentar', 'waktu' => $k->created_at, 'data' => $k]);
         $aktivitas = Aktivitas::where('kartu_id', $this->kartuId)->with('pelaku:id,nama,name')->get()
             ->map(fn ($a) => ['jenis' => 'aktivitas', 'waktu' => $a->created_at, 'data' => $a]);
@@ -195,6 +196,7 @@ class DetailKartu extends Component
             $k->checklistItem()->max('kanban_checklist_item.id'),
             $k->checklistItem()->whereNotNull('selesai_at')->count(),
             $k->aktivitas()->max('id'),
+            Reaksi::whereIn('komentar_id', $k->komentar()->select('id'))->count(),
             $k->anggota()->count(),
             $k->label()->count(),
         ]);
@@ -553,6 +555,22 @@ class DetailKartu extends Component
         $this->validate(['isiKomentar' => ['required', 'string', 'max:5000']]);
         $komentar->update(['isi' => trim($this->isiKomentar), 'diubah_at' => now()]);
         $this->reset(['ubahKomentarId', 'isiKomentar']);
+        $this->segarkan(false);
+    }
+
+    /** Beri atau tarik reaksi emoji pada komentar. */
+    public function toggleReaksi(int $komentarId, string $emoji): void
+    {
+        $this->wajibUbah();
+        abort_unless(in_array($emoji, Reaksi::PILIHAN, true), 422);
+
+        $komentar = Komentar::where('kartu_id', $this->kartuId)->findOrFail($komentarId);
+        $punya = Reaksi::where(['komentar_id' => $komentar->id, 'user_id' => auth()->id(), 'emoji' => $emoji])->first();
+
+        $punya
+            ? $punya->delete()
+            : Reaksi::create(['komentar_id' => $komentar->id, 'user_id' => auth()->id(), 'emoji' => $emoji, 'created_at' => now()]);
+
         $this->segarkan(false);
     }
 
