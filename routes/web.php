@@ -196,6 +196,7 @@ Route::prefix('kanban')->name('kanban.')
     ->group(function () {
         Route::get('/', \App\Livewire\Kanban\Beranda::class)->name('beranda');
         Route::get('/b/{board}', \App\Livewire\Kanban\PapanBoard::class)->whereNumber('board')->name('board');
+        Route::get('/kartu-saya', \App\Livewire\Kanban\KartuSaya::class)->name('kartu-saya');
         Route::get('/lampiran/{lampiran}', \App\Http\Controllers\Kanban\LampiranController::class)->whereNumber('lampiran')->name('lampiran');
     });
 

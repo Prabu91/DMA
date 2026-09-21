@@ -32,6 +32,12 @@
                         <span class="text-sm font-semibold">Kanban</span>
                     </a>
                     <a href="{{ route('kanban.beranda') }}" wire:navigate class="hidden rounded-md px-2 py-1.5 text-sm text-white/85 hover:bg-white/10 hover:text-white sm:block">Semua board</a>
+                    <a href="{{ route('kanban.kartu-saya') }}" wire:navigate class="hidden rounded-md px-2 py-1.5 text-sm text-white/85 hover:bg-white/10 hover:text-white sm:block">Kartu saya</a>
+                    <form method="GET" action="{{ route('kanban.kartu-saya') }}" class="hidden lg:block">
+                        <label for="cari-global" class="sr-only">Cari kartu</label>
+                        <input id="cari-global" type="search" name="q" placeholder="Cari kartu…"
+                               class="h-8 w-48 rounded-md border-0 bg-white/15 px-2.5 text-sm text-white placeholder:text-white/70 focus:bg-white focus:text-ink focus:placeholder:text-ink-muted focus:ring-2 focus:ring-brand">
+                    </form>
                 </div>
 
                 <div class="flex items-center gap-1 sm:gap-2" x-data="{ buka: false }">
