@@ -160,6 +160,70 @@ class Tata
         }
     }
 
+    /** Urutan kartu yang bisa dipilih di menu list (padanan "Sort by" Trello). */
+    public const URUTAN = [
+        'tenggat' => 'Tenggat terdekat',
+        'judul' => 'Judul A–Z',
+        'baru' => 'Dibuat terbaru',
+        'lama' => 'Dibuat terlama',
+    ];
+
+    /** Pindahkan semua kartu sebuah list ke list lain, urutannya dipertahankan. */
+    public function pindahSemuaKartu(Kolom $asal, Kolom $tujuan, User $oleh): int
+    {
+        return DB::transaction(function () use ($asal, $tujuan, $oleh) {
+            $kartu = $asal->kartu()->get();
+            $posisi = (float) Kartu::where('kolom_id', $tujuan->id)->whereNull('diarsipkan_at')->max('posisi');
+
+            foreach ($kartu as $k) {
+                $posisi += Posisi::JARAK;
+                $k->update(['kolom_id' => $tujuan->id, 'board_id' => $tujuan->board_id, 'posisi' => $posisi]);
+            }
+
+            if ($kartu->isNotEmpty()) {
+                $tujuan->board->catat('kartu_pindah_massal', $kartu->count().' kartu dari '.$asal->nama.' ke '.$tujuan->nama, null, $oleh->id);
+            }
+
+            return $kartu->count();
+        });
+    }
+
+    /** Arsipkan semua kartu di sebuah list, list-nya sendiri tetap ada. */
+    public function arsipkanSemuaKartu(Kolom $kolom, User $oleh): int
+    {
+        return DB::transaction(function () use ($kolom, $oleh) {
+            $jumlah = $kolom->kartu()->count();
+
+            if ($jumlah) {
+                Kartu::where('kolom_id', $kolom->id)->whereNull('diarsipkan_at')->update(['diarsipkan_at' => now()]);
+                $kolom->board->catat('kartu_arsip_massal', $jumlah.' kartu di list '.$kolom->nama, null, $oleh->id);
+            }
+
+            return $jumlah;
+        });
+    }
+
+    /** Urutkan ulang kartu sebuah list. Urutan barunya disimpan sebagai posisi. */
+    public function urutkanKartu(Kolom $kolom, string $urut, User $oleh): void
+    {
+        abort_unless(array_key_exists($urut, self::URUTAN), 422);
+
+        DB::transaction(function () use ($kolom, $urut, $oleh) {
+            $kartu = Kartu::where('kolom_id', $kolom->id)->whereNull('diarsipkan_at')
+                ->when($urut === 'judul', fn ($q) => $q->orderBy('judul'))
+                ->when($urut === 'baru', fn ($q) => $q->latest('created_at')->latest('id'))
+                ->when($urut === 'lama', fn ($q) => $q->oldest('created_at')->oldest('id'))
+                ->when($urut === 'tenggat', fn ($q) => $q->orderByRaw('tenggat_pada is null')->orderBy('tenggat_pada'))
+                ->get();
+
+            foreach ($kartu as $i => $k) {
+                $k->update(['posisi' => ($i + 1) * Posisi::JARAK]);
+            }
+
+            $kolom->board->catat('kartu_diurutkan', $kolom->nama.': '.self::URUTAN[$urut], null, $oleh->id);
+        });
+    }
+
     /** Salin satu list beserta kartunya (padanan "Copy list"). */
     public function salinKolom(Kolom $asal, string $nama, User $oleh): Kolom
     {

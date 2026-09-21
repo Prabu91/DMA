@@ -427,6 +427,50 @@ class PapanBoard extends Component
         $this->segarkan();
     }
 
+    /** Pindahkan semua kartu list ini ke list lain di board yang sama. */
+    public function pindahSemuaKartu(int $kolomId, int $tujuanId): void
+    {
+        $this->wajibUbah();
+        $asal = $this->kolomMilikBoard($kolomId);
+        $tujuan = $this->kolomMilikBoard($tujuanId);
+        abort_if($asal->id === $tujuan->id, 422);
+
+        $jumlah = app(Tata::class)->pindahSemuaKartu($asal, $tujuan, auth()->user());
+        $this->pesan = $jumlah
+            ? $jumlah.' kartu dipindahkan ke "'.$tujuan->nama.'".'
+            : 'List "'.$asal->nama.'" tidak punya kartu.';
+        $this->segarkan();
+    }
+
+    public function arsipkanSemuaKartu(int $kolomId): void
+    {
+        $this->wajibUbah();
+        $kolom = $this->kolomMilikBoard($kolomId);
+
+        $jumlah = app(Tata::class)->arsipkanSemuaKartu($kolom, auth()->user());
+        $this->pesan = $jumlah
+            ? $jumlah.' kartu di "'.$kolom->nama.'" diarsipkan. Bisa dipulihkan dari menu board.'
+            : 'List "'.$kolom->nama.'" tidak punya kartu.';
+        $this->segarkan();
+    }
+
+    public function urutkanKartu(int $kolomId, string $urut): void
+    {
+        $this->wajibUbah();
+        app(Tata::class)->urutkanKartu($this->kolomMilikBoard($kolomId), $urut, auth()->user());
+        $this->segarkan();
+    }
+
+    /** Warna kepala list (kosongkan untuk polos). */
+    public function warnaKolom(int $kolomId, ?string $warna): void
+    {
+        $this->wajibUbah();
+        abort_unless($warna === null || array_key_exists($warna, Warna::LABEL), 422);
+
+        $this->kolomMilikBoard($kolomId)->update(['warna' => $warna]);
+        $this->segarkan();
+    }
+
     public function arsipkanKolom(int $kolomId): void
     {
         $this->wajibUbah();

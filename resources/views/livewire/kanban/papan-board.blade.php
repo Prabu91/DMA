@@ -16,7 +16,18 @@
         menu: false,
         saring: false,
         pewaktu: null,
+        kunciLipat: 'kanban:lipat:{{ $board->id }}',
+        lipat: [],
+        muatLipat() {
+            try { this.lipat = JSON.parse(localStorage.getItem(this.kunciLipat) ?? '[]') } catch (e) { this.lipat = [] }
+        },
+        terlipat(id) { return this.lipat.includes(id) },
+        toggleLipat(id) {
+            this.lipat = this.terlipat(id) ? this.lipat.filter(x => x !== id) : [...this.lipat, id];
+            try { localStorage.setItem(this.kunciLipat, JSON.stringify(this.lipat)) } catch (e) {}
+        },
         init() {
+            this.muatLipat();
             // Periksa perubahan rekan tiap 5 detik; papan hanya digambar ulang bila memang berubah.
             this.pewaktu = setInterval(() => {
                 const aktif = document.activeElement?.tagName;
@@ -161,7 +172,22 @@
                 class="flex h-full items-start gap-3" aria-label="List">
                 @foreach ($this->kolom as $kolom)
                     <li wire:key="kolom-{{ $kolom->id }}" wire:sort:item="{{ $kolom->id }}"
-                        class="flex max-h-full w-[272px] shrink-0 flex-col rounded-xl bg-[#F1F2F4] text-ink shadow-sm">
+                        x-bind:class="terlipat({{ $kolom->id }}) ? 'w-12' : 'w-[272px]'"
+                        class="flex max-h-full shrink-0 flex-col rounded-xl bg-[#F1F2F4] text-ink shadow-sm">
+
+                        {{-- Bentuk terlipat: hanya nama & jumlah kartu, memberi ruang untuk list lain. --}}
+                        <div x-show="terlipat({{ $kolom->id }})" x-cloak class="flex h-full flex-col items-center gap-2 py-2">
+                            <button type="button" x-on:click="toggleLipat({{ $kolom->id }})"
+                                    aria-label="Buka kembali list {{ $kolom->nama }}"
+                                    class="flex h-8 w-8 items-center justify-center rounded-md text-ink-muted hover:bg-line hover:text-ink">»</button>
+                            <span class="rounded bg-line px-1.5 text-xs text-ink-muted">{{ $kolom->kartu->count() }}</span>
+                            <span class="mt-1 whitespace-nowrap text-sm font-semibold [writing-mode:vertical-rl]">{{ $kolom->nama }}</span>
+                        </div>
+
+                        <div x-show="! terlipat({{ $kolom->id }})" class="flex min-h-0 flex-1 flex-col">
+                        @if ($kolom->warna)
+                            <div class="h-1.5 rounded-t-xl {{ \App\Support\Kanban\Warna::labelLatar($kolom->warna) }}"></div>
+                        @endif
                         <div class="flex items-start gap-1 px-2 pt-2"
                              x-data="{ ubah: false, nama: @js($kolom->nama), simpan() { this.ubah = false; if (this.nama.trim() && this.nama !== @js($kolom->nama)) $wire.ubahNamaKolom({{ $kolom->id }}, this.nama) } }">
                             <div @class(['pegangan-list min-w-0 flex-1 rounded-md', 'cursor-grab active:cursor-grabbing' => $ubah]) @if ($ubah) wire:sort:handle @endif>
@@ -185,6 +211,51 @@
                                         <button type="button" x-on:click="buka = false" wire:click="mulaiTambahKartu({{ $kolom->id }})" class="block w-full px-3 py-2 text-left hover:bg-page">Tambah kartu</button>
                                         <button type="button" x-on:click="buka = false; ubah = true; $nextTick(() => $refs.masukan.select())" class="block w-full px-3 py-2 text-left hover:bg-page">Ubah nama list</button>
                                         <button type="button" x-on:click="buka = false" wire:click="salinKolom({{ $kolom->id }})" class="block w-full px-3 py-2 text-left hover:bg-page">Salin list</button>
+                                        <button type="button" x-on:click="buka = false; toggleLipat({{ $kolom->id }})" class="block w-full px-3 py-2 text-left hover:bg-page">Lipat list</button>
+
+                                        <div class="border-t border-line px-3 py-2">
+                                            <p class="text-xs font-medium text-ink-muted">Warna kepala list</p>
+                                            <div class="mt-1.5 grid grid-cols-5 gap-1">
+                                                @foreach (Warna::LABEL as $w => [$namaWarna, $latarWarna])
+                                                    <button type="button" wire:click="warnaKolom({{ $kolom->id }}, '{{ $w }}')" title="{{ $namaWarna }}"
+                                                            aria-label="Warna {{ $namaWarna }}"
+                                                            class="h-5 rounded {{ $latarWarna }} {{ $kolom->warna === $w ? 'ring-2 ring-ink ring-offset-1' : '' }}"></button>
+                                                @endforeach
+                                            </div>
+                                            @if ($kolom->warna)
+                                                <button type="button" wire:click="warnaKolom({{ $kolom->id }}, null)" class="mt-1.5 text-xs text-navy underline">Hapus warna</button>
+                                            @endif
+                                        </div>
+
+                                        <div class="border-t border-line px-3 py-2">
+                                            <label for="urut-{{ $kolom->id }}" class="text-xs font-medium text-ink-muted">Urutkan kartu</label>
+                                            <select id="urut-{{ $kolom->id }}" x-on:change="buka = false; $wire.urutkanKartu({{ $kolom->id }}, $event.target.value); $event.target.value = ''"
+                                                    class="mt-1 block min-h-[36px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
+                                                <option value="" selected>Pilih urutan…</option>
+                                                @foreach (\App\Services\Kanban\Tata::URUTAN as $kunciUrut => $labelUrut)
+                                                    <option value="{{ $kunciUrut }}">{{ $labelUrut }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+
+                                        @if ($this->kolom->count() > 1)
+                                            <div class="border-t border-line px-3 py-2">
+                                                <label for="pindah-semua-{{ $kolom->id }}" class="text-xs font-medium text-ink-muted">Pindahkan semua kartu ke</label>
+                                                <select id="pindah-semua-{{ $kolom->id }}" x-on:change="buka = false; $wire.pindahSemuaKartu({{ $kolom->id }}, $event.target.value); $event.target.value = ''"
+                                                        class="mt-1 block min-h-[36px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
+                                                    <option value="" selected>Pilih list tujuan…</option>
+                                                    @foreach ($this->kolom as $tujuan)
+                                                        @if ($tujuan->id !== $kolom->id)
+                                                            <option value="{{ $tujuan->id }}">{{ $tujuan->nama }}</option>
+                                                        @endif
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                        @endif
+
+                                        <button type="button" x-on:click="buka = false" wire:click="arsipkanSemuaKartu({{ $kolom->id }})"
+                                                wire:confirm="Arsipkan semua kartu di list &quot;{{ $kolom->nama }}&quot;? Kartu bisa dipulihkan dari menu board."
+                                                class="block w-full border-t border-line px-3 py-2 text-left text-[#AE2E24] hover:bg-page">Arsipkan semua kartu</button>
                                         <button type="button" x-on:click="buka = false" wire:click="arsipkanKolom({{ $kolom->id }})"
                                                 wire:confirm="Arsipkan list &quot;{{ $kolom->nama }}&quot; beserta kartunya? List bisa dipulihkan dari menu board."
                                                 class="block w-full px-3 py-2 text-left text-[#AE2E24] hover:bg-page">Arsipkan list</button>
@@ -307,6 +378,7 @@
                         @else
                             <div class="h-2"></div>
                         @endif
+                        </div>
                     </li>
                 @endforeach
             </ol>
