@@ -58,11 +58,21 @@
         adaBerkas(e) {
             return this.bolehUnggah && Array.from(e.dataTransfer?.types ?? []).includes('Files');
         },
+        maksBerkas: @js((int) config('kanban.maks_lampiran_kb') * 1024),
+        muat(berkas) {
+            if (berkas.size <= this.maksBerkas) return true;
+            window.toast('"' + berkas.name + '" berukuran ' + (berkas.size / 1048576).toFixed(1)
+                + ' MB, melebihi batas ' + Math.round(this.maksBerkas / 1048576) + ' MB.');
+            return false;
+        },
         unggah(daftar) {
-            const berkas = Array.from(daftar ?? []);
+            const berkas = Array.from(daftar ?? []).filter((b) => this.muat(b));
             this.seret = false;
             if (! this.bolehUnggah || berkas.length === 0) return;
-            $wire.uploadMultiple('berkas', berkas, () => {}, () => {});
+            $wire.uploadMultiple('berkas', berkas, () => {}, () => this.gagalUnggah());
+        },
+        gagalUnggah() {
+            window.toast('Berkas gagal diunggah. Coba ukuran yang lebih kecil, atau ulangi sebentar lagi.');
         },
      }"
      x-on:dragenter.prevent="if (adaBerkas($event)) seret = true"
@@ -71,7 +81,8 @@
      x-on:drop.prevent.stop="unggah($event.dataTransfer?.files)"
      x-on:paste="unggah($event.clipboardData?.files)"
      x-on:keydown.escape="pratinjau ? pratinjau = null : $wire.tutup()"
-     x-on:keydown.window="pintasan($event)">
+     x-on:keydown.window="pintasan($event)"
+     x-on:livewire-upload-error="gagalUnggah()">
 
     {{-- Pratinjau gambar lampiran, tanpa meninggalkan kartu. --}}
     <div x-show="pratinjau" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4"
@@ -715,7 +726,7 @@
                                     <span wire:loading wire:target="berkas">Mengunggah…</span>
                                     <input type="file" wire:model="berkas" multiple class="sr-only">
                                 </label>
-                                <p class="mt-1 text-[11px] text-ink-muted">Bisa juga seret berkas ke kartu, atau tempel gambar (Ctrl+V).</p>
+                                <p class="mt-1 text-[11px] text-ink-muted">Bisa juga seret berkas ke kartu, atau tempel gambar (Ctrl+V). Maksimal {{ round((int) config('kanban.maks_lampiran_kb') / 1024) }} MB per berkas.</p>
 
                                 <div class="relative mt-1.5" x-data="{ buka: false }">
                                     <button type="button" x-on:click="buka = ! buka" :aria-expanded="buka" class="{{ $tombol }}">Lampirkan tautan</button>

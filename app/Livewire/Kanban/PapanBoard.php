@@ -30,6 +30,7 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
+use Throwable;
 
 /**
  * Satu board: list & kartu yang bisa diseret seperti Trello.
@@ -330,7 +331,7 @@ class PapanBoard extends Component
     {
         try {
             return $this->bulan ? Carbon::createFromFormat('Y-m', $this->bulan)->startOfMonth() : now()->startOfMonth();
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return now()->startOfMonth();
         }
     }
@@ -360,7 +361,7 @@ class PapanBoard extends Component
     {
         try {
             $awal = $this->sejak ? Carbon::createFromFormat('Y-m-d', $this->sejak) : now();
-        } catch (\Throwable) {
+        } catch (Throwable) {
             $awal = now();
         }
 
@@ -567,7 +568,7 @@ class PapanBoard extends Component
 
         try {
             $hari = Carbon::createFromFormat('Y-m-d', $tanggal, config('app.timezone'))->startOfDay();
-        } catch (\Throwable) {
+        } catch (Throwable) {
             abort(422);
         }
 
@@ -842,8 +843,19 @@ class PapanBoard extends Component
             ['latar.image' => 'Latar board harus berupa gambar.'],
         );
 
-        $path = $this->latar->store('kanban/latar/'.$this->board->id, 'local');
-        $kecil = app(Gambar::class)->kecilkan($path, (string) $this->latar->getMimeType(), Gambar::SISI_LATAR);
+        try {
+            // Jenis berkas dibaca sebelum disimpan — sesudahnya berkas
+            // sementara Livewire sudah tidak ada lagi di tempatnya.
+            $mime = (string) $this->latar->getMimeType();
+            $path = $this->latar->store('kanban/latar/'.$this->board->id, 'local');
+            $kecil = app(Gambar::class)->kecilkan($path, $mime, Gambar::SISI_LATAR);
+        } catch (Throwable $e) {
+            report($e);
+            $this->reset('latar');
+            $this->dispatch('toast', teks: 'Latar board gagal diunggah. Coba gambar lain atau yang ukurannya lebih kecil.', jenis: 'gagal');
+
+            return;
+        }
 
         if ($kecil) {
             Storage::disk('local')->delete($path);

@@ -118,9 +118,44 @@
 
             {{-- Bilah mengambang: pindah board tanpa mampir ke halaman Semua board. --}}
             <livewire:kanban.bilah-apung />
+
+            {{-- Kabar sesaat (terutama unggahan yang gagal) --}}
+            <div x-data="{
+                    daftar: [],
+                    tambah(kabar) {
+                        const teks = kabar?.teks ?? kabar;
+                        if (! teks) return;
+                        const id = Date.now() + Math.random();
+                        const gagal = (kabar?.jenis ?? 'gagal') === 'gagal';
+                        this.daftar.push({ id, teks, gagal });
+                        setTimeout(() => this.buang(id), gagal ? 9000 : 5000);
+                    },
+                    buang(id) { this.daftar = this.daftar.filter((k) => k.id !== id) },
+                 }"
+                 {{-- Kabar dari server ($this->dispatch('toast', …)) sampai ke sini sebagai peristiwa window juga. --}}
+                 x-on:toast.window="tambah($event.detail)"
+                 class="pointer-events-none fixed inset-x-0 bottom-0 z-[90] flex flex-col items-center gap-2 px-3 pb-20"
+                 role="status" aria-live="polite">
+                <template x-for="kabar in daftar" :key="kabar.id">
+                    <div x-transition.opacity
+                         class="pointer-events-auto flex w-[min(28rem,100%)] items-start gap-3 rounded-xl px-4 py-3 text-sm shadow-lg"
+                         :class="kabar.gagal ? 'bg-[#AE2E24] text-white' : 'bg-ink text-white'">
+                        <span class="min-w-0 flex-1" x-text="kabar.teks"></span>
+                        <button type="button" x-on:click="buang(kabar.id)" aria-label="Tutup pemberitahuan"
+                                class="-my-1 -mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md hover:bg-white/15">
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18" /></svg>
+                        </button>
+                    </div>
+                </template>
+            </div>
         </div>
 
         <script>
+            // Dipanggil dari mana saja: window.toast('Berkas gagal diunggah').
+            window.toast = (teks, jenis = 'gagal') => {
+                window.dispatchEvent(new CustomEvent('toast', { detail: { teks, jenis } }));
+            };
+
             // Editor sederhana untuk deskripsi & komentar: tombol format menulis
             // penanda Markdown di sekitar teks yang dipilih. Isinya tetap teks biasa,
             // jadi aman disimpan dan tetap terbaca dari mana pun.

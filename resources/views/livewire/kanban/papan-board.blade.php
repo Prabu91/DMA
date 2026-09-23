@@ -60,7 +60,8 @@
             }, 10000);
         },
         destroy() { clearInterval(this.pewaktu); },
-     }" x-on:keydown.window="pintasan($event)">
+     }" x-on:keydown.window="pintasan($event)"
+     x-on:livewire-upload-error="window.toast('Foto latar gagal diunggah. Coba gambar yang ukurannya lebih kecil.')">
 
     {{-- Kepala board --}}
     <div class="flex shrink-0 flex-wrap items-center gap-1.5 bg-black/25 px-3 py-2 text-white sm:gap-2 sm:px-4">
@@ -566,7 +567,7 @@
                                 <span wire:loading wire:target="latar">Mengunggah…</span>
                                 <input type="file" wire:model="latar" accept="image/*" class="sr-only">
                             </label>
-                            <p class="mt-1 text-[11px] text-ink-muted">Foto otomatis dikecilkan ke 1600px supaya board tetap ringan dibuka.</p>
+                            <p class="mt-1 text-[11px] text-ink-muted">Foto otomatis dikecilkan ke 1600px supaya board tetap ringan dibuka. Maksimal {{ round((int) config('kanban.maks_lampiran_kb') / 1024) }} MB.</p>
                             @error('latar')<p class="mt-1 text-xs text-[#AE2E24]">{{ $message }}</p>@enderror
                             @if ($board->latar_path)
                                 <button type="button" wire:click="hapusLatar" class="mt-2 text-xs text-navy underline">Hapus foto latar</button>

@@ -25,10 +25,12 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use Throwable;
 
 /** Jendela detail kartu — padanan "card back" di Trello. */
 class DetailKartu extends Component
@@ -602,23 +604,57 @@ class DetailKartu extends Component
     {
         $kartu = $this->wajibUbah();
         $maks = (int) config('kanban.maks_lampiran_kb');
-        $this->validate(
-            ['berkas' => ['array', 'max:10'], 'berkas.*' => ['file', 'max:'.$maks]],
-            ['berkas.*.max' => 'Ukuran berkas maksimal '.round($maks / 1024).' MB.', 'berkas.max' => 'Maksimal 10 berkas sekaligus.'],
-        );
+
+        try {
+            $this->validate(
+                ['berkas' => ['array', 'max:10'], 'berkas.*' => ['file', 'max:'.$maks]],
+                ['berkas.*.max' => 'Ukuran berkas maksimal '.round($maks / 1024).' MB.', 'berkas.max' => 'Maksimal 10 berkas sekaligus.'],
+            );
+        } catch (ValidationException $e) {
+            // Panel lampiran mudah tergulung dari pandangan, jadi alasannya
+            // disebut juga lewat kabar sesaat.
+            $this->dispatch('toast', teks: (string) collect($e->validator->errors()->all())->first(), jenis: 'gagal');
+            $this->reset('berkas');
+
+            throw $e;
+        }
+
+        $gagal = [];
 
         foreach ($this->berkas as $file) {
-            $path = $file->store('kanban/'.$kartu->board_id.'/'.$kartu->id, 'local');
-            $mime = $file->getMimeType();
-            $lampiran = Lampiran::create([
-                'kartu_id' => $kartu->id,
-                'user_id' => auth()->id(),
-                'nama' => mb_substr($file->getClientOriginalName(), 0, 255),
-                'path' => $path,
-                'thumb_path' => app(Gambar::class)->kecilkan($path, (string) $mime),
-                'mime' => $mime,
-                'ukuran' => $file->getSize(),
-            ]);
+            try {
+                // Keterangan berkas dibaca dulu: begitu disimpan, berkas
+                // sementara Livewire sudah tidak ada lagi di tempatnya.
+                $nama = mb_substr($file->getClientOriginalName(), 0, 255);
+                $mime = (string) $file->getMimeType();
+                $ukuran = (int) $file->getSize();
+
+                $path = $file->store('kanban/'.$kartu->board_id.'/'.$kartu->id, 'local');
+
+                // Versi kecil hanya pemanis; kalau gagal, lampirannya tetap masuk.
+                try {
+                    $thumb = app(Gambar::class)->kecilkan($path, $mime);
+                } catch (Throwable $e) {
+                    report($e);
+                    $thumb = null;
+                }
+
+                $lampiran = Lampiran::create([
+                    'kartu_id' => $kartu->id,
+                    'user_id' => auth()->id(),
+                    'nama' => $nama,
+                    'path' => $path,
+                    'thumb_path' => $thumb,
+                    'mime' => $mime,
+                    'ukuran' => $ukuran,
+                ]);
+            } catch (Throwable $e) {
+                report($e);
+                $gagal[] = $file->getClientOriginalName();
+
+                continue;
+            }
+
             // Gambar pertama otomatis jadi sampul, seperti Trello.
             if (! $kartu->cover_lampiran_id && ! $kartu->cover_warna && $lampiran->isGambar()) {
                 $kartu->update(['cover_lampiran_id' => $lampiran->id]);
@@ -627,6 +663,11 @@ class DetailKartu extends Component
         }
 
         $this->reset('berkas');
+
+        if ($gagal) {
+            $this->dispatch('toast', teks: 'Gagal melampirkan '.implode(', ', $gagal).'. Berkasnya tidak tersimpan — coba ulangi atau pakai berkas yang lebih kecil.', jenis: 'gagal');
+        }
+
         $this->segarkan();
     }
 
