@@ -86,6 +86,12 @@ class Kartu extends Model
         return $this->hasMany(Lampiran::class)->latest()->latest('id');
     }
 
+    /** Isi bidang khusus kartu ini. */
+    public function bidangNilai(): HasMany
+    {
+        return $this->hasMany(BidangNilai::class, 'kartu_id');
+    }
+
     public function aktivitas(): HasMany
     {
         return $this->hasMany(Aktivitas::class)->latest('created_at')->latest('id');

@@ -488,6 +488,12 @@
                                                             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $ikon['checklist'] }}" /></svg>{{ $kartu->checklist_selesai_count }}/{{ $kartu->checklist_item_count }}
                                                         </span>
                                                     @endif
+                                                    @foreach ($kartu->bidangNilai as $isi)
+                                                        @php $bd = $this->bidangDepan[$isi->bidang_id] ?? null; @endphp
+                                                        @if ($bd && $isi->nilai !== null && $isi->nilai !== '')
+                                                            <span class="rounded bg-[#E9EBEE] px-1.5 py-0.5" title="{{ $bd->nama }}">{{ $bd->nama }}: {{ $bd->tampilkan($isi->nilai) }}</span>
+                                                        @endif
+                                                    @endforeach
                                                     @if ($kartu->anggota->isNotEmpty())
                                                         <span class="ml-auto flex -space-x-1">
                                                             @foreach ($kartu->anggota->take(3) as $a)
@@ -843,6 +849,70 @@
                         </form>
                     @endif
                 </div>
+
+                {{-- Bidang khusus --}}
+                @if ($kelola)
+                    <div class="border-t border-line px-4 py-3" x-data="{ buka: false }">
+                        <button type="button" x-on:click="buka = ! buka" :aria-expanded="buka" class="flex w-full items-center justify-between text-sm font-semibold">
+                            Bidang khusus
+                            <span class="text-xs font-normal text-ink-muted">{{ $this->bidangBoard->count() }}</span>
+                        </button>
+                        <div x-show="buka" x-cloak class="mt-2 space-y-2">
+                            @forelse ($this->bidangBoard as $bd)
+                                <div wire:key="kelola-bidang-{{ $bd->id }}" class="rounded-lg bg-page p-2">
+                                    <div class="flex items-center gap-2">
+                                        <input type="text" value="{{ $bd->nama }}" aria-label="Nama bidang {{ $bd->nama }}"
+                                               x-on:change="$wire.ubahNamaBidang({{ $bd->id }}, $event.target.value)"
+                                               class="min-h-[32px] min-w-0 flex-1 rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
+                                        <button type="button" wire:click="hapusBidang({{ $bd->id }})"
+                                                wire:confirm="Hapus bidang &quot;{{ $bd->nama }}&quot;? Isinya di semua kartu ikut hilang."
+                                                aria-label="Hapus bidang {{ $bd->nama }}"
+                                                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[#AE2E24] hover:bg-line">
+                                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" d="M5 7h14M10 7V5h4v2M8 7l.7 12h6.6L16 7" /></svg>
+                                        </button>
+                                    </div>
+                                    <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-muted">
+                                        <span>{{ \App\Models\Kanban\Bidang::JENIS[$bd->jenis] ?? $bd->jenis }}</span>
+                                        @if ($bd->jenis === 'pilihan')
+                                            <span class="min-w-0 truncate">{{ collect($bd->opsi)->join(', ') }}</span>
+                                        @endif
+                                        <label class="ml-auto inline-flex items-center gap-1.5">
+                                            <input type="checkbox" wire:click="toggleDepanBidang({{ $bd->id }})" @checked($bd->di_depan)
+                                                   class="h-3.5 w-3.5 rounded border-line text-navy focus:ring-brand/40">
+                                            Tampil di kartu
+                                        </label>
+                                    </div>
+                                </div>
+                            @empty
+                                <p class="text-xs text-ink-muted">Belum ada bidang khusus. Tambahkan kolom sendiri, mis. "No. invoice" atau "Jenis paket".</p>
+                            @endforelse
+
+                            <form wire:submit="tambahBidang" class="rounded-lg bg-page p-2">
+                                <label for="bidang-nama" class="block text-xs font-medium text-ink-muted">Bidang baru</label>
+                                <input id="bidang-nama" type="text" wire:model="namaBidangBaru" placeholder="mis. No. invoice"
+                                       class="mt-1 block min-h-[34px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
+                                @error('namaBidangBaru')<p class="mt-1 text-xs text-[#AE2E24]">{{ $message }}</p>@enderror
+
+                                <label for="bidang-jenis" class="mt-2 block text-xs font-medium text-ink-muted">Jenis</label>
+                                <select id="bidang-jenis" wire:model.live="jenisBidangBaru"
+                                        class="mt-1 block min-h-[34px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
+                                    @foreach (\App\Models\Kanban\Bidang::JENIS as $kunci => $labelJenis)
+                                        <option value="{{ $kunci }}">{{ $labelJenis }}</option>
+                                    @endforeach
+                                </select>
+
+                                @if ($jenisBidangBaru === 'pilihan')
+                                    <label for="bidang-opsi" class="mt-2 block text-xs font-medium text-ink-muted">Pilihan (satu per baris)</label>
+                                    <textarea id="bidang-opsi" wire:model="opsiBidangBaru" rows="3" placeholder="Wisuda&#10;Graduation&#10;Yearbook"
+                                              class="mt-1 block w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30"></textarea>
+                                    @error('opsiBidangBaru')<p class="mt-1 text-xs text-[#AE2E24]">{{ $message }}</p>@enderror
+                                @endif
+
+                                <button type="submit" class="mt-2 h-8 w-full rounded-md bg-navy text-xs font-medium text-white">Tambah bidang</button>
+                            </form>
+                        </div>
+                    </div>
+                @endif
 
                 {{-- Anggota --}}
                 <div x-show="bagian === 'anggota'" x-cloak>

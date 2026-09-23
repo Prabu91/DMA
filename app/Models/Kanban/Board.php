@@ -56,6 +56,12 @@ class Board extends Model
         return $this->hasMany(Label::class)->orderBy('id');
     }
 
+    /** Bidang khusus (custom fields) yang berlaku di board ini. */
+    public function bidang(): HasMany
+    {
+        return $this->hasMany(Bidang::class)->orderBy('posisi')->orderBy('id');
+    }
+
     public function pembuat(): BelongsTo
     {
         return $this->belongsTo(User::class, 'dibuat_oleh');

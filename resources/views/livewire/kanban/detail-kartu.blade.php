@@ -215,6 +215,45 @@
                         </section>
                     @endif
 
+                    {{-- Bidang khusus (custom fields) milik board ini --}}
+                    @if ($this->bidang->isNotEmpty())
+                        <section>
+                            <h3 class="px-2 text-base font-semibold">Bidang khusus</h3>
+                            <div class="mt-2 grid gap-2 sm:grid-cols-2">
+                                @foreach ($this->bidang as $bd)
+                                    <div wire:key="bidang-{{ $bd->id }}" class="rounded-lg bg-card px-3 py-2">
+                                        <label for="bidang-{{ $bd->id }}" class="block text-xs font-medium text-ink-muted">{{ $bd->nama }}</label>
+
+                                        @if (! $ubah)
+                                            <p class="mt-1 text-sm">{{ $bd->tampilkan((string) ($bidangIsi[$bd->id] ?? '')) ?: '—' }}</p>
+                                        @elseif ($bd->jenis === 'centang')
+                                            <label class="mt-1 inline-flex items-center gap-2 text-sm">
+                                                <input id="bidang-{{ $bd->id }}" type="checkbox" wire:model.live="bidangIsi.{{ $bd->id }}"
+                                                       class="h-4 w-4 rounded border-line text-navy focus:ring-brand/40">
+                                                <span class="text-ink-muted">{{ ($bidangIsi[$bd->id] ?? false) ? 'Ya' : 'Belum' }}</span>
+                                            </label>
+                                        @elseif ($bd->jenis === 'pilihan')
+                                            <select id="bidang-{{ $bd->id }}" wire:model.live="bidangIsi.{{ $bd->id }}"
+                                                    class="mt-1 block min-h-[36px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
+                                                <option value="">(kosong)</option>
+                                                @foreach ($bd->opsi ?? [] as $opsi)
+                                                    <option value="{{ $opsi }}">{{ $opsi }}</option>
+                                                @endforeach
+                                            </select>
+                                        @else
+                                            <input id="bidang-{{ $bd->id }}"
+                                                   type="{{ ['angka' => 'number', 'tanggal' => 'date'][$bd->jenis] ?? 'text' }}"
+                                                   @if ($bd->jenis === 'angka') step="any" @endif
+                                                   wire:model.live.debounce.700ms="bidangIsi.{{ $bd->id }}"
+                                                   placeholder="{{ $bd->jenis === 'teks' ? 'Belum diisi' : '' }}"
+                                                   class="mt-1 block min-h-[36px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
+                        </section>
+                    @endif
+
                     {{-- Deskripsi --}}
                     <section>
                         <div class="flex items-center justify-between gap-2 px-2">

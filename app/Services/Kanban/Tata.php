@@ -2,6 +2,8 @@
 
 namespace App\Services\Kanban;
 
+use App\Models\Kanban\Bidang;
+use App\Models\Kanban\BidangNilai;
 use App\Models\Kanban\Board;
 use App\Models\Kanban\Checklist;
 use App\Models\Kanban\ChecklistItem;
@@ -129,6 +131,17 @@ class Tata
 
             if (in_array('lampiran', $bawa, true)) {
                 $this->salinLampiran($asal, $salinan, $oleh);
+            }
+
+            // Isi bidang khusus ikut tersalin selama masih board yang sama.
+            if ($seBoard) {
+                foreach ($asal->bidangNilai as $nilai) {
+                    BidangNilai::create([
+                        'bidang_id' => $nilai->bidang_id,
+                        'kartu_id' => $salinan->id,
+                        'nilai' => $nilai->nilai,
+                    ]);
+                }
             }
 
             $tujuan->board->catat('kartu_disalin', 'dari '.$asal->judul, $salinan, $oleh->id);
@@ -316,6 +329,18 @@ class Tata
             ]);
             $board->anggota()->attach($oleh->id, ['peran' => 'admin']);
 
+            $petaBidang = [];
+            foreach ($asal->bidang()->get() as $bidang) {
+                $petaBidang[$bidang->id] = Bidang::create([
+                    'board_id' => $board->id,
+                    'nama' => $bidang->nama,
+                    'jenis' => $bidang->jenis,
+                    'opsi' => $bidang->opsi,
+                    'di_depan' => $bidang->di_depan,
+                    'posisi' => $bidang->posisi,
+                ])->id;
+            }
+
             $petaLabel = [];
             foreach ($asal->label()->get() as $label) {
                 $petaLabel[$label->id] = Label::create([
@@ -346,6 +371,16 @@ class Tata
                     $salinan->label()->attach(
                         $kartu->label()->pluck('kanban_label.id')->map(fn ($id) => $petaLabel[$id] ?? null)->filter()->all()
                     );
+
+                    foreach ($kartu->bidangNilai as $nilai) {
+                        if ($tujuanBidang = $petaBidang[$nilai->bidang_id] ?? null) {
+                            BidangNilai::create([
+                                'bidang_id' => $tujuanBidang,
+                                'kartu_id' => $salinan->id,
+                                'nilai' => $nilai->nilai,
+                            ]);
+                        }
+                    }
                 }
             }
 

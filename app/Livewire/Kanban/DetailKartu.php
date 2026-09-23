@@ -3,6 +3,8 @@
 namespace App\Livewire\Kanban;
 
 use App\Models\Kanban\Aktivitas;
+use App\Models\Kanban\Bidang;
+use App\Models\Kanban\BidangNilai;
 use App\Models\Kanban\Board;
 use App\Models\Kanban\Checklist;
 use App\Models\Kanban\ChecklistItem;
@@ -89,6 +91,9 @@ class DetailKartu extends Component
     /** Yang ikut disalin: label, anggota, checklist, lampiran. */
     public array $bawaSalinan = ['label', 'anggota', 'checklist'];
 
+    /** Isi bidang khusus kartu ini: [id bidang => nilai]. */
+    public array $bidangIsi = [];
+
     /** Checklist yang itemnya disalin saat membuat checklist baru ("Copy items from"). */
     public ?int $salinItemDari = null;
 
@@ -116,6 +121,7 @@ class DetailKartu extends Component
         $this->pindahKolom = $k->kolom_id;
         $this->judulSalinan = $k->judul;
         $this->salinKolom = $k->kolom_id;
+        $this->muatBidangIsi();
     }
 
     // ---------------- Data ----------------
@@ -234,7 +240,7 @@ class DetailKartu extends Component
 
     private function segarkan(bool $papan = true): void
     {
-        unset($this->kartu, $this->riwayat, $this->labelBoard, $this->bolehUbah);
+        unset($this->kartu, $this->riwayat, $this->labelBoard, $this->bolehUbah, $this->bidang, $this->checklistSumber);
         if ($papan) {
             $this->dispatch('kartu-berubah');
         }
@@ -404,6 +410,95 @@ class DetailKartu extends Component
     }
 
     // ---------------- Checklist ----------------
+
+    // ---------------- Bidang khusus ----------------
+
+    /** Bidang khusus milik board kartu ini, beserta isi yang sudah tersimpan. */
+    #[Computed]
+    public function bidang(): Collection
+    {
+        return Bidang::where('board_id', $this->kartu->board_id)
+            ->orderBy('posisi')->orderBy('id')->get();
+    }
+
+    private function muatBidangIsi(): void
+    {
+        $tersimpan = BidangNilai::where('kartu_id', $this->kartuId)->pluck('nilai', 'bidang_id');
+
+        $this->bidangIsi = $this->bidang
+            ->mapWithKeys(fn (Bidang $b) => [
+                $b->id => $b->jenis === 'centang'
+                    ? (bool) ($tersimpan[$b->id] ?? false)
+                    : (string) ($tersimpan[$b->id] ?? ''),
+            ])
+            ->all();
+    }
+
+    /** Begitu isiannya berubah, langsung disimpan — tak perlu tombol simpan. */
+    public function updatedBidangIsi(mixed $nilai, string $kunci): void
+    {
+        $this->simpanBidang((int) $kunci);
+    }
+
+    public function simpanBidang(int $bidangId): void
+    {
+        $kartu = $this->wajibUbah();
+        $bidang = Bidang::where('board_id', $kartu->board_id)->findOrFail($bidangId);
+
+        $nilai = $this->rapikanNilaiBidang($bidang, $this->bidangIsi[$bidangId] ?? null);
+
+        // Isian yang tidak sesuai jenisnya tidak disimpan; isian lama dipulihkan.
+        if ($nilai === null) {
+            $this->dispatch('toast', teks: 'Isi "'.$bidang->nama.'" tidak sesuai jenis '.mb_strtolower(Bidang::JENIS[$bidang->jenis] ?? $bidang->jenis).'.', jenis: 'gagal');
+            $this->muatBidangIsi();
+
+            return;
+        }
+
+        if ($nilai === '') {
+            BidangNilai::where('bidang_id', $bidang->id)->where('kartu_id', $kartu->id)->delete();
+        } else {
+            BidangNilai::updateOrCreate(
+                ['bidang_id' => $bidang->id, 'kartu_id' => $kartu->id],
+                ['nilai' => $nilai],
+            );
+            $this->catat('bidang_diisi', $bidang->nama.': '.$bidang->tampilkan($nilai));
+        }
+
+        $this->muatBidangIsi();
+        $this->segarkan();
+        $this->dispatch('kartu-berubah');
+    }
+
+    /** Rapikan isian sesuai jenis bidang; null berarti isinya tidak sah. */
+    private function rapikanNilaiBidang(Bidang $bidang, mixed $nilai): ?string
+    {
+        if ($bidang->jenis === 'centang') {
+            return $nilai ? '1' : '';
+        }
+
+        $nilai = trim((string) $nilai);
+
+        if ($nilai === '') {
+            return '';
+        }
+
+        return match ($bidang->jenis) {
+            'angka' => is_numeric($nilai) ? $nilai : null,
+            'tanggal' => $this->tanggalSah($nilai),
+            'pilihan' => in_array($nilai, $bidang->opsi ?? [], true) ? $nilai : null,
+            default => mb_substr($nilai, 0, 500),
+        };
+    }
+
+    private function tanggalSah(string $nilai): ?string
+    {
+        try {
+            return Carbon::createFromFormat('Y-m-d', $nilai)->toDateString();
+        } catch (Throwable) {
+            return null;
+        }
+    }
 
     /** Checklist berisi di board ini — sumber untuk "Copy items from". */
     #[Computed]

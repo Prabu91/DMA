@@ -25,21 +25,25 @@ class EksporBoardController extends Controller
             // BOM supaya Excel membaca huruf beraksen & emoji dengan benar.
             fwrite($keluar, "\xEF\xBB\xBF");
 
-            fputcsv($keluar, [
+            $bidang = $board->bidang()->get();
+
+            fputcsv($keluar, array_merge([
                 'List', 'Kartu', 'Deskripsi', 'Label', 'Anggota', 'Mulai', 'Tenggat',
                 'Tenggat selesai', 'Checklist selesai', 'Checklist total', 'Komentar',
                 'Lampiran', 'Kode order', 'Diarsipkan', 'Dibuat',
-            ]);
+            ], $bidang->pluck('nama')->all()));
 
             Kartu::query()
                 ->where('board_id', $board->id)
                 ->unless($arsip, fn ($q) => $q->whereNull('diarsipkan_at'))
-                ->with(['kolom:id,nama,posisi', 'label', 'anggota:id,nama,name', 'order:id,booking_code'])
+                ->with(['kolom:id,nama,posisi', 'label', 'anggota:id,nama,name', 'order:id,booking_code', 'bidangNilai'])
                 ->withCount(['komentar', 'lampiran', 'checklistItem', 'checklistItem as checklist_selesai_count' => fn ($q) => $q->whereNotNull('selesai_at')])
                 ->orderBy('kolom_id')->orderBy('posisi')
-                ->chunk(200, function ($kartu) use ($keluar) {
+                ->chunk(200, function ($kartu) use ($keluar, $bidang) {
                     foreach ($kartu as $k) {
-                        fputcsv($keluar, [
+                        $isiBidang = $k->bidangNilai->pluck('nilai', 'bidang_id');
+
+                        fputcsv($keluar, array_merge([
                             $k->kolom?->nama,
                             $k->judul,
                             $k->deskripsi,
@@ -55,7 +59,7 @@ class EksporBoardController extends Controller
                             $k->order?->booking_code,
                             $k->diarsipkan_at?->format('Y-m-d H:i'),
                             $k->created_at?->format('Y-m-d H:i'),
-                        ]);
+                        ], $bidang->map(fn ($b) => $b->tampilkan($isiBidang[$b->id] ?? null))->all()));
                     }
                 });
 

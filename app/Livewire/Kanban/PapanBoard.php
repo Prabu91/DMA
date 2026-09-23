@@ -3,6 +3,7 @@
 namespace App\Livewire\Kanban;
 
 use App\Models\Kanban\Aktivitas;
+use App\Models\Kanban\Bidang;
 use App\Models\Kanban\Board;
 use App\Models\Kanban\Kartu;
 use App\Models\Kanban\Kolom;
@@ -125,6 +126,13 @@ class PapanBoard extends Component
     public ?string $cap = null;
 
     // Menu board.
+    public string $namaBidangBaru = '';
+
+    public string $jenisBidangBaru = 'teks';
+
+    /** Pilihan untuk bidang jenis "pilihan", satu per baris. */
+    public string $opsiBidangBaru = '';
+
     public string $namaLabelBaru = '';
 
     public string $warnaLabelBaru = 'hijau';
@@ -241,7 +249,7 @@ class PapanBoard extends Component
     private function kartuTersaring()
     {
         return $this->kartuDisaring()
-            ->with(['label', 'anggota:id,nama,name', 'coverLampiran', 'order:id,booking_code,status,order_induk_id'])
+            ->with(['label', 'anggota:id,nama,name', 'coverLampiran', 'order:id,booking_code,status,order_induk_id', 'bidangNilai'])
             ->withCount([
                 'komentar',
                 'lampiran',
@@ -513,7 +521,7 @@ class PapanBoard extends Component
 
     private function segarkan(): void
     {
-        unset($this->saringanTersimpan, $this->templat, $this->kolom, $this->baris, $this->kalender, $this->linimasa, $this->dasbor, $this->awalLinimasa, $this->tanpaTenggat, $this->bulanAktif, $this->arsip, $this->aktivitas, $this->labelBoard, $this->anggotaBoard, $this->calonAnggota, $this->sayaAnggota, $this->sayaBintang, $this->bolehUbah, $this->bolehKelola);
+        unset($this->bidangBoard, $this->bidangDepan, $this->saringanTersimpan, $this->templat, $this->kolom, $this->baris, $this->kalender, $this->linimasa, $this->dasbor, $this->awalLinimasa, $this->tanpaTenggat, $this->bulanAktif, $this->arsip, $this->aktivitas, $this->labelBoard, $this->anggotaBoard, $this->calonAnggota, $this->sayaAnggota, $this->sayaBintang, $this->bolehUbah, $this->bolehKelola);
     }
 
     private function wajibUbah(): void
@@ -1124,6 +1132,104 @@ class PapanBoard extends Component
     }
 
     /** Simpan otomasi board Order (hanya admin pusat). */
+    // ---------------- Bidang khusus (custom fields) ----------------
+
+    #[Computed]
+    public function bidangBoard(): Collection
+    {
+        return $this->board->bidang()->get();
+    }
+
+    /** Bidang yang nilainya ikut tampil sebagai lencana di muka kartu. */
+    #[Computed]
+    public function bidangDepan(): Collection
+    {
+        return $this->bidangBoard->where('di_depan', true)->keyBy('id');
+    }
+
+    public function tambahBidang(): void
+    {
+        $this->wajibKelola();
+        $this->validate([
+            'namaBidangBaru' => ['required', 'string', 'max:80'],
+            'jenisBidangBaru' => ['required', Rule::in(array_keys(Bidang::JENIS))],
+            'opsiBidangBaru' => ['nullable', 'string', 'max:500'],
+        ], ['namaBidangBaru.required' => 'Beri nama bidangnya.']);
+
+        $opsi = $this->pecahOpsi($this->opsiBidangBaru);
+
+        if ($this->jenisBidangBaru === 'pilihan' && $opsi === []) {
+            $this->addError('opsiBidangBaru', 'Tulis dulu pilihannya, satu per baris.');
+
+            return;
+        }
+
+        Bidang::create([
+            'board_id' => $this->board->id,
+            'nama' => trim($this->namaBidangBaru),
+            'jenis' => $this->jenisBidangBaru,
+            'opsi' => $this->jenisBidangBaru === 'pilihan' ? $opsi : null,
+            'posisi' => (float) $this->board->bidang()->max('posisi') + Posisi::JARAK,
+        ]);
+
+        $this->board->catat('bidang_dibuat', trim($this->namaBidangBaru));
+        $this->reset(['namaBidangBaru', 'opsiBidangBaru']);
+        $this->jenisBidangBaru = 'teks';
+        $this->segarkan();
+    }
+
+    public function ubahNamaBidang(int $bidangId, string $nama): void
+    {
+        $this->wajibKelola();
+        $nama = trim($nama);
+
+        if ($nama === '') {
+            return;
+        }
+
+        $this->bidangMilikBoard($bidangId)->update(['nama' => mb_substr($nama, 0, 80)]);
+        $this->segarkan();
+    }
+
+    /** Tampilkan nilainya sebagai lencana di muka kartu, seperti Trello. */
+    public function toggleDepanBidang(int $bidangId): void
+    {
+        $this->wajibKelola();
+        $bidang = $this->bidangMilikBoard($bidangId);
+
+        $bidang->update(['di_depan' => ! $bidang->di_depan]);
+        $this->segarkan();
+    }
+
+    public function hapusBidang(int $bidangId): void
+    {
+        $this->wajibKelola();
+        $bidang = $this->bidangMilikBoard($bidangId);
+
+        $nama = $bidang->nama;
+        $bidang->delete();
+
+        $this->board->catat('bidang_dihapus', $nama);
+        $this->segarkan();
+    }
+
+    private function bidangMilikBoard(int $id): Bidang
+    {
+        return Bidang::where('board_id', $this->board->id)->findOrFail($id);
+    }
+
+    /** Pilihan ditulis satu per baris (boleh juga dipisah koma). */
+    private function pecahOpsi(string $teks): array
+    {
+        return collect(preg_split('/[\r\n,]+/', $teks))
+            ->map(fn ($o) => trim($o))
+            ->filter()
+            ->unique()
+            ->take(30)
+            ->values()
+            ->all();
+    }
+
     public function simpanOtomasi(): void
     {
         abort_unless($this->board->isOrder() && Akses::admin(auth()->user()), 403);
