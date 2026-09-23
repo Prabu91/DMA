@@ -21,6 +21,8 @@
             /* Saat diseret, kartu bayangan tampil miring seperti Trello. */
             .sortable-drag { transform: rotate(3deg); }
             .sortable-ghost { opacity: .35; }
+            /* Bilah bawah menyingkir selama kartu terbuka. */
+            body.kartu-terbuka .bilah-apung { display: none; }
             /* Deskripsi & komentar berformat (Markdown). */
             .isi-teks > *:first-child { margin-top: 0; }
             .isi-teks > *:last-child { margin-bottom: 0; }
@@ -110,9 +112,12 @@
                 </div>
             </header>
 
-            <main class="min-h-0 flex-1">
+            <main class="min-h-0 flex-1 pb-16">
                 {{ $slot }}
             </main>
+
+            {{-- Bilah mengambang: pindah board tanpa mampir ke halaman Semua board. --}}
+            <livewire:kanban.bilah-apung />
         </div>
 
         <script>

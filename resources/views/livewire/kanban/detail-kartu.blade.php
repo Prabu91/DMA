@@ -27,6 +27,8 @@
         pratinjau: null,
         bolehUnggah: @js($ubah),
         init() {
+            // Selama kartu terbuka, bilah bawah disembunyikan (lihat layout).
+            document.body.classList.add('kartu-terbuka');
             // Ikut memantau perubahan rekan (komentar, checklist) selama kartu terbuka.
             this.pewaktu = setInterval(() => {
                 const aktif = document.activeElement?.tagName;
@@ -34,7 +36,10 @@
                 $wire.cek();
             }, 8000);
         },
-        destroy() { clearInterval(this.pewaktu); },
+        destroy() {
+            clearInterval(this.pewaktu);
+            document.body.classList.remove('kartu-terbuka');
+        },
         sedangMengetik(e) {
             const t = e.target;
             return t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName);
