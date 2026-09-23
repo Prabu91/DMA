@@ -48,6 +48,68 @@
             this.lipat = this.terlipat(id) ? this.lipat.filter(x => x !== id) : [...this.lipat, id];
             try { localStorage.setItem(this.kunciLipat, JSON.stringify(this.lipat)) } catch (e) {}
         },
+        // --- Geser papan dengan tetikus, seperti menyeret latar papan di Trello ---
+        panEl: null,
+        panX: 0,
+        panAwal: 0,
+        panMulai(e) {
+            if (e.button !== 0 || e.pointerType === 'touch') return;
+            // Jangan rebut dari kartu, tombol, atau kolom yang memang bisa diseret.
+            if (e.target.closest('li, button, a, input, textarea, select, form, [role=menu], [wire\\:sort\\:item]')) return;
+            this.panEl = e.currentTarget;
+            this.panX = e.clientX;
+            this.panAwal = this.panEl.scrollLeft;
+            this.panEl.style.cursor = 'grabbing';
+        },
+        panGerak(e) {
+            if (! this.panEl) return;
+            e.preventDefault();
+            this.panEl.scrollLeft = this.panAwal - (e.clientX - this.panX);
+        },
+        panSelesai() {
+            if (! this.panEl) return;
+            this.panEl.style.cursor = '';
+            this.panEl = null;
+        },
+        // --- Menu kartu (klik kanan / tombol pensil), seperti menu kartu Trello ---
+        kartuMenu: null,
+        sub: null,
+        bukaMenuKartu(e, data) {
+            e.preventDefault();
+            e.stopPropagation();
+            const titik = e.touches?.[0] ?? e;
+            this.kartuMenu = {
+                ...data,
+                x: Math.max(8, Math.min(titik.clientX ?? 0, window.innerWidth - 248)),
+                y: Math.min(titik.clientY ?? 0, Math.max(8, window.innerHeight - 330)),
+            };
+            this.sub = null;
+        },
+        tutupMenuKartu() { this.kartuMenu = null; this.sub = null },
+        punyaLabel(id) { return (this.kartuMenu?.label ?? []).includes(id) },
+        punyaAnggota(id) { return (this.kartuMenu?.anggota ?? []).includes(id) },
+        pilihLabel(id) {
+            $wire.toggleLabelKartu(this.kartuMenu.id, id);
+            this.kartuMenu.label = this.punyaLabel(id)
+                ? this.kartuMenu.label.filter(x => x !== id) : [...this.kartuMenu.label, id];
+        },
+        pilihAnggota(id) {
+            $wire.toggleAnggotaKartu(this.kartuMenu.id, id);
+            this.kartuMenu.anggota = this.punyaAnggota(id)
+                ? this.kartuMenu.anggota.filter(x => x !== id) : [...this.kartuMenu.anggota, id];
+        },
+        salinTautanKartu() {
+            const tautan = location.origin + location.pathname + '?kartu=' + this.kartuMenu.id;
+            const selesai = () => window.toast('Tautan kartu disalin.', 'oke');
+            if (navigator.clipboard?.writeText) {
+                navigator.clipboard.writeText(tautan).then(selesai).catch(() => window.toast('Tautan gagal disalin.'));
+            } else {
+                const k = document.createElement('textarea');
+                k.value = tautan; document.body.appendChild(k); k.select();
+                document.execCommand('copy'); k.remove(); selesai();
+            }
+            this.tutupMenuKartu();
+        },
         init() {
             this.muatLipat();
             // Periksa perubahan rekan tiap 10 detik; papan hanya digambar ulang bila memang berubah.
@@ -222,9 +284,11 @@
 
     {{-- List & kartu --}}
     @if ($tampilan === 'papan')
-    <div class="min-h-0 flex-1 overflow-x-auto overflow-y-hidden">
+    <div class="min-h-0 flex-1 overflow-x-auto overflow-y-hidden overscroll-x-contain"
+         x-on:pointerdown="panMulai($event)" x-on:pointermove="panGerak($event)"
+         x-on:pointerup.window="panSelesai()" x-on:pointercancel.window="panSelesai()" x-on:pointerleave="panSelesai()">
         <div class="flex h-full items-start gap-3 p-3 sm:px-4">
-            <ol @if ($ubah) wire:sort="urutKolom" wire:sort:config="{ handle: '.pegangan-list', delay: 220, delayOnTouchOnly: true, touchStartThreshold: 6 }" @endif
+            <ol @if ($ubah) wire:sort="urutKolom" wire:sort:config="{ handle: '.pegangan-list', delay: 220, delayOnTouchOnly: true, touchStartThreshold: 6, bubbleScroll: false }" @endif
                 class="flex h-full items-start gap-3" aria-label="List">
                 @foreach ($this->kolom as $kolom)
                     <li wire:key="kolom-{{ $kolom->id }}" wire:sort:item="{{ $kolom->id }}"
@@ -257,6 +321,14 @@
                             </div>
                             <span class="mt-1.5 shrink-0 rounded px-1.5 text-xs text-ink-muted"
                                   title="{{ $kolom->jumlah_kartu }} kartu di list ini">{{ $kolom->jumlah_kartu }}</span>
+                            {{-- Lipat list, sama seperti tombol "Collapse list" di Trello. --}}
+                            <button type="button" x-on:click="toggleLipat({{ $kolom->id }})" title="Collapse list"
+                                    aria-label="Lipat list {{ $kolom->nama }}" wire:sort:ignore
+                                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-ink-muted hover:bg-line hover:text-ink">
+                                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 6l-5 6 5 6M15 6l5 6-5 6" />
+                                </svg>
+                            </button>
                             @if ($ubah)
                                 <div class="relative shrink-0" x-data="{ buka: false }">
                                     <button type="button" x-on:click="buka = ! buka" aria-label="Menu list {{ $kolom->nama }}"
@@ -327,12 +399,33 @@
                             @endif
                         </div>
 
-                        <ol @if ($ubah) wire:sort="urutKartu" wire:sort:group="kartu" wire:sort:group-id="{{ $kolom->id }}" wire:sort:config="{ delay: 220, delayOnTouchOnly: true, touchStartThreshold: 6 }" @endif
+                        <ol @if ($ubah) wire:sort="urutKartu" wire:sort:group="kartu" wire:sort:group-id="{{ $kolom->id }}" wire:sort:config="{ delay: 220, delayOnTouchOnly: true, touchStartThreshold: 6, bubbleScroll: false }" @endif
                             class="flex min-h-[10px] flex-col gap-2 overflow-y-auto px-2 py-1" aria-label="Kartu di {{ $kolom->nama }}">
                             @foreach ($kolom->kartu as $kartu)
                                 @php $tenggat = $kartu->keadaanTenggat(); @endphp
+                                @php
+                                    $dataMenu = [
+                                        'id' => $kartu->id,
+                                        'judul' => $kartu->judul,
+                                        'label' => $kartu->label->pluck('id'),
+                                        'anggota' => $kartu->anggota->pluck('id'),
+                                        'warna' => $kartu->cover_warna,
+                                        'tenggat' => $kartu->tenggat_pada?->format('Y-m-d'),
+                                        'kolom' => $kolom->id,
+                                    ];
+                                @endphp
                                 <li wire:key="kartu-{{ $kartu->id }}" wire:sort:item="{{ $kartu->id }}"
-                                    class="group rounded-lg bg-card shadow-[0_1px_1px_rgba(9,30,66,.25)] hover:ring-2 hover:ring-brand/60">
+                                    @if ($ubah) x-on:contextmenu="bukaMenuKartu($event, @js($dataMenu))" @endif
+                                    class="group relative rounded-lg bg-card shadow-[0_1px_1px_rgba(9,30,66,.25)] hover:ring-2 hover:ring-brand/60">
+                                    @if ($ubah)
+                                        <button type="button" x-on:click="bukaMenuKartu($event, @js($dataMenu))"
+                                                aria-label="Menu kartu {{ $kartu->judul }}" aria-haspopup="menu" wire:sort:ignore
+                                                class="absolute right-1 top-1 z-10 flex h-7 w-7 items-center justify-center rounded-md bg-card/90 text-ink-muted opacity-0 shadow-sm ring-1 ring-line transition hover:text-ink focus:opacity-100 group-hover:opacity-100">
+                                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 3.8l3.7 3.7L8.5 19.2l-4.6.9.9-4.6z" />
+                                            </svg>
+                                        </button>
+                                    @endif
                                     <button type="button" wire:click="bukaKartu({{ $kartu->id }})"
                                             class="block w-full overflow-hidden rounded-lg text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-brand">
                                         @if ($kartu->coverLampiran?->isGambar() && $kartu->cover_penuh)
@@ -494,6 +587,135 @@
         @include('livewire.kanban.partials.dasbor')
     @else
         @include('livewire.kanban.partials.kalender')
+    @endif
+
+    {{-- Menu kartu: satu menu dipakai bersama, muncul di titik klik --}}
+    @if ($ubah)
+        @php
+            $barisMenu = 'flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-page';
+            $ikonMenu = 'h-4 w-4 shrink-0 text-ink-muted';
+        @endphp
+        <div x-show="kartuMenu" x-cloak x-on:keydown.escape.window="tutupMenuKartu()" x-on:click.outside="tutupMenuKartu()"
+             class="fixed z-40 w-60 overflow-hidden rounded-xl border border-line bg-card py-1 text-sm text-ink shadow-xl"
+             x-bind:style="kartuMenu ? 'left:' + kartuMenu.x + 'px; top:' + kartuMenu.y + 'px' : ''" role="menu">
+
+            <div class="truncate border-b border-line px-3 py-2 text-xs text-ink-muted" x-text="kartuMenu?.judul"></div>
+
+            {{-- Daftar utama --}}
+            <div x-show="! sub">
+                <button type="button" class="{{ $barisMenu }}" x-on:click="$wire.bukaKartu(kartuMenu.id); tutupMenuKartu()">
+                    <svg class="{{ $ikonMenu }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linejoin="round" d="M4 5.5h16v13H4z" /><path stroke-linecap="round" d="M8 10h8M8 14h5" /></svg>
+                    Buka kartu
+                </button>
+                <button type="button" class="{{ $barisMenu }}" x-on:click="sub = 'label'">
+                    <svg class="{{ $ikonMenu }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linejoin="round" d="M4 7.5h11l4 4.5-4 4.5H4z" /></svg>
+                    Ubah label
+                </button>
+                <button type="button" class="{{ $barisMenu }}" x-on:click="sub = 'anggota'">
+                    <svg class="{{ $ikonMenu }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M16 19v-1.5a4 4 0 00-4-4H7a4 4 0 00-4 4V19M9.5 9.5a3 3 0 100-6 3 3 0 000 6zM21 19v-1.5a4 4 0 00-3-3.9M16.5 3.7a4 4 0 010 7.6" /></svg>
+                    Ubah anggota
+                </button>
+                <button type="button" class="{{ $barisMenu }}" x-on:click="sub = 'cover'">
+                    <svg class="{{ $ikonMenu }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linejoin="round" d="M4 5.5h16v13H4z" /><path stroke-linecap="round" d="M4 11h16" /></svg>
+                    Ubah cover
+                </button>
+                <button type="button" class="{{ $barisMenu }}" x-on:click="sub = 'tanggal'">
+                    <svg class="{{ $ikonMenu }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linejoin="round" d="M4 6.5h16v13H4z" /><path stroke-linecap="round" d="M8 3.5v4M16 3.5v4M4 11h16" /></svg>
+                    Ubah tanggal
+                </button>
+                <button type="button" class="{{ $barisMenu }}" x-on:click="sub = 'pindah'">
+                    <svg class="{{ $ikonMenu }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13 6l6 6-6 6M19 12H5" /></svg>
+                    Pindahkan
+                </button>
+                <button type="button" class="{{ $barisMenu }}" x-on:click="$wire.salinKartu(kartuMenu.id); tutupMenuKartu()">
+                    <svg class="{{ $ikonMenu }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linejoin="round" d="M9 9h10v11H9zM5 15V4h10" /></svg>
+                    Copy card
+                </button>
+                <button type="button" class="{{ $barisMenu }}" x-on:click="salinTautanKartu()">
+                    <svg class="{{ $ikonMenu }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" d="M10 13.5a4 4 0 006 .5l2-2a4 4 0 10-5.7-5.7l-1 1M14 10.5a4 4 0 00-6-.5l-2 2a4 4 0 105.7 5.7l1-1" /></svg>
+                    Copy link
+                </button>
+                <button type="button" class="{{ $barisMenu }} border-t border-line text-[#AE2E24]"
+                        x-on:click="$wire.arsipkanKartu(kartuMenu.id); tutupMenuKartu()">
+                    <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linejoin="round" d="M4 7.5h16v3H4zM5.5 10.5h13V19h-13z" /><path stroke-linecap="round" d="M10 14h4" /></svg>
+                    Arsipkan
+                </button>
+            </div>
+
+            {{-- Submenu: label --}}
+            <div x-show="sub === 'label'" x-cloak class="px-3 py-2">
+                <button type="button" x-on:click="sub = null" class="mb-1.5 text-xs text-navy underline">&lsaquo; Kembali</button>
+                <div class="max-h-56 space-y-1 overflow-y-auto">
+                    @forelse ($this->labelBoard as $l)
+                        <button type="button" x-on:click="pilihLabel({{ $l->id }})" wire:key="ml-{{ $l->id }}"
+                                class="flex w-full items-center gap-2 rounded px-1 py-1 text-left hover:bg-page">
+                            <span class="h-6 flex-1 truncate rounded px-2 text-[11px] font-medium leading-6 {{ Warna::label($l->warna) }}">{{ $l->nama ?: Warna::namaLabel($l->warna) }}</span>
+                            <svg class="h-4 w-4 text-ink" x-show="punyaLabel({{ $l->id }})" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                        </button>
+                    @empty
+                        <p class="text-xs text-ink-muted">Board ini belum punya label.</p>
+                    @endforelse
+                </div>
+            </div>
+
+            {{-- Submenu: anggota --}}
+            <div x-show="sub === 'anggota'" x-cloak class="px-3 py-2">
+                <button type="button" x-on:click="sub = null" class="mb-1.5 text-xs text-navy underline">&lsaquo; Kembali</button>
+                <div class="max-h-56 space-y-1 overflow-y-auto">
+                    @forelse ($this->anggotaBoard as $a)
+                        <button type="button" x-on:click="pilihAnggota({{ $a->id }})" wire:key="ma-{{ $a->id }}"
+                                class="flex w-full items-center gap-2 rounded px-1 py-1 text-left hover:bg-page">
+                            <x-avatar :name="$a->nama ?? $a->name" size="sm" class="!h-6 !w-6 !text-[10px]" />
+                            <span class="min-w-0 flex-1 truncate text-sm">{{ $a->nama ?? $a->name }}</span>
+                            <svg class="h-4 w-4 text-ink" x-show="punyaAnggota({{ $a->id }})" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                        </button>
+                    @empty
+                        <p class="text-xs text-ink-muted">Belum ada anggota board.</p>
+                    @endforelse
+                </div>
+            </div>
+
+            {{-- Submenu: cover --}}
+            <div x-show="sub === 'cover'" x-cloak class="px-3 py-2">
+                <button type="button" x-on:click="sub = null" class="mb-1.5 text-xs text-navy underline">&lsaquo; Kembali</button>
+                <div class="grid grid-cols-5 gap-1.5">
+                    @foreach (Warna::LABEL as $w => [$t, $latar])
+                        <button type="button" wire:key="mc-{{ $w }}" title="{{ $t }}" aria-label="Cover {{ $t }}"
+                                x-on:click="$wire.sampulKartu(kartuMenu.id, @js($w)); kartuMenu.warna = @js($w)"
+                                class="h-7 rounded {{ $latar }}" x-bind:class="kartuMenu?.warna === @js($w) ? 'ring-2 ring-ink ring-offset-1' : ''"></button>
+                    @endforeach
+                </div>
+                <button type="button" x-on:click="$wire.sampulKartu(kartuMenu.id, null); kartuMenu.warna = null"
+                        class="mt-2 h-8 w-full rounded-md bg-[#E9EBEE] text-xs font-medium">Lepas cover</button>
+                <p class="mt-1.5 text-[11px] text-ink-muted">Cover dari gambar diatur di dalam kartu.</p>
+            </div>
+
+            {{-- Submenu: tanggal --}}
+            <div x-show="sub === 'tanggal'" x-cloak class="px-3 py-2">
+                <button type="button" x-on:click="sub = null" class="mb-1.5 text-xs text-navy underline">&lsaquo; Kembali</button>
+                <label for="tgl-menu-kartu" class="block text-xs font-medium text-ink-muted">Tenggat</label>
+                <input id="tgl-menu-kartu" type="date" x-bind:value="kartuMenu?.tenggat ?? ''"
+                       x-on:change="$wire.tenggatKartu(kartuMenu.id, $event.target.value || null); tutupMenuKartu()"
+                       class="mt-1 block min-h-[36px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
+                <button type="button" x-show="kartuMenu?.tenggat"
+                        x-on:click="$wire.tenggatKartu(kartuMenu.id, null); tutupMenuKartu()"
+                        class="mt-2 h-8 w-full rounded-md bg-[#E9EBEE] text-xs font-medium">Hapus tenggat</button>
+            </div>
+
+            {{-- Submenu: pindah --}}
+            <div x-show="sub === 'pindah'" x-cloak class="px-3 py-2">
+                <button type="button" x-on:click="sub = null" class="mb-1.5 text-xs text-navy underline">&lsaquo; Kembali</button>
+                <p class="text-xs font-medium text-ink-muted">Pindahkan ke list</p>
+                <div class="mt-1 max-h-56 space-y-0.5 overflow-y-auto">
+                    @foreach ($this->kolom as $tujuan)
+                        <button type="button" wire:key="mp-{{ $tujuan->id }}"
+                                x-show="kartuMenu?.kolom !== {{ $tujuan->id }}"
+                                x-on:click="$wire.pindahKartuKe(kartuMenu.id, {{ $tujuan->id }}); tutupMenuKartu()"
+                                class="block w-full truncate rounded px-2 py-1.5 text-left text-sm hover:bg-page">{{ $tujuan->nama }}</button>
+                    @endforeach
+                </div>
+            </div>
+        </div>
     @endif
 
     {{-- Menu board (panel samping) --}}

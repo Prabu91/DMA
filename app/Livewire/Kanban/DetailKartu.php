@@ -66,6 +66,9 @@ class DetailKartu extends Component
 
     public array $berkas = [];
 
+    /** Gambar yang diunggah dari panel Cover. */
+    public $berkasCover = null;
+
     public string $tautanUrl = '';
 
     public string $tautanNama = '';
@@ -85,6 +88,9 @@ class DetailKartu extends Component
 
     /** Yang ikut disalin: label, anggota, checklist, lampiran. */
     public array $bawaSalinan = ['label', 'anggota', 'checklist'];
+
+    /** Checklist yang itemnya disalin saat membuat checklist baru ("Copy items from"). */
+    public ?int $salinItemDari = null;
 
     public string $namaLabelBaru = '';
 
@@ -399,17 +405,60 @@ class DetailKartu extends Component
 
     // ---------------- Checklist ----------------
 
+    /** Checklist berisi di board ini — sumber untuk "Copy items from". */
+    #[Computed]
+    public function checklistSumber(): Collection
+    {
+        $kartu = $this->kartu;
+
+        return Checklist::query()
+            ->has('item')
+            ->whereHas('kartu', fn ($q) => $q->where('board_id', $kartu->board_id)->whereNull('diarsipkan_at'))
+            ->with('kartu:id,judul')
+            ->withCount('item')
+            ->orderByDesc('id')
+            ->limit(50)
+            ->get();
+    }
+
     public function tambahChecklist(): void
     {
         $kartu = $this->wajibUbah();
         $this->validate(['judulChecklist' => ['required', 'string', 'max:120']]);
-        Checklist::create([
+
+        $checklist = Checklist::create([
             'kartu_id' => $kartu->id,
             'judul' => trim($this->judulChecklist),
             'posisi' => (float) Checklist::where('kartu_id', $kartu->id)->max('posisi') + Posisi::JARAK,
         ]);
+
+        if ($this->salinItemDari) {
+            $this->salinItem((int) $this->salinItemDari, $checklist);
+        }
+
         $this->judulChecklist = 'Checklist';
+        $this->salinItemDari = null;
         $this->segarkan();
+    }
+
+    /** Salin isi checklist lain ke checklist baru — teksnya saja, belum ada yang dicentang. */
+    private function salinItem(int $sumberId, Checklist $tujuan): void
+    {
+        $sumber = $this->checklistSumber->firstWhere('id', $sumberId);
+
+        if (! $sumber) {
+            return;
+        }
+
+        $posisi = 0.0;
+
+        foreach ($sumber->item()->orderBy('posisi')->get() as $item) {
+            ChecklistItem::create([
+                'checklist_id' => $tujuan->id,
+                'teks' => $item->teks,
+                'posisi' => $posisi += Posisi::JARAK,
+            ]);
+        }
     }
 
     private function checklistMilikKartu(int $id): Checklist
@@ -603,72 +652,122 @@ class DetailKartu extends Component
     public function updatedBerkas(): void
     {
         $kartu = $this->wajibUbah();
-        $maks = (int) config('kanban.maks_lampiran_kb');
 
-        try {
-            $this->validate(
-                ['berkas' => ['array', 'max:10'], 'berkas.*' => ['file', 'max:'.$maks]],
-                ['berkas.*.max' => 'Ukuran berkas maksimal '.round($maks / 1024).' MB.', 'berkas.max' => 'Maksimal 10 berkas sekaligus.'],
-            );
-        } catch (ValidationException $e) {
-            // Panel lampiran mudah tergulung dari pandangan, jadi alasannya
-            // disebut juga lewat kabar sesaat.
-            $this->dispatch('toast', teks: (string) collect($e->validator->errors()->all())->first(), jenis: 'gagal');
-            $this->reset('berkas');
-
-            throw $e;
+        if (! $this->sahkanBerkas('berkas')) {
+            return;
         }
 
         $gagal = [];
 
         foreach ($this->berkas as $file) {
-            try {
-                // Keterangan berkas dibaca dulu: begitu disimpan, berkas
-                // sementara Livewire sudah tidak ada lagi di tempatnya.
-                $nama = mb_substr($file->getClientOriginalName(), 0, 255);
-                $mime = (string) $file->getMimeType();
-                $ukuran = (int) $file->getSize();
-
-                $path = $file->store('kanban/'.$kartu->board_id.'/'.$kartu->id, 'local');
-
-                // Versi kecil hanya pemanis; kalau gagal, lampirannya tetap masuk.
-                try {
-                    $thumb = app(Gambar::class)->kecilkan($path, $mime);
-                } catch (Throwable $e) {
-                    report($e);
-                    $thumb = null;
-                }
-
-                $lampiran = Lampiran::create([
-                    'kartu_id' => $kartu->id,
-                    'user_id' => auth()->id(),
-                    'nama' => $nama,
-                    'path' => $path,
-                    'thumb_path' => $thumb,
-                    'mime' => $mime,
-                    'ukuran' => $ukuran,
-                ]);
-            } catch (Throwable $e) {
-                report($e);
-                $gagal[] = $file->getClientOriginalName();
-
-                continue;
-            }
+            $lampiran = $this->simpanLampiran($kartu, $file, $gagal);
 
             // Gambar pertama otomatis jadi sampul, seperti Trello.
-            if (! $kartu->cover_lampiran_id && ! $kartu->cover_warna && $lampiran->isGambar()) {
+            if ($lampiran && ! $kartu->cover_lampiran_id && ! $kartu->cover_warna && $lampiran->isGambar()) {
                 $kartu->update(['cover_lampiran_id' => $lampiran->id]);
             }
-            $this->catat('lampiran', $lampiran->nama);
         }
 
         $this->reset('berkas');
+        $this->kabarkanGagal($gagal);
+        $this->segarkan();
+    }
 
+    /** Unggah gambar langsung dari panel Cover, lalu pasang jadi cover kartu. */
+    public function updatedBerkasCover(): void
+    {
+        $kartu = $this->wajibUbah();
+
+        if (! $this->sahkanBerkas('berkasCover', gambarSaja: true)) {
+            return;
+        }
+
+        $gagal = [];
+        $lampiran = $this->simpanLampiran($kartu, $this->berkasCover, $gagal);
+
+        if ($lampiran) {
+            $kartu->update(['cover_lampiran_id' => $lampiran->id, 'cover_warna' => null]);
+        }
+
+        $this->reset('berkasCover');
+        $this->kabarkanGagal($gagal);
+        $this->segarkan();
+    }
+
+    /** Periksa ukuran & jenis berkas; kabarkan alasannya kalau ditolak. */
+    private function sahkanBerkas(string $properti, bool $gambarSaja = false): bool
+    {
+        $maks = (int) config('kanban.maks_lampiran_kb');
+        $dasar = [$gambarSaja ? 'image' : 'file', 'max:'.$maks];
+
+        $aturan = is_array($this->{$properti})
+            ? [$properti => ['array', 'max:10'], $properti.'.*' => $dasar]
+            : [$properti => $dasar];
+
+        try {
+            $this->validate($aturan, [
+                'max.file' => 'Ukuran berkas maksimal '.round($maks / 1024).' MB.',
+                'image' => 'Cover harus berupa gambar.',
+                'max.array' => 'Maksimal 10 berkas sekaligus.',
+            ]);
+        } catch (ValidationException $e) {
+            // Panel lampiran mudah tergulung dari pandangan, jadi alasannya
+            // disebut juga lewat kabar sesaat.
+            $this->dispatch('toast', teks: (string) collect($e->validator->errors()->all())->first(), jenis: 'gagal');
+            $this->reset($properti);
+
+            throw $e;
+        }
+
+        return true;
+    }
+
+    /** Simpan satu berkas jadi lampiran kartu; nama berkas yang gagal dikumpulkan. */
+    private function simpanLampiran(Kartu $kartu, $file, array &$gagal): ?Lampiran
+    {
+        try {
+            // Keterangan berkas dibaca dulu: begitu disimpan, berkas
+            // sementara Livewire sudah tidak ada lagi di tempatnya.
+            $nama = mb_substr($file->getClientOriginalName(), 0, 255);
+            $mime = (string) $file->getMimeType();
+            $ukuran = (int) $file->getSize();
+
+            $path = $file->store('kanban/'.$kartu->board_id.'/'.$kartu->id, 'local');
+
+            // Versi kecil hanya pemanis; kalau gagal, lampirannya tetap masuk.
+            try {
+                $thumb = app(Gambar::class)->kecilkan($path, $mime);
+            } catch (Throwable $e) {
+                report($e);
+                $thumb = null;
+            }
+
+            $lampiran = Lampiran::create([
+                'kartu_id' => $kartu->id,
+                'user_id' => auth()->id(),
+                'nama' => $nama,
+                'path' => $path,
+                'thumb_path' => $thumb,
+                'mime' => $mime,
+                'ukuran' => $ukuran,
+            ]);
+        } catch (Throwable $e) {
+            report($e);
+            $gagal[] = $file->getClientOriginalName();
+
+            return null;
+        }
+
+        $this->catat('lampiran', $lampiran->nama);
+
+        return $lampiran;
+    }
+
+    private function kabarkanGagal(array $gagal): void
+    {
         if ($gagal) {
             $this->dispatch('toast', teks: 'Gagal melampirkan '.implode(', ', $gagal).'. Berkasnya tidak tersimpan — coba ulangi atau pakai berkas yang lebih kecil.', jenis: 'gagal');
         }
-
-        $this->segarkan();
     }
 
     /** Lampirkan tautan, mis. folder Google Drive (padanan "Attach a link"). */

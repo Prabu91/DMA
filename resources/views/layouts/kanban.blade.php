@@ -43,8 +43,8 @@
             .isi-teks img { max-width: 100%; border-radius: .5rem; }
         </style>
     </head>
-    <body class="font-sans antialiased">
-        <div class="flex h-dvh flex-col bg-page">
+    <body class="overflow-hidden font-sans antialiased">
+        <div class="flex h-dvh flex-col overflow-hidden bg-page">
             <header class="flex h-12 shrink-0 items-center justify-between gap-3 bg-navy-900 px-3 text-white sm:px-4">
                 <div class="flex min-w-0 items-center gap-1 sm:gap-4">
                     {{-- Menu ringkas: di layar HP tautan navigasi disembunyikan, jadi dikumpulkan di sini. --}}

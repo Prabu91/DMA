@@ -166,4 +166,43 @@ class KanbanChecklistTugasTest extends TestCase
         $this->assertSame('2026-10-02 09:30', $item->tenggat_pada->format('Y-m-d H:i'));
         $this->assertNull($item->selesai_at);
     }
+
+    public function test_checklist_baru_bisa_menyalin_item_dari_checklist_lain(): void
+    {
+        ChecklistItem::create(['checklist_id' => $this->item->checklist_id, 'teks' => 'Cetak album', 'posisi' => 2]);
+        // Item yang sudah dicentang pun disalin dalam keadaan kosong lagi.
+        $this->item->update(['selesai_at' => now(), 'selesai_oleh' => $this->faris->id]);
+
+        $this->detail()
+            ->set('judulChecklist', 'QC ulang')
+            ->set('salinItemDari', $this->item->checklist_id)
+            ->call('tambahChecklist')
+            ->assertSet('salinItemDari', null);
+
+        $baru = Checklist::where('judul', 'QC ulang')->firstOrFail();
+        $this->assertSame(['Foto wisuda', 'Cetak album'], $baru->item()->pluck('teks')->all());
+        $this->assertSame(0, $baru->item()->whereNotNull('selesai_at')->count());
+    }
+
+    public function test_checklist_tanpa_sumber_tetap_kosong(): void
+    {
+        $this->detail()->set('judulChecklist', 'Kosong')->call('tambahChecklist');
+
+        $this->assertSame(0, Checklist::where('judul', 'Kosong')->firstOrFail()->item()->count());
+    }
+
+    public function test_pilihan_salin_hanya_checklist_berisi_di_board_ini(): void
+    {
+        Checklist::create(['kartu_id' => $this->kartu->id, 'judul' => 'Masih kosong', 'posisi' => 2]);
+
+        $lain = app(Tata::class)->buatBoard('Board lain', 'hijau', 'workspace', $this->faris);
+        $kolomLain = app(Tata::class)->tambahKolom($lain, 'List', $this->faris);
+        $kartuLain = app(Tata::class)->tambahKartu($kolomLain, 'Kartu board lain', $this->faris);
+        $clLain = Checklist::create(['kartu_id' => $kartuLain->id, 'judul' => 'Punya board lain', 'posisi' => 1]);
+        ChecklistItem::create(['checklist_id' => $clLain->id, 'teks' => 'Tak boleh muncul', 'posisi' => 1]);
+
+        $judul = $this->detail()->get('checklistSumber')->pluck('judul')->all();
+
+        $this->assertSame(['QC'], $judul);
+    }
 }

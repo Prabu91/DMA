@@ -22,6 +22,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -590,6 +591,122 @@ class PapanBoard extends Component
 
         $this->board->catat('tenggat_diubah', $baru->translatedFormat('j M Y, H:i'), $kartu);
         app(Kabar::class)->perubahan($kartu, KanbanKabar::TENGGAT_DIUBAH, auth()->user(), $baru->translatedFormat('j M Y, H:i'));
+        $this->segarkan();
+    }
+
+    // ---------------- Menu cepat kartu ----------------
+    // Padanan menu klik-kanan Trello: hal yang sering diubah bisa dikerjakan
+    // dari papan, tanpa membuka kartunya dulu.
+
+    public function toggleLabelKartu(int $kartuId, int $labelId): void
+    {
+        $this->wajibUbah();
+        $kartu = $this->kartuMilikBoard($kartuId);
+        $label = Label::where('board_id', $this->board->id)->findOrFail($labelId);
+
+        $kartu->label()->toggle([$label->id]);
+        $this->segarkan();
+    }
+
+    public function toggleAnggotaKartu(int $kartuId, int $userId): void
+    {
+        $this->wajibUbah();
+        $kartu = $this->kartuMilikBoard($kartuId);
+        abort_unless($this->anggotaBoard->contains('id', $userId) || $kartu->anggota->contains('id', $userId), 403);
+
+        $hasil = $kartu->anggota()->toggle([$userId]);
+        $user = User::find($userId);
+        $this->board->catat($hasil['attached'] ? 'anggota_kartu_ditambah' : 'anggota_kartu_dilepas', $user?->nama ?? $user?->name, $kartu);
+
+        if ($hasil['attached'] && $user) {
+            app(Kabar::class)->ditugaskan($kartu, $user, auth()->user());
+        }
+
+        $this->segarkan();
+    }
+
+    public function sampulKartu(int $kartuId, ?string $warna): void
+    {
+        $this->wajibUbah();
+        abort_unless($warna === null || array_key_exists($warna, Warna::LABEL), 422);
+
+        $this->kartuMilikBoard($kartuId)->update([
+            'cover_warna' => $warna,
+            'cover_lampiran_id' => null,
+            'cover_penuh' => false,
+        ]);
+        $this->segarkan();
+    }
+
+    /** Tenggat cepat dari papan; kosong berarti tenggatnya dilepas. */
+    public function tenggatKartu(int $kartuId, ?string $tanggal): void
+    {
+        $this->wajibUbah();
+        $kartu = $this->kartuMilikBoard($kartuId);
+
+        if (! $tanggal) {
+            $kartu->update(['tenggat_pada' => null, 'tenggat_selesai_at' => null, 'diingatkan_at' => null]);
+            $this->board->catat('tenggat_dihapus', null, $kartu);
+            $this->segarkan();
+
+            return;
+        }
+
+        try {
+            $hari = Carbon::createFromFormat('Y-m-d', $tanggal, config('app.timezone'))->startOfDay();
+        } catch (Throwable) {
+            abort(422);
+        }
+
+        $lama = $kartu->tenggat_pada;
+        $baru = $hari->setTime((int) ($lama?->hour ?? 12), (int) ($lama?->minute ?? 0));
+
+        $kartu->update(['tenggat_pada' => $baru, 'tenggat_selesai_at' => null, 'diingatkan_at' => null]);
+        $this->board->catat('tenggat_diubah', $baru->translatedFormat('j M Y, H:i'), $kartu);
+        app(Kabar::class)->perubahan($kartu, KanbanKabar::TENGGAT_DIUBAH, auth()->user(), $baru->translatedFormat('j M Y, H:i'));
+        $this->segarkan();
+    }
+
+    /** Pindahkan kartu ke list lain di board ini, ditaruh paling atas. */
+    public function pindahKartuKe(int $kartuId, int $kolomId): void
+    {
+        $this->wajibUbah();
+
+        app(Tata::class)->pindahKartu(
+            $this->kartuMilikBoard($kartuId),
+            $this->kolomMilikBoard($kolomId),
+            1,
+            auth()->user(),
+        );
+        $this->segarkan();
+    }
+
+    /** Copy card: salinan lengkap, ditaruh di list yang sama. */
+    public function salinKartu(int $kartuId): void
+    {
+        $this->wajibUbah();
+        $kartu = $this->kartuMilikBoard($kartuId);
+
+        $salinan = app(Tata::class)->salinKartu(
+            $kartu,
+            $kartu->kolom,
+            Str::limit($kartu->judul, 240, '').' (copy)',
+            ['label', 'anggota', 'checklist', 'lampiran'],
+            auth()->user(),
+        );
+
+        $this->segarkan();
+        $this->kartuId = $salinan->id;
+    }
+
+    public function arsipkanKartu(int $kartuId): void
+    {
+        $this->wajibUbah();
+        $kartu = $this->kartuMilikBoard($kartuId);
+
+        $kartu->update(['diarsipkan_at' => now()]);
+        $this->board->catat('kartu_diarsipkan', null, $kartu);
+        app(Kabar::class)->perubahan($kartu, KanbanKabar::KARTU_DIARSIPKAN, auth()->user());
         $this->segarkan();
     }
 

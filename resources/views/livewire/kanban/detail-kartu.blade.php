@@ -696,7 +696,15 @@
                                     <label for="judul-checklist" class="mt-2 block text-xs font-medium text-ink-muted">Judul</label>
                                     <input id="judul-checklist" type="text" wire:model="judulChecklist"
                                            class="mt-1 block min-h-[36px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
-                                    <button type="submit" class="mt-2 h-9 rounded-md bg-navy px-3 text-sm font-medium text-white">Tambah</button>
+                                    <label for="salin-item-dari" class="mt-2 block text-xs font-medium text-ink-muted">Copy items from…</label>
+                                    <select id="salin-item-dari" wire:model="salinItemDari"
+                                            class="mt-1 block min-h-[36px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
+                                        <option value="">(kosong)</option>
+                                        @foreach ($this->checklistSumber as $sumber)
+                                            <option value="{{ $sumber->id }}">{{ Str::limit($sumber->kartu?->judul, 28) }} — {{ $sumber->judul }} ({{ $sumber->item_count }})</option>
+                                        @endforeach
+                                    </select>
+                                    <button type="submit" class="mt-2 h-9 w-full rounded-md bg-navy px-3 text-sm font-medium text-white">Tambah</button>
                                 </form>
                             </div>
 
@@ -758,7 +766,28 @@
                                                     class="h-8 rounded {{ $latar }} {{ $k->cover_warna === $w ? 'ring-2 ring-ink ring-offset-1' : '' }}"></button>
                                         @endforeach
                                     </div>
-                                    <p class="mt-2 text-xs text-ink-muted">Gambar dari lampiran juga bisa jadi cover.</p>
+                                    @php $gambarLampiran = $k->lampiran->filter->isGambar(); @endphp
+                                    @if ($gambarLampiran->isNotEmpty())
+                                        <p class="mt-3 text-xs font-medium text-ink-muted">Dari lampiran</p>
+                                        <div class="mt-1.5 grid grid-cols-3 gap-1.5">
+                                            @foreach ($gambarLampiran->take(6) as $lg)
+                                                <button type="button" wire:click="jadikanSampul({{ $lg->id }})" wire:key="cov-{{ $lg->id }}"
+                                                        title="{{ $lg->nama }}" aria-label="Jadikan cover: {{ $lg->nama }}"
+                                                        class="h-12 overflow-hidden rounded {{ (int) $k->cover_lampiran_id === $lg->id ? 'ring-2 ring-ink ring-offset-1' : 'ring-1 ring-line' }}">
+                                                    <img src="{{ route('kanban.lampiran', ['lampiran' => $lg, 'kecil' => 1]) }}" alt="" class="h-full w-full object-cover">
+                                                </button>
+                                            @endforeach
+                                        </div>
+                                    @endif
+
+                                    @if ($ubah)
+                                        <label class="mt-3 flex min-h-[36px] cursor-pointer items-center justify-center rounded-md bg-[#E9EBEE] px-3 text-xs font-medium text-ink hover:bg-line focus-within:ring-2 focus-within:ring-brand">
+                                            <span wire:loading.remove wire:target="berkasCover">Unggah gambar cover</span>
+                                            <span wire:loading wire:target="berkasCover">Mengunggah…</span>
+                                            <input type="file" wire:model="berkasCover" accept="image/*" class="sr-only">
+                                        </label>
+                                        @error('berkasCover')<p class="mt-1 text-xs text-[#AE2E24]">{{ $message }}</p>@enderror
+                                    @endif
                                     @if ($k->cover_lampiran_id)
                                         <button type="button" wire:click="toggleSampulPenuh"
                                                 class="mt-2 h-8 w-full rounded-md bg-[#E9EBEE] text-xs font-medium">{{ $k->cover_penuh ? 'Cover ukuran biasa' : 'Cover ukuran penuh' }}</button>
