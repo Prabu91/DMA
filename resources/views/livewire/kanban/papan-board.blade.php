@@ -74,12 +74,20 @@
         // --- Menu kartu (klik kanan / tombol pensil), seperti menu kartu Trello ---
         kartuMenu: null,
         sub: null,
-        bukaMenuKartu(e, data) {
+        bukaMenuKartu(e, el) {
             e.preventDefault();
             e.stopPropagation();
+            const d = el.dataset;
+            const daftar = (isi) => (isi ? isi.split(',').map(Number) : []);
             const titik = e.touches?.[0] ?? e;
             this.kartuMenu = {
-                ...data,
+                id: Number(el.getAttribute('wire:sort:item')),
+                kolom: Number(d.kolom),
+                judul: (el.querySelector('.judul-kartu')?.textContent ?? '').trim(),
+                label: daftar(d.label),
+                anggota: daftar(d.anggota),
+                warna: d.warna || null,
+                tenggat: d.tenggat || null,
                 x: Math.max(8, Math.min(titik.clientX ?? 0, window.innerWidth - 248)),
                 y: Math.min(titik.clientY ?? 0, Math.max(8, window.innerHeight - 330)),
             };
@@ -403,23 +411,20 @@
                             class="flex min-h-[10px] flex-col gap-2 overflow-y-auto px-2 py-1" aria-label="Kartu di {{ $kolom->nama }}">
                             @foreach ($kolom->kartu as $kartu)
                                 @php $tenggat = $kartu->keadaanTenggat(); @endphp
-                                @php
-                                    $dataMenu = [
-                                        'id' => $kartu->id,
-                                        'judul' => $kartu->judul,
-                                        'label' => $kartu->label->pluck('id'),
-                                        'anggota' => $kartu->anggota->pluck('id'),
-                                        'warna' => $kartu->cover_warna,
-                                        'tenggat' => $kartu->tenggat_pada?->format('Y-m-d'),
-                                        'kolom' => $kolom->id,
-                                    ];
-                                @endphp
                                 <li wire:key="kartu-{{ $kartu->id }}" wire:sort:item="{{ $kartu->id }}"
-                                    @if ($ubah) x-on:contextmenu="bukaMenuKartu($event, @js($dataMenu))" @endif
+                                    @if ($ubah)
+                                        {{-- Bahan menu kartu ditulis sebagai data-*: jauh lebih ringan daripada JSON di tiap kartu. --}}
+                                        data-kolom="{{ $kolom->id }}"
+                                        data-label="{{ $kartu->label->pluck('id')->join(',') }}"
+                                        data-anggota="{{ $kartu->anggota->pluck('id')->join(',') }}"
+                                        data-warna="{{ $kartu->cover_warna }}"
+                                        data-tenggat="{{ $kartu->tenggat_pada?->format('Y-m-d') }}"
+                                        x-on:contextmenu="bukaMenuKartu($event, $el)"
+                                    @endif
                                     class="group relative rounded-lg bg-card shadow-[0_1px_1px_rgba(9,30,66,.25)] hover:ring-2 hover:ring-brand/60">
                                     @if ($ubah)
-                                        <button type="button" x-on:click="bukaMenuKartu($event, @js($dataMenu))"
-                                                aria-label="Menu kartu {{ $kartu->judul }}" aria-haspopup="menu" wire:sort:ignore
+                                        <button type="button" x-on:click="bukaMenuKartu($event, $el.closest('li'))"
+                                                aria-label="Menu kartu" aria-haspopup="menu" wire:sort:ignore
                                                 class="absolute right-1 top-1 z-10 flex h-7 w-7 items-center justify-center rounded-md bg-card/90 text-ink-muted opacity-0 shadow-sm ring-1 ring-line transition hover:text-ink focus:opacity-100 group-hover:opacity-100">
                                             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 3.8l3.7 3.7L8.5 19.2l-4.6.9.9-4.6z" />
@@ -434,7 +439,7 @@
                                                 <img src="{{ route('kanban.lampiran', ['lampiran' => $kartu->coverLampiran, 'kecil' => 1]) }}" alt="" loading="lazy"
                                                      class="absolute inset-0 h-full w-full object-cover">
                                                 <span class="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent"></span>
-                                                <span class="absolute inset-x-0 bottom-0 block px-3 pb-2 pt-6 text-sm font-medium text-white">
+                                                <span class="judul-kartu absolute inset-x-0 bottom-0 block px-3 pb-2 pt-6 text-sm font-medium text-white">
                                                     {{ $kartu->judul }}
                                                 </span>
                                             </span>
@@ -451,7 +456,7 @@
                                                     @endforeach
                                                 </span>
                                             @endif
-                                            <span class="block break-words text-sm text-ink">{{ $kartu->judul }}</span>
+                                            <span class="judul-kartu block break-words text-sm text-ink">{{ $kartu->judul }}</span>
 
                                             @if (true)
                                                 <span class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
