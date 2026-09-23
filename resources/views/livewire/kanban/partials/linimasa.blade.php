@@ -14,7 +14,7 @@
 @endphp
 
 {{-- Linimasa: kartu bertanggal digambar sebagai batang, dikelompokkan per list. --}}
-<div class="min-h-0 flex-1 overflow-auto p-3 sm:px-4">
+<div class="min-h-0 flex-1 overflow-auto p-3 pb-16 sm:px-4">
     <div class="mb-3 flex flex-wrap items-center gap-2 text-white">
         <button type="button" wire:click="geserLinimasa(-2)" aria-label="Mundur dua pekan"
                 class="flex h-9 w-9 items-center justify-center rounded-md bg-white/15 hover:bg-white/25">‹</button>

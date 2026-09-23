@@ -1,6 +1,6 @@
 @php use App\Support\Kanban\Warna; @endphp
 
-<div class="h-full overflow-y-auto">
+<div class="h-full overflow-y-auto pb-16">
     <div class="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
         <h1 class="text-xl font-semibold text-ink">Kartu saya</h1>
         <p class="text-sm text-ink-muted">Cari kartu di semua board yang bisa Anda lihat.</p>

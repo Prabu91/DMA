@@ -11,7 +11,7 @@
 @endphp
 
 {{-- Tampilan kalender: kartu diletakkan pada tanggal tenggatnya. --}}
-<div class="min-h-0 flex-1 overflow-auto p-3 sm:px-4">
+<div class="min-h-0 flex-1 overflow-auto p-3 pb-16 sm:px-4">
     <div class="mb-3 flex flex-wrap items-center gap-2 text-white">
         <button type="button" wire:click="geserBulan(-1)" aria-label="Bulan sebelumnya"
                 class="flex h-9 w-9 items-center justify-center rounded-md bg-white/15 hover:bg-white/25">‹</button>

@@ -61,7 +61,7 @@
         maksBerkas: @js((int) config('kanban.maks_lampiran_kb') * 1024),
         muat(berkas) {
             if (berkas.size <= this.maksBerkas) return true;
-            window.toast('"' + berkas.name + '" berukuran ' + (berkas.size / 1048576).toFixed(1)
+            window.toast('“' + berkas.name + '” berukuran ' + (berkas.size / 1048576).toFixed(1)
                 + ' MB, melebihi batas ' + Math.round(this.maksBerkas / 1048576) + ' MB.');
             return false;
         },

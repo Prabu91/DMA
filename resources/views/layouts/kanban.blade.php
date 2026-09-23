@@ -112,7 +112,7 @@
                 </div>
             </header>
 
-            <main class="min-h-0 flex-1 pb-16">
+            <main class="min-h-0 flex-1">
                 {{ $slot }}
             </main>
 

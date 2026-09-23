@@ -4,7 +4,7 @@
 @endphp
 
 {{-- Tampilan tabel: semua kartu board dalam satu daftar yang bisa diurutkan. --}}
-<div class="min-h-0 flex-1 overflow-y-auto p-3 sm:px-4">
+<div class="min-h-0 flex-1 overflow-y-auto p-3 pb-16 sm:px-4">
     {{-- Kotak cari khusus tabel; memakai penyaring yang sama dengan papan. --}}
     <div class="mb-3 flex flex-wrap items-center gap-2">
         <div class="relative min-w-0 flex-1 sm:max-w-sm">

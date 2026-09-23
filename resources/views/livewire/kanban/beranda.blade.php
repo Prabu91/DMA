@@ -1,4 +1,4 @@
-<div class="h-full overflow-y-auto">
+<div class="h-full overflow-y-auto pb-16">
     <div class="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:py-8">
         <div class="mb-6 flex flex-wrap items-end justify-between gap-3">
             <div>

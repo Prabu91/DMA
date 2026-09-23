@@ -635,4 +635,35 @@ class KanbanTest extends TestCase
 
         $detail->call('cek')->assertSee('Komentar rekan')->assertNotSet('cap', $cap);
     }
+
+    /**
+     * Tanda kutip lurus di dalam atribut Alpine (x-data/x-on) memutus tag
+     * HTML-nya: sisa atributnya tampil sebagai teks mentah di layar dan
+     * seluruh perilaku Alpine di elemen itu rusak. Pernah terjadi, jadi
+     * dijaga di sini.
+     */
+    public function test_atribut_alpine_tidak_memuat_tanda_kutip_lurus(): void
+    {
+        $berkas = array_merge(
+            glob(resource_path('views/livewire/kanban/*.blade.php')),
+            glob(resource_path('views/livewire/kanban/partials/*.blade.php')),
+            [resource_path('views/layouts/kanban.blade.php')],
+        );
+
+        $this->assertNotEmpty($berkas);
+
+        foreach ($berkas as $b) {
+            foreach (file($b) as $nomor => $baris) {
+                if (! str_contains($baris, 'x-') && ! str_contains($baris, 'wire:')) {
+                    continue;
+                }
+
+                $this->assertStringNotContainsString(
+                    "'\"'",
+                    $baris,
+                    basename($b).' baris '.($nomor + 1).': tanda kutip lurus memutus atribut HTML.',
+                );
+            }
+        }
+    }
 }

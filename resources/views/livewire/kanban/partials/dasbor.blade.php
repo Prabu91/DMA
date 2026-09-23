@@ -6,7 +6,7 @@
 @endphp
 
 {{-- Dasbor: ringkasan isi board, memakai penyaring yang sedang aktif. --}}
-<div class="min-h-0 flex-1 overflow-auto p-3 sm:px-4">
+<div class="min-h-0 flex-1 overflow-auto p-3 pb-16 sm:px-4">
     <div class="mx-auto w-full max-w-5xl space-y-4">
 
         {{-- Angka ringkas --}}

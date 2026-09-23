@@ -287,7 +287,7 @@
     <div class="min-h-0 flex-1 overflow-x-auto overflow-y-hidden overscroll-x-contain"
          x-on:pointerdown="panMulai($event)" x-on:pointermove="panGerak($event)"
          x-on:pointerup.window="panSelesai()" x-on:pointercancel.window="panSelesai()" x-on:pointerleave="panSelesai()">
-        <div class="flex h-full items-start gap-3 p-3 sm:px-4">
+        <div class="flex h-full items-start gap-3 p-3 pb-16 sm:px-4">
             <ol @if ($ubah) wire:sort="urutKolom" wire:sort:config="{ handle: '.pegangan-list', delay: 220, delayOnTouchOnly: true, touchStartThreshold: 6, bubbleScroll: false }" @endif
                 class="flex h-full items-start gap-3" aria-label="List">
                 @foreach ($this->kolom as $kolom)
@@ -326,7 +326,7 @@
                                     aria-label="Lipat list {{ $kolom->nama }}" wire:sort:ignore
                                     class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-ink-muted hover:bg-line hover:text-ink">
                                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 6l-5 6 5 6M15 6l5 6-5 6" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6l5 6-5 6M20 6l-5 6 5 6" />
                                 </svg>
                             </button>
                             @if ($ubah)
