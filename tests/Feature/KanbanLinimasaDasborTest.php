@@ -114,7 +114,7 @@ class KanbanLinimasaDasborTest extends TestCase
     public function test_tanggal_ngawur_di_url_jatuh_ke_pekan_ini(): void
     {
         $this->papan(['sejak' => 'bukan-tanggal'])->call('gantiTampilan', 'linimasa')
-            ->assertSee('Pekan ini');
+            ->assertSee('This week');
     }
 
     public function test_linimasa_ikut_penyaring_board(): void
@@ -169,7 +169,7 @@ class KanbanLinimasaDasborTest extends TestCase
         $this->assertSame(2, (int) $d['perAnggota']->first()->jml);
         $this->assertSame(1, (int) $d['perLabel']->first()->jml);
 
-        $dasbor->assertSee('Kartu per list')->assertSee('Kartu per anggota')->assertSee('Kartu per label');
+        $dasbor->assertSee('Cards per list')->assertSee('Cards per member')->assertSee('Cards per label');
     }
 
     public function test_dasbor_ikut_penyaring_board(): void

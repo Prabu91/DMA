@@ -16,11 +16,11 @@ class Bidang extends Model
 
     /** Jenis isian yang tersedia, seperti Custom Fields di Trello. */
     public const JENIS = [
-        'teks' => 'Teks',
-        'angka' => 'Angka',
-        'tanggal' => 'Tanggal',
-        'centang' => 'Centang',
-        'pilihan' => 'Pilihan',
+        'teks' => 'Text',
+        'angka' => 'Number',
+        'tanggal' => 'Date',
+        'centang' => 'Checkbox',
+        'pilihan' => 'Dropdown',
     ];
 
     protected $fillable = ['board_id', 'nama', 'jenis', 'opsi', 'di_depan', 'posisi'];
@@ -48,7 +48,7 @@ class Bidang extends Model
         }
 
         return match ($this->jenis) {
-            'centang' => $nilai ? 'Ya' : 'Tidak',
+            'centang' => $nilai ? 'Yes' : 'No',
             'tanggal' => ($t = strtotime($nilai)) ? date('j M Y', $t) : $nilai,
             'angka' => rtrim(rtrim(number_format((float) $nilai, 2, ',', '.'), '0'), ','),
             default => $nilai,

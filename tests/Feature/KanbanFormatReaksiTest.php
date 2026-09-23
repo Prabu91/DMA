@@ -109,14 +109,14 @@ class KanbanFormatReaksiTest extends TestCase
     {
         $detail = $this->detail()->set('ubahDeskripsi', true);
 
-        $detail->assertSee('Tebal (Ctrl+B)')->assertSee('Preview')->assertSeeHtml('x-data="editorTeks"');
+        $detail->assertSee('Bold (Ctrl+B)')->assertSee('Preview')->assertSeeHtml('x-data="editorTeks"');
 
         // Preview menampilkan hasil jadinya, bukan penanda formatnya.
         $detail->set('deskripsi', '**Redaksi** sekolah')
             ->call('togglePratinjauDeskripsi')
             ->assertSet('pratinjauDeskripsi', true)
             ->assertSeeHtml('<strong>Redaksi</strong>')
-            ->assertSee('Kembali menulis');
+            ->assertSee('Back to writing');
 
         $detail->call('togglePratinjauDeskripsi')->assertSet('pratinjauDeskripsi', false);
     }
@@ -144,7 +144,7 @@ class KanbanFormatReaksiTest extends TestCase
     {
         $this->detail()
             ->assertSeeHtml("window.editorTeksDasar('komentar')")
-            ->assertSee('Ketik @ untuk menyebut rekan.');
+            ->assertSee('Type @ to mention someone.');
     }
 
     // ---------------- Reaksi ----------------
@@ -231,7 +231,7 @@ class KanbanFormatReaksiTest extends TestCase
     {
         Livewire::actingAs($this->faris)->test(PapanBoard::class, ['board' => $this->board])
             ->assertSee('Keyboard shortcut')
-            ->assertSee('Tambah kartu di list pertama')
-            ->assertSee('Tugaskan / lepaskan diri sendiri');
+            ->assertSee('Add a card to the first list')
+            ->assertSee('Assign / unassign yourself');
     }
 }

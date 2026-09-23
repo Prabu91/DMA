@@ -94,16 +94,16 @@ class BilahApung extends Component
             ->values();
 
         if ($cari !== '') {
-            return [['judul' => 'Hasil pencarian', 'board' => $semua->take(12)]];
+            return [['judul' => 'Search results', 'board' => $semua->take(12)]];
         }
 
         $baru = $semua->filter(fn (Board $b) => $b->dibuka_at !== null)
             ->sortByDesc('dibuka_at')->take(4)->values();
 
         return array_values(array_filter([
-            ['judul' => 'Berbintang', 'board' => $semua->where('saya_bintang', true)->values()],
-            ['judul' => 'Baru dibuka', 'board' => $baru],
-            ['judul' => 'Semua board', 'board' => $semua->take(12)],
+            ['judul' => 'Starred', 'board' => $semua->where('saya_bintang', true)->values()],
+            ['judul' => 'Recently opened', 'board' => $baru],
+            ['judul' => 'All boards', 'board' => $semua->take(12)],
         ], fn ($k) => $k['board']->isNotEmpty()));
     }
 

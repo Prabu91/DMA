@@ -449,7 +449,7 @@ class DetailKartu extends Component
 
         // Isian yang tidak sesuai jenisnya tidak disimpan; isian lama dipulihkan.
         if ($nilai === null) {
-            $this->dispatch('toast', teks: 'Isi "'.$bidang->nama.'" tidak sesuai jenis '.mb_strtolower(Bidang::JENIS[$bidang->jenis] ?? $bidang->jenis).'.', jenis: 'gagal');
+            $this->dispatch('toast', teks: '"'.$bidang->nama.'" does not match the '.mb_strtolower(Bidang::JENIS[$bidang->jenis] ?? $bidang->jenis).' field type.', jenis: 'gagal');
             $this->muatBidangIsi();
 
             return;
@@ -686,7 +686,7 @@ class DetailKartu extends Component
     public function kirimKomentar(): void
     {
         $kartu = $this->wajibUbah();
-        $this->validate(['komentarBaru' => ['required', 'string', 'max:5000']], ['komentarBaru.required' => 'Tulis komentar dulu.']);
+        $this->validate(['komentarBaru' => ['required', 'string', 'max:5000']], ['komentarBaru.required' => 'Write a comment first.']);
         $isi = trim($this->komentarBaru);
         Komentar::create(['kartu_id' => $kartu->id, 'user_id' => auth()->id(), 'isi' => $isi]);
         $this->kabar()->komentar($kartu, $isi, auth()->user());
@@ -801,9 +801,9 @@ class DetailKartu extends Component
 
         try {
             $this->validate($aturan, [
-                'max.file' => 'Ukuran berkas maksimal '.round($maks / 1024).' MB.',
-                'image' => 'Cover harus berupa gambar.',
-                'max.array' => 'Maksimal 10 berkas sekaligus.',
+                'max.file' => 'Files may be at most '.round($maks / 1024).' MB.',
+                'image' => 'A cover must be an image.',
+                'max.array' => 'At most 10 files at a time.',
             ]);
         } catch (ValidationException $e) {
             // Panel lampiran mudah tergulung dari pandangan, jadi alasannya
@@ -861,7 +861,7 @@ class DetailKartu extends Component
     private function kabarkanGagal(array $gagal): void
     {
         if ($gagal) {
-            $this->dispatch('toast', teks: 'Gagal melampirkan '.implode(', ', $gagal).'. Berkasnya tidak tersimpan — coba ulangi atau pakai berkas yang lebih kecil.', jenis: 'gagal');
+            $this->dispatch('toast', teks: 'Could not attach '.implode(', ', $gagal).'. Nothing was saved — try again, or use a smaller file.', jenis: 'gagal');
         }
     }
 
@@ -873,9 +873,9 @@ class DetailKartu extends Component
             'tautanUrl' => ['required', 'url', 'max:2048', 'starts_with:http://,https://'],
             'tautanNama' => ['nullable', 'string', 'max:255'],
         ], [
-            'tautanUrl.required' => 'Tempel tautannya dulu.',
-            'tautanUrl.url' => 'Tautan tidak dikenali.',
-            'tautanUrl.starts_with' => 'Tautan harus diawali http:// atau https://.',
+            'tautanUrl.required' => 'Paste the link first.',
+            'tautanUrl.url' => 'That link is not valid.',
+            'tautanUrl.starts_with' => 'Links must start with http:// or https://.',
         ]);
 
         $lampiran = Lampiran::create([
@@ -990,7 +990,7 @@ class DetailKartu extends Component
             'pindahBoard' => ['required', 'integer'],
             'pindahKolom' => ['required', 'integer'],
             'pindahUrutan' => ['required', 'integer', 'min:1'],
-        ], ['pindahKolom.required' => 'Pilih list tujuan.']);
+        ], ['pindahKolom.required' => 'Choose a destination list.']);
 
         $board = $this->boardTujuan->firstWhere('id', $this->pindahBoard);
         abort_unless($board, 403);
@@ -1008,7 +1008,7 @@ class DetailKartu extends Component
         $this->validate([
             'judulSalinan' => ['required', 'string', 'max:255'],
             'salinKolom' => ['required', 'integer'],
-        ], ['judulSalinan.required' => 'Beri judul salinan.', 'salinKolom.required' => 'Pilih list tujuan.']);
+        ], ['judulSalinan.required' => 'Give the copy a title.', 'salinKolom.required' => 'Choose a destination list.']);
 
         $kolom = Kolom::whereNull('diarsipkan_at')->findOrFail($this->salinKolom);
         abort_unless(Akses::bolehUbah(auth()->user(), $kolom->board), 403);

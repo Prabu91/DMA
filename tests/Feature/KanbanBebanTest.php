@@ -75,7 +75,7 @@ class KanbanBebanTest extends TestCase
 
         $this->assertSame(PapanBoard::BATAS_AWAL, $kolom->kartu->count(), 'hanya sebagian yang dimuat');
         $this->assertSame(60, $kolom->jumlah_kartu, 'jumlah sebenarnya tetap terlihat');
-        $papan->assertSee('kartu lagi');
+        $papan->assertSee('more cards');
 
         $papan->call('muatLagi', $this->todo->id);
         $this->assertSame(60, $papan->get('kolom')->first()->kartu->count(), 'sisanya ikut termuat');
@@ -116,7 +116,7 @@ class KanbanBebanTest extends TestCase
 
         $this->assertSame(9, $kolom->jumlah_kartu, 'hanya kartu 001-009 yang cocok');
         $this->assertSame(9, $kolom->kartu->count());
-        $papan->assertDontSee('kartu lagi');
+        $papan->assertDontSee('more cards');
     }
 
     public function test_tabel_dipecah_per_halaman(): void
@@ -137,7 +137,7 @@ class KanbanBebanTest extends TestCase
         $this->isiKartu(3);
 
         $this->papan()->call('gantiTampilan', 'tabel')
-            ->assertSee('Cari judul kartu di board ini')
+            ->assertSee('Search card titles on this board')
             ->set('cari', 'Kartu 002')
             ->assertSeeHtml(self::baris('Kartu 002'))
             ->assertDontSeeHtml(self::baris('Kartu 001'));

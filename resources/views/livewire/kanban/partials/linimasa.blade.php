@@ -16,22 +16,22 @@
 {{-- Linimasa: kartu bertanggal digambar sebagai batang, dikelompokkan per list. --}}
 <div class="min-h-0 flex-1 overflow-auto p-3 pb-16 sm:px-4">
     <div class="mb-3 flex flex-wrap items-center gap-2 text-white">
-        <button type="button" wire:click="geserLinimasa(-2)" aria-label="Mundur dua pekan"
+        <button type="button" wire:click="geserLinimasa(-2)" aria-label="Back two weeks"
                 class="flex h-9 w-9 items-center justify-center rounded-md bg-white/15 hover:bg-white/25">‹</button>
         <h2 class="min-w-[13rem] text-center text-sm font-semibold">
             {{ $awal->day }} {{ $namaBulan[$awal->month - 1] }} – {{ $akhir->day }} {{ $namaBulan[$akhir->month - 1] }} {{ $akhir->year }}
         </h2>
-        <button type="button" wire:click="geserLinimasa(2)" aria-label="Maju dua pekan"
+        <button type="button" wire:click="geserLinimasa(2)" aria-label="Forward two weeks"
                 class="flex h-9 w-9 items-center justify-center rounded-md bg-white/15 hover:bg-white/25">›</button>
-        <button type="button" wire:click="pekanIni" class="h-9 rounded-md bg-white/15 px-3 text-sm hover:bg-white/25">Pekan ini</button>
-        <span class="ml-auto text-xs text-white/90">Hanya kartu bertanggal yang muncul di sini.</span>
+        <button type="button" wire:click="pekanIni" class="h-9 rounded-md bg-white/15 px-3 text-sm hover:bg-white/25">This week</button>
+        <span class="ml-auto text-xs text-white/90">Only cards with dates show up here.</span>
     </div>
 
     <div class="overflow-x-auto rounded-xl bg-card">
         <div style="min-width: {{ $lebarBidang + 220 }}px">
             {{-- Kepala tanggal --}}
             <div class="flex border-b border-line bg-[#F1F2F4]">
-                <div class="w-[220px] shrink-0 px-3 py-2 text-xs font-medium text-ink-muted">Kartu</div>
+                <div class="w-[220px] shrink-0 px-3 py-2 text-xs font-medium text-ink-muted">Cards</div>
                 <div class="flex" style="width: {{ $lebarBidang }}px">
                     @for ($i = 0; $i < $hari; $i++)
                         @php $t = $awal->copy()->addDays($i); @endphp
@@ -91,13 +91,13 @@
                     @endforeach
                 </div>
             @empty
-                <p class="px-3 py-10 text-center text-sm text-ink-muted">Tidak ada kartu bertanggal pada rentang ini.</p>
+                <p class="px-3 py-10 text-center text-sm text-ink-muted">No dated cards in this range.</p>
             @endforelse
         </div>
     </div>
 
     <p class="mt-2 px-1 text-xs text-white/90">
-        Batang dibaca dari tanggal mulai sampai tenggat. Kartu yang hanya punya salah satunya digambar satu hari.
-        Ubah tanggalnya dari dalam kartu atau lewat tampilan Kalender.
+        Batang dibaca dari tanggal mulai sampai tenggat. Cards yang hanya punya salah satunya digambar satu hari.
+        Change the dates inside the card or from the Calendar view.
     </p>
 </div>

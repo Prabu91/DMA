@@ -136,7 +136,7 @@ class KanbanSampulLatarTest extends TestCase
     {
         $this->papan()->set('latar', UploadedFile::fake()->image('latar.jpg', 3000, 2000))
             ->assertHasNoErrors()
-            ->assertSee('Latar board diperbarui.');
+            ->assertSee('Board background updated.');
 
         $board = $this->board->fresh();
         $this->assertNotNull($board->latar_path);

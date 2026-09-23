@@ -38,8 +38,8 @@ class KanbanDummy extends Command
     ];
 
     private const NAMA_LIST = [
-        'Antrian', 'Menunggu DP', 'Jadwal event', 'Sedang dikerjakan', 'Proofing',
-        'QC', 'Revisi', 'Siap cetak', 'Dikirim', 'Selesai', 'Ditahan', 'Arsip bulan ini',
+        'Backlog', 'Awaiting deposit', 'Scheduled', 'In progress', 'Proofing',
+        'QC', 'Revision', 'Ready to print', 'Shipped', 'Done', 'On hold', 'This month archive',
     ];
 
     private const SEKOLAH = [
@@ -51,7 +51,7 @@ class KanbanDummy extends Command
 
     private const KOTA = ['Jaksel', 'Jakut', 'Bandung', 'Bekasi', 'Depok', 'Tangsel', 'Bogor', 'Surabaya'];
 
-    private const KEGIATAN = ['Wisuda', 'Graduation', 'Yearbook', 'Foto kelas', 'Prewedding sekolah', 'Dokumentasi acara'];
+    private const KEGIATAN = ['Graduation', 'Yearbook', 'Class photos', 'School prewedding', 'Event coverage'];
 
     public function handle(): int
     {
@@ -147,7 +147,7 @@ class KanbanDummy extends Command
         DB::table('kanban_board_anggota')->insert($this->berwaktu($baris));
 
         // Label: tujuh warna dengan nama yang terpakai sehari-hari.
-        $namaLabel = ['Prioritas', 'Nunggu bahan', 'Siap kirim', 'Revisi', 'Susulan', 'Kirim ulang', 'Penting'];
+        $namaLabel = ['Priority', 'Waiting on files', 'Ready to send', 'Revision', 'Follow-up', 'Resend', 'Important'];
         $label = [];
         foreach ($namaLabel as $urut => $teks) {
             $label[] = ['board_id' => $board->id, 'nama' => $teks, 'warna' => $warnaLabel[$urut % count($warnaLabel)]];
@@ -156,9 +156,9 @@ class KanbanDummy extends Command
         $labelId = DB::table('kanban_label')->where('board_id', $board->id)->pluck('id')->all();
 
         // Dua bidang khusus supaya lencananya kelihatan di papan.
-        $bidangInvoice = Bidang::create(['board_id' => $board->id, 'nama' => 'No. invoice', 'jenis' => 'teks', 'di_depan' => true, 'posisi' => Posisi::JARAK]);
+        $bidangInvoice = Bidang::create(['board_id' => $board->id, 'nama' => 'Invoice no.', 'jenis' => 'teks', 'di_depan' => true, 'posisi' => Posisi::JARAK]);
         Bidang::create([
-            'board_id' => $board->id, 'nama' => 'Jenis paket', 'jenis' => 'pilihan',
+            'board_id' => $board->id, 'nama' => 'Package type', 'jenis' => 'pilihan',
             'opsi' => ['Basic', 'Medium', 'Premium'], 'di_depan' => false, 'posisi' => Posisi::JARAK * 2,
         ]);
 
@@ -239,7 +239,7 @@ class KanbanDummy extends Command
             'posisi' => $urut * Posisi::JARAK,
             'judul' => $kode.'_'.mb_strtoupper($sekolah).' ('.$kota.') — '.$kegiatan,
             'deskripsi' => random_int(0, 2) === 0
-                ? '**PIC sekolah:** Ibu '.Str::random(4)."\nAlamat: Jl. Contoh No. ".random_int(1, 99).", {$kota}\n\n- Paket ".$kegiatan."\n- Jumlah siswa: ".random_int(20, 240)
+                ? '**School PIC:** Mrs. '.Str::random(4)."\nAddress: Jl. Contoh No. ".random_int(1, 99).", {$kota}\n\n- Package ".$kegiatan."\n- Students: ".random_int(20, 240)
                 : null,
             'cover_warna' => random_int(0, 6) === 0 ? ['hijau', 'kuning', 'merah', 'biru', 'ungu'][random_int(0, 4)] : null,
             'mulai_pada' => random_int(0, 4) === 0 ? now()->subDays(random_int(1, 30))->toDateString() : null,
@@ -284,14 +284,14 @@ class KanbanDummy extends Command
                     }
 
                     if (random_int(0, 3) === 0) {
-                        $checklist[] = ['kartu_id' => $k->id, 'judul' => 'Proses', 'posisi' => 65536, 'created_at' => now(), 'updated_at' => now()];
+                        $checklist[] = ['kartu_id' => $k->id, 'judul' => 'Process', 'posisi' => 65536, 'created_at' => now(), 'updated_at' => now()];
                     }
 
                     if (random_int(0, 4) === 0) {
                         $komentar[] = [
                             'kartu_id' => $k->id,
                             'user_id' => $anggota[array_rand($anggota)],
-                            'isi' => ['Sudah dihubungi PIC-nya.', 'Menunggu konfirmasi jadwal.', 'Bahan sudah lengkap.', 'Tolong dicek ulang ya.'][random_int(0, 3)],
+                            'isi' => ['Already spoke to the PIC.', 'Waiting on schedule confirmation.', 'All files are in.', 'Please double-check this one.'][random_int(0, 3)],
                             'created_at' => now()->subDays(random_int(0, 20)), 'updated_at' => now(),
                         ];
                     }
@@ -312,7 +312,7 @@ class KanbanDummy extends Command
     private function isiChecklist(array $kartuId): void
     {
         $item = [];
-        $daftar = ['Konfirmasi jadwal', 'Siapkan alat', 'Foto kelas', 'Seleksi foto', 'Edit & retouch', 'Kirim proofing', 'Cetak'];
+        $daftar = ['Confirm the schedule', 'Prepare the gear', 'Class photos', 'Select photos', 'Edit & retouch', 'Send proofing', 'Print'];
 
         foreach (DB::table('kanban_checklist')->whereIn('kartu_id', $kartuId)->pluck('id') as $id) {
             foreach (collect($daftar)->shuffle()->take(random_int(2, 5))->values() as $urut => $teks) {

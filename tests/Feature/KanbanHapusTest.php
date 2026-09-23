@@ -80,7 +80,7 @@ class KanbanHapusTest extends TestCase
         $this->detail()->set('berkas', [UploadedFile::fake()->image('foto.jpg', 10, 10)]);
         $lampiran = Lampiran::firstOrFail();
 
-        $this->detail()->assertSee('Hapus kartu')->call('hapus')->assertDispatched('kartu-ditutup');
+        $this->detail()->assertSee('Delete card')->call('hapus')->assertDispatched('kartu-ditutup');
 
         $this->assertDatabaseMissing('kanban_kartu', ['id' => $this->kartu->id]);
         $this->assertSame(0, Komentar::count(), 'komentar ikut terhapus');
@@ -93,7 +93,7 @@ class KanbanHapusTest extends TestCase
     {
         $this->detail()->call('arsipkan');
 
-        $this->detail()->assertSee('Hapus permanen')->call('hapus');
+        $this->detail()->assertSee('Delete permanently')->call('hapus');
 
         $this->assertDatabaseMissing('kanban_kartu', ['id' => $this->kartu->id]);
     }
@@ -113,7 +113,7 @@ class KanbanHapusTest extends TestCase
         ]);
         $kartuOrder = Kartu::where('order_id', $order->id)->firstOrFail();
 
-        $this->detail($kartuOrder->id)->assertDontSee('Hapus kartu')->call('hapus')->assertStatus(422);
+        $this->detail($kartuOrder->id)->assertDontSee('Delete card')->call('hapus')->assertStatus(422);
         $this->assertModelExists($kartuOrder);
     }
 
@@ -149,7 +149,7 @@ class KanbanHapusTest extends TestCase
 
         $this->papan()
             ->call('hapusKolom', $this->todo->id)
-            ->assertSee('2 kartunya dihapus permanen');
+            ->assertSee('and its 2 cards were deleted permanently');
 
         $this->assertDatabaseMissing('kanban_kolom', ['id' => $this->todo->id]);
         $this->assertSame(0, Kartu::count(), 'kartu aktif & arsip ikut terhapus');
@@ -176,7 +176,7 @@ class KanbanHapusTest extends TestCase
 
         Livewire::actingAs($this->faris)->test(PapanBoard::class, ['board' => $board])
             ->call('hapusKolom', $kartuOrder->kolom_id)
-            ->assertSee('berisi kartu order');
+            ->assertSee('holds order cards');
 
         $this->assertModelExists($kartuOrder);
     }
@@ -190,7 +190,7 @@ class KanbanHapusTest extends TestCase
 
         Livewire::actingAs($this->faris)->test(PapanBoard::class, ['board' => $this->board])->call('arsipkanBoard');
         Livewire::actingAs($this->faris)->test(PapanBoard::class, ['board' => $this->board->fresh()])
-            ->assertSee('Hapus board permanen')
+            ->assertSee('Delete board permanently')
             ->call('hapusBoard')
             ->assertRedirect(route('kanban.beranda'));
 
@@ -208,7 +208,7 @@ class KanbanHapusTest extends TestCase
         Livewire::actingAs($this->faris)->test(Beranda::class)
             ->set('lihatArsip', true)
             ->call('hapus', $this->board->id)
-            ->assertSee('dihapus permanen');
+            ->assertSee('deleted permanently');
 
         $this->assertDatabaseMissing('kanban_board', ['id' => $this->board->id]);
         $this->assertSame(0, Kolom::count());

@@ -43,17 +43,17 @@ class KanbanKabar extends Notification
     /** Kalimat kabar, mis. "Faris menyebut Anda di kartu SD Harapan". */
     public function kalimat(): string
     {
-        $siapa = $this->oleh?->nama ?? $this->oleh?->name ?? 'Seseorang';
+        $siapa = $this->oleh?->nama ?? $this->oleh?->name ?? 'Someone';
 
         return match ($this->jenis) {
-            self::SEBUT => $siapa.' menyebut Anda',
-            self::KOMENTAR => $siapa.' berkomentar',
-            self::DITUGASKAN => $siapa.' menugaskan Anda',
-            self::TENGGAT => 'Tenggat sudah dekat',
-            self::TENGGAT_DIUBAH => $siapa.' mengubah tenggat',
-            self::KARTU_PINDAH => $siapa.' memindahkan kartu',
-            self::KARTU_DIARSIPKAN => $siapa.' mengarsipkan kartu',
-            default => 'Ada perubahan',
+            self::SEBUT => $siapa.' mentioned you',
+            self::KOMENTAR => $siapa.' commented',
+            self::DITUGASKAN => $siapa.' assigned you',
+            self::TENGGAT => 'Due date is near',
+            self::TENGGAT_DIUBAH => $siapa.' changed the due date',
+            self::KARTU_PINDAH => $siapa.' moved a card',
+            self::KARTU_DIARSIPKAN => $siapa.' archived a card',
+            default => 'Something changed',
         };
     }
 
@@ -83,16 +83,16 @@ class KanbanKabar extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $pesan = (new MailMessage)
-            ->subject($this->kalimat().' di kartu "'.$this->kartu->judul.'"')
-            ->greeting('Halo '.($notifiable->nama ?? $notifiable->name).',')
-            ->line($this->kalimat().' di kartu **'.$this->kartu->judul.'** (board '.($this->kartu->board?->nama ?? '-').').');
+            ->subject($this->kalimat().' on card "'.$this->kartu->judul.'"')
+            ->greeting('Hi '.($notifiable->nama ?? $notifiable->name).',')
+            ->line($this->kalimat().' on card **'.$this->kartu->judul.'** (board '.($this->kartu->board?->nama ?? '-').').');
 
         if ($this->cuplikan) {
             $pesan->line('> '.mb_substr($this->cuplikan, 0, 500));
         }
 
         return $pesan
-            ->action('Buka kartu', $this->tautan())
-            ->line('Anda menerima email ini karena mengikuti kartu tersebut.');
+            ->action('Open card', $this->tautan())
+            ->line('You are getting this email because you follow that card.');
     }
 }

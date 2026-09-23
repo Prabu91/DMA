@@ -178,14 +178,14 @@ class KanbanKabarTest extends TestCase
             ->call('toggleAnggota', $this->shanty->id);
 
         $lonceng = Livewire::actingAs($this->shanty)->test(Lonceng::class)
-            ->assertSee('menugaskan Anda')
+            ->assertSee('assigned you')
             ->assertSee('SD Harapan');
         $this->assertSame(1, $this->shanty->unreadNotifications()->count());
 
         $lonceng->call('bacaSemua')->assertSee('SD Harapan');
         $this->assertSame(0, $this->shanty->fresh()->unreadNotifications()->count());
 
-        $lonceng->set('hanyaBelumDibaca', true)->assertSee('Semua notifikasi sudah dibaca.');
+        $lonceng->set('hanyaBelumDibaca', true)->assertSee('All notifications read.');
     }
 
     public function test_lonceng_hanya_menampilkan_kabar_sendiri(): void
@@ -193,7 +193,7 @@ class KanbanKabarTest extends TestCase
         Livewire::actingAs($this->faris)->test(DetailKartu::class, ['kartuId' => $this->kartu->id])
             ->call('toggleAnggota', $this->shanty->id);
 
-        Livewire::actingAs($this->faris)->test(Lonceng::class)->assertSee('Belum ada notifikasi.');
+        Livewire::actingAs($this->faris)->test(Lonceng::class)->assertSee('No notifications yet.');
     }
 
     public function test_email_terkirim_dengan_tautan_kartu(): void

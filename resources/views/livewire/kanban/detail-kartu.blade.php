@@ -8,14 +8,14 @@
 
     // Tombol format: [judul, isi tombol, perintah Alpine].
     $format = [
-        ['Tebal (Ctrl+B)', '<span class="font-bold">B</span>', "bungkus('**', 'tebal')"],
-        ['Miring (Ctrl+I)', '<span class="font-serif italic">I</span>', "bungkus('*', 'miring')"],
-        ['Judul', '<span class="font-semibold">H</span>', "awalan('## ')"],
-        ['Daftar', '&bull;', "awalan('- ')"],
-        ['Daftar bernomor', '1.', "awalan('1. ')"],
-        ['Kutipan', '&rdquo;', "awalan('&gt; ')"],
-        ['Kode', '&lt;/&gt;', "bungkus('`', 'kode')"],
-        ['Tautan (Ctrl+K)', '&#128279;', 'tautan()'],
+        ['Bold (Ctrl+B)', '<span class="font-bold">B</span>', "bungkus('**', 'tebal')"],
+        ['Italic (Ctrl+I)', '<span class="font-serif italic">I</span>', "bungkus('*', 'miring')"],
+        ['Title', '<span class="font-semibold">H</span>', "awalan('## ')"],
+        ['Bullet list', '&bull;', "awalan('- ')"],
+        ['Numbered list', '1.', "awalan('1. ')"],
+        ['Quote', '&rdquo;', "awalan('&gt; ')"],
+        ['Code', '&lt;/&gt;', "bungkus('`', 'kode')"],
+        ['Link (Ctrl+K)', '&#128279;', 'tautan()'],
     ];
     $tombolFormat = 'flex h-8 min-w-[2rem] items-center justify-center rounded-md px-1.5 text-sm text-ink hover:bg-[#DCDFE4]';
 @endphp
@@ -61,8 +61,8 @@
         maksBerkas: @js((int) config('kanban.maks_lampiran_kb') * 1024),
         muat(berkas) {
             if (berkas.size <= this.maksBerkas) return true;
-            window.toast('“' + berkas.name + '” berukuran ' + (berkas.size / 1048576).toFixed(1)
-                + ' MB, melebihi batas ' + Math.round(this.maksBerkas / 1048576) + ' MB.');
+            window.toast('“' + berkas.name + '” is ' + (berkas.size / 1048576).toFixed(1)
+                + ' MB, over the ' + Math.round(this.maksBerkas / 1048576) + ' MB limit.');
             return false;
         },
         unggah(daftar) {
@@ -72,7 +72,7 @@
             $wire.uploadMultiple('berkas', berkas, () => {}, () => this.gagalUnggah());
         },
         gagalUnggah() {
-            window.toast('Berkas gagal diunggah. Coba ukuran yang lebih kecil, atau ulangi sebentar lagi.');
+            window.toast('Upload failed. Try a smaller file, or have another go in a moment.');
         },
      }"
      x-on:dragenter.prevent="if (adaBerkas($event)) seret = true"
@@ -86,13 +86,13 @@
 
     {{-- Pratinjau gambar lampiran, tanpa meninggalkan kartu. --}}
     <div x-show="pratinjau" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4"
-         x-on:click="pratinjau = null" role="dialog" aria-modal="true" aria-label="Pratinjau lampiran">
+         x-on:click="pratinjau = null" role="dialog" aria-modal="true" aria-label="Attachment preview">
         <figure class="max-h-full max-w-4xl" x-on:click.stop>
             <img :src="pratinjau?.url" :alt="pratinjau?.nama" class="max-h-[80vh] w-auto rounded-lg bg-card object-contain">
             <figcaption class="mt-2 flex flex-wrap items-center gap-3 text-sm text-white">
                 <span class="min-w-0 flex-1 truncate" x-text="pratinjau?.nama"></span>
-                <a :href="pratinjau?.unduh" class="underline">Unduh</a>
-                <button type="button" x-on:click="pratinjau = null" class="rounded-md bg-white/15 px-3 py-1.5">Tutup</button>
+                <a :href="pratinjau?.unduh" class="underline">Download</a>
+                <button type="button" x-on:click="pratinjau = null" class="rounded-md bg-white/15 px-3 py-1.5">Close</button>
             </figcaption>
         </figure>
     </div>
@@ -100,7 +100,7 @@
     {{-- Seret berkas ke mana saja di kartu untuk melampirkan. --}}
     <div x-show="seret" x-cloak class="pointer-events-none fixed inset-0 z-[60] flex items-center justify-center bg-navy/50 p-6">
         <p class="rounded-2xl border-2 border-dashed border-white bg-card px-6 py-5 text-center text-sm font-medium text-ink shadow-lg">
-            Lepaskan berkas di sini untuk melampirkan ke kartu ini
+            Drop files here to attach them to this card
         </p>
     </div>
     <div class="fixed inset-0 bg-black/50" wire:click="tutup"></div>
@@ -114,17 +114,17 @@
             <div class="h-24 sm:rounded-t-2xl {{ Warna::labelLatar($k->cover_warna) }}"></div>
         @endif
 
-        <button type="button" wire:click="tutup" aria-label="Tutup kartu"
+        <button type="button" wire:click="tutup" aria-label="Close card"
                 class="absolute right-2 top-2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/10 text-lg hover:bg-black/20">✕</button>
 
         @if ($k->diarsipkan_at)
             <div class="flex flex-wrap items-center gap-3 bg-[#F5CD47] px-5 py-3 text-sm {{ $k->coverLampiran || $k->cover_warna ? '' : 'sm:rounded-t-2xl' }}">
-                <span class="font-medium">Kartu ini diarsipkan.</span>
+                <span class="font-medium">This card is archived.</span>
                 @if (\App\Support\Kanban\Akses::bolehUbah(auth()->user(), $k->board))
-                    <button type="button" wire:click="pulihkan" class="rounded-md bg-white/70 px-3 py-1.5 font-medium hover:bg-white">Pulihkan</button>
+                    <button type="button" wire:click="pulihkan" class="rounded-md bg-white/70 px-3 py-1.5 font-medium hover:bg-white">Restore</button>
                     @if (! $k->order_id)
-                        <button type="button" wire:click="hapus" wire:confirm="Hapus kartu ini selamanya? Tindakan ini tidak bisa dibatalkan."
-                                class="rounded-md bg-[#C9372C] px-3 py-1.5 font-medium text-white hover:bg-[#AE2E24]">Hapus permanen</button>
+                        <button type="button" wire:click="hapus" wire:confirm="Delete this card forever? This cannot be undone."
+                                class="rounded-md bg-[#C9372C] px-3 py-1.5 font-medium text-white hover:bg-[#AE2E24]">Delete permanently</button>
                     @endif
                 @endif
                 @error('arsip')<span class="w-full text-[#AE2E24]">{{ $message }}</span>@enderror
@@ -132,18 +132,18 @@
         @endif
 
         <div class="px-4 pb-6 pt-5 sm:px-6">
-            {{-- Judul --}}
+            {{-- Title --}}
             <div class="pr-10">
                 @if ($ubah)
-                    <label for="judul-kartu" class="sr-only">Judul kartu</label>
+                    <label for="judul-kartu" class="sr-only">Card title</label>
                     <textarea id="judul-kartu" wire:model="judul" rows="1" x-on:blur="$wire.simpanJudul()" x-on:keydown.enter.prevent="$el.blur()"
                               class="block w-full resize-none rounded-md border-0 bg-transparent px-2 py-1 text-xl font-semibold hover:bg-white/60 focus:bg-white focus:ring-2 focus:ring-brand"
                               style="field-sizing: content">{{ $judul }}</textarea>
                 @else
                     <h2 id="judul-kartu" class="px-2 py-1 text-xl font-semibold">{{ $k->judul }}</h2>
                 @endif
-                <p class="px-2 text-sm text-ink-muted"><span class="font-mono" title="Nomor kartu — bisa dicari dengan mengetik #{{ $k->id }}">#{{ $k->id }}</span>
-                    · di list <span class="font-medium text-ink">{{ $k->kolom?->nama }}</span> · board {{ $k->board->nama }}
+                <p class="px-2 text-sm text-ink-muted"><span class="font-mono" title="Card number — bisa dicari dengan mengetik #{{ $k->id }}">#{{ $k->id }}</span>
+                    · in list <span class="font-medium text-ink">{{ $k->kolom?->nama }}</span> · board {{ $k->board->nama }}
                     @if ($k->templat)<span class="ml-1 rounded bg-[#5E4DB2] px-1.5 py-0.5 text-xs font-medium text-white">Template</span>@endif
                     @if ($this->mengikuti)<span class="ml-1 rounded bg-[#E9EBEE] px-1.5 py-0.5 text-xs text-ink">Following</span>@endif
                 </p>
@@ -156,7 +156,7 @@
                     <div class="flex flex-wrap gap-x-6 gap-y-4 px-2">
                         @if ($k->anggota->isNotEmpty())
                             <div>
-                                <h3 class="mb-1 text-xs font-medium text-ink-muted">Anggota</h3>
+                                <h3 class="mb-1 text-xs font-medium text-ink-muted">Members</h3>
                                 <div class="flex flex-wrap gap-1">
                                     @foreach ($k->anggota as $a)
                                         <span title="{{ $a->nama ?? $a->name }}"><x-avatar :name="$a->nama ?? $a->name" size="sm" /></span>
@@ -176,18 +176,18 @@
                         @endif
                         @if ($k->tenggat_pada || $k->mulai_pada)
                             <div>
-                                <h3 class="mb-1 text-xs font-medium text-ink-muted">{{ $k->tenggat_pada ? 'Tenggat' : 'Mulai' }}</h3>
+                                <h3 class="mb-1 text-xs font-medium text-ink-muted">{{ $k->tenggat_pada ? 'Due date' : 'Start' }}</h3>
                                 <div class="flex items-center gap-2">
                                     @if ($k->tenggat_pada)
                                         <input type="checkbox" @checked($k->tenggat_selesai_at) @disabled(! $ubah) wire:click="toggleTenggatSelesai"
-                                               aria-label="Tandai tenggat selesai" class="h-5 w-5 rounded text-[#1F845A] focus:ring-brand/30">
+                                               aria-label="Mark due date done" class="h-5 w-5 rounded text-[#1F845A] focus:ring-brand/30">
                                     @endif
                                     <span class="rounded-md bg-[#E9EBEE] px-3 py-1.5 text-sm">
                                         @if ($k->mulai_pada){{ $k->mulai_pada->translatedFormat('j M') }}@if ($k->tenggat_pada) – @endif @endif
                                         @if ($k->tenggat_pada){{ $k->tenggat_pada->translatedFormat('j M Y, H:i') }}@endif
-                                        @if ($tenggat === 'selesai')<span class="ml-1 rounded bg-[#1F845A] px-1.5 text-xs text-white">Selesai</span>
-                                        @elseif ($tenggat === 'lewat')<span class="ml-1 rounded bg-[#C9372C] px-1.5 text-xs text-white">Lewat</span>
-                                        @elseif ($tenggat === 'segera')<span class="ml-1 rounded bg-[#F5CD47] px-1.5 text-xs">Segera</span>@endif
+                                        @if ($tenggat === 'selesai')<span class="ml-1 rounded bg-[#1F845A] px-1.5 text-xs text-white">Done</span>
+                                        @elseif ($tenggat === 'lewat')<span class="ml-1 rounded bg-[#C9372C] px-1.5 text-xs text-white">Overdue</span>
+                                        @elseif ($tenggat === 'segera')<span class="ml-1 rounded bg-[#F5CD47] px-1.5 text-xs">Due soon</span>@endif
                                     </span>
                                 </div>
                             </div>
@@ -200,17 +200,17 @@
                             <h3 class="text-sm font-semibold text-navy">{{ $k->order?->isSusulan() ? 'Order susulan' : 'Order' }}</h3>
                             @if ($k->order)
                                 <dl class="mt-2 grid grid-cols-[7rem_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm">
-                                    <dt class="text-ink-muted">Kode</dt><dd class="font-medium">{{ $k->order->booking_code }}</dd>
-                                    <dt class="text-ink-muted">Sekolah</dt><dd>{{ $k->order->sekolah?->nama ?? '—' }}</dd>
+                                    <dt class="text-ink-muted">Code</dt><dd class="font-medium">{{ $k->order->booking_code }}</dd>
+                                    <dt class="text-ink-muted">School</dt><dd>{{ $k->order->sekolah?->nama ?? '—' }}</dd>
                                     <dt class="text-ink-muted">Marketing</dt><dd>{{ $k->order->marketing?->nama ?? $k->order->marketing?->name ?? '—' }}</dd>
-                                    <dt class="text-ink-muted">Cabang</dt><dd>{{ $k->order->cabang?->nama ?? '—' }}</dd>
+                                    <dt class="text-ink-muted">Branch</dt><dd>{{ $k->order->cabang?->nama ?? '—' }}</dd>
                                     <dt class="text-ink-muted">Status</dt><dd>{{ $k->order->statusLabel() }}</dd>
-                                    <dt class="text-ink-muted">Tanggal event</dt><dd>{{ $k->order->tanggal_event?->translatedFormat('j M Y') ?? 'Belum diatur' }}</dd>
+                                    <dt class="text-ink-muted">Event date</dt><dd>{{ $k->order->tanggal_event?->translatedFormat('j M Y') ?? 'Not set yet' }}</dd>
                                 </dl>
                                 <a href="{{ route('app.order.show', $k->order_id) }}" target="_blank" rel="noopener"
-                                   class="mt-3 inline-flex min-h-[36px] items-center rounded-md bg-navy px-3 text-sm font-medium text-white hover:bg-navy-900">Buka order di panel staf ↗</a>
+                                   class="mt-3 inline-flex min-h-[36px] items-center rounded-md bg-navy px-3 text-sm font-medium text-white hover:bg-navy-900">Open order in staff panel ↗</a>
                             @else
-                                <p class="mt-1 text-sm text-ink-muted">Order ini di luar cabang Anda atau sudah dihapus.</p>
+                                <p class="mt-1 text-sm text-ink-muted">This order is outside your branch or has been deleted.</p>
                             @endif
                         </section>
                     @endif
@@ -218,7 +218,7 @@
                     {{-- Bidang khusus (custom fields) milik board ini --}}
                     @if ($this->bidang->isNotEmpty())
                         <section>
-                            <h3 class="px-2 text-base font-semibold">Bidang khusus</h3>
+                            <h3 class="px-2 text-base font-semibold">Custom fields</h3>
                             <div class="mt-2 grid gap-2 sm:grid-cols-2">
                                 @foreach ($this->bidang as $bd)
                                     <div wire:key="bidang-{{ $bd->id }}" class="rounded-lg bg-card px-3 py-2">
@@ -235,7 +235,7 @@
                                         @elseif ($bd->jenis === 'pilihan')
                                             <select id="bidang-{{ $bd->id }}" wire:model.live="bidangIsi.{{ $bd->id }}"
                                                     class="mt-1 block min-h-[36px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
-                                                <option value="">(kosong)</option>
+                                                <option value="">(none)</option>
                                                 @foreach ($bd->opsi ?? [] as $opsi)
                                                     <option value="{{ $opsi }}">{{ $opsi }}</option>
                                                 @endforeach
@@ -245,7 +245,7 @@
                                                    type="{{ ['angka' => 'number', 'tanggal' => 'date'][$bd->jenis] ?? 'text' }}"
                                                    @if ($bd->jenis === 'angka') step="any" @endif
                                                    wire:model.live.debounce.700ms="bidangIsi.{{ $bd->id }}"
-                                                   placeholder="{{ $bd->jenis === 'teks' ? 'Belum diisi' : '' }}"
+                                                   placeholder="{{ $bd->jenis === 'teks' ? 'Not filled in' : '' }}"
                                                    class="mt-1 block min-h-[36px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
                                         @endif
                                     </div>
@@ -254,12 +254,12 @@
                         </section>
                     @endif
 
-                    {{-- Deskripsi --}}
+                    {{-- Description --}}
                     <section>
                         <div class="flex items-center justify-between gap-2 px-2">
-                            <h3 class="text-base font-semibold">Deskripsi</h3>
+                            <h3 class="text-base font-semibold">Description</h3>
                             @if ($ubah && ! $ubahDeskripsi && $k->deskripsi)
-                                <button type="button" wire:click="$set('ubahDeskripsi', true)" class="rounded-md bg-[#E9EBEE] px-3 py-1.5 text-sm font-medium hover:bg-[#DCDFE4]">Ubah</button>
+                                <button type="button" wire:click="$set('ubahDeskripsi', true)" class="rounded-md bg-[#E9EBEE] px-3 py-1.5 text-sm font-medium hover:bg-[#DCDFE4]">Edit</button>
                             @endif
                         </div>
                         @if ($ubahDeskripsi && $ubah)
@@ -273,31 +273,31 @@
                                         @endforeach
                                         <button type="button" wire:click="togglePratinjauDeskripsi"
                                                 class="ml-auto h-8 rounded-md px-2.5 text-xs font-medium {{ $pratinjauDeskripsi ? 'bg-navy text-white' : 'text-ink hover:bg-[#DCDFE4]' }}">
-                                            {{ $pratinjauDeskripsi ? 'Kembali menulis' : 'Preview' }}
+                                            {{ $pratinjauDeskripsi ? 'Back to writing' : 'Preview' }}
                                         </button>
                                     </div>
 
                                     @if ($pratinjauDeskripsi)
                                         <div class="isi-teks min-h-[9rem] break-words px-3 py-2 text-sm leading-relaxed">
                                             @if (trim($deskripsi) === '')
-                                                <span class="text-ink-muted">Belum ada isi.</span>
+                                                <span class="text-ink-muted">Nothing here yet.</span>
                                             @else
                                                 {!! \App\Support\Kanban\Teks::html($deskripsi) !!}
                                             @endif
                                         </div>
                                     @else
-                                        <label for="deskripsi-kartu" class="sr-only">Deskripsi</label>
+                                        <label for="deskripsi-kartu" class="sr-only">Description</label>
                                         <textarea id="deskripsi-kartu" x-ref="isi" wire:model="deskripsi" rows="8" x-init="$el.focus()"
                                                   x-on:keydown="pintas($event)"
                                                   class="block w-full resize-y border-0 text-sm focus:ring-0"
-                                                  placeholder="Tambahkan deskripsi yang lebih rinci…"></textarea>
+                                                  placeholder="Add a more detailed description…"></textarea>
                                     @endif
                                 </div>
-                                <p class="mt-1 text-[11px] text-ink-muted">Pilih teksnya dulu, lalu tekan tombol format. Ctrl+B tebal, Ctrl+I miring, Ctrl+K tautan.</p>
+                                <p class="mt-1 text-[11px] text-ink-muted">Select the text first, then press a format button. Ctrl+B bold, Ctrl+I italic, Ctrl+K link.</p>
                                 @error('deskripsi')<p class="mt-1 text-xs text-[#AE2E24]">{{ $message }}</p>@enderror
                                 <div class="mt-2 flex gap-2">
-                                    <button type="submit" class="h-9 rounded-md bg-navy px-3 text-sm font-medium text-white hover:bg-navy-900">Simpan</button>
-                                    <button type="button" wire:click="batalDeskripsi" class="h-9 rounded-md px-3 text-sm hover:bg-[#DCDFE4]">Batal</button>
+                                    <button type="submit" class="h-9 rounded-md bg-navy px-3 text-sm font-medium text-white hover:bg-navy-900">Save</button>
+                                    <button type="button" wire:click="batalDeskripsi" class="h-9 rounded-md px-3 text-sm hover:bg-[#DCDFE4]">Cancel</button>
                                 </div>
                             </form>
                         @elseif ($k->deskripsi)
@@ -305,17 +305,17 @@
                         @elseif ($ubah)
                             <button type="button" wire:click="$set('ubahDeskripsi', true)"
                                     class="mx-2 mt-2 block min-h-[56px] w-[calc(100%-1rem)] rounded-lg bg-[#E9EBEE] px-3 text-left text-sm text-ink-muted hover:bg-[#DCDFE4]">
-                                Tambahkan deskripsi yang lebih rinci…
+                                Add a more detailed description…
                             </button>
                         @else
-                            <p class="mt-2 px-2 text-sm text-ink-muted">Tanpa deskripsi.</p>
+                            <p class="mt-2 px-2 text-sm text-ink-muted">No description.</p>
                         @endif
                     </section>
 
                     {{-- Lampiran --}}
                     @if ($k->lampiran->isNotEmpty())
                         <section>
-                            <h3 class="px-2 text-base font-semibold">Lampiran</h3>
+                            <h3 class="px-2 text-base font-semibold">Attachment</h3>
                             <ul class="mt-2 space-y-2 px-2">
                                 @foreach ($k->lampiran as $lp)
                                     <li wire:key="lp-{{ $lp->id }}" class="flex gap-3">
@@ -334,7 +334,7 @@
                                         @endif
                                         <div class="min-w-0 flex-1 text-sm">
                                             @if ($ubah)
-                                                <input type="text" value="{{ $lp->nama }}" aria-label="Nama lampiran"
+                                                <input type="text" value="{{ $lp->nama }}" aria-label="Attachment name"
                                                        x-on:change="$wire.ubahNamaLampiran({{ $lp->id }}, $event.target.value)"
                                                        class="block w-full truncate rounded-md border-0 bg-transparent px-1 py-0.5 font-medium hover:bg-page focus:bg-card focus:ring-2 focus:ring-brand">
                                             @else
@@ -346,18 +346,18 @@
                                             </p>
                                             <div class="mt-1 flex flex-wrap gap-x-3 text-xs">
                                                 @unless ($lp->isTautan())
-                                                    <a href="{{ route('kanban.lampiran', ['lampiran' => $lp, 'unduh' => 1]) }}" class="text-navy underline">Unduh</a>
+                                                    <a href="{{ route('kanban.lampiran', ['lampiran' => $lp, 'unduh' => 1]) }}" class="text-navy underline">Download</a>
                                                 @endunless
                                                 @if ($ubah && $lp->isGambar())
                                                     @if ((int) $k->cover_lampiran_id === $lp->id)
-                                                        <button type="button" wire:click="jadikanSampul(null)" class="text-navy underline">Lepas cover</button>
-                                                        <button type="button" wire:click="toggleSampulPenuh" class="text-navy underline">{{ $k->cover_penuh ? 'Cover ukuran biasa' : 'Cover ukuran penuh' }}</button>
+                                                        <button type="button" wire:click="jadikanSampul(null)" class="text-navy underline">Remove cover</button>
+                                                        <button type="button" wire:click="toggleSampulPenuh" class="text-navy underline">{{ $k->cover_penuh ? 'Normal size cover' : 'Full size cover' }}</button>
                                                     @else
-                                                        <button type="button" wire:click="jadikanSampul({{ $lp->id }})" class="text-navy underline">Jadikan cover</button>
+                                                        <button type="button" wire:click="jadikanSampul({{ $lp->id }})" class="text-navy underline">Make cover</button>
                                                     @endif
                                                 @endif
                                                 @if ($ubah && ((int) $lp->user_id === (int) auth()->id() || $this->admin))
-                                                    <button type="button" wire:click="hapusLampiran({{ $lp->id }})" wire:confirm="Hapus lampiran {{ $lp->nama }}?" class="text-[#AE2E24] underline">Hapus</button>
+                                                    <button type="button" wire:click="hapusLampiran({{ $lp->id }})" wire:confirm="Delete lampiran {{ $lp->nama }}?" class="text-[#AE2E24] underline">Delete</button>
                                                 @endif
                                             </div>
                                         </div>
@@ -377,7 +377,7 @@
                         <section wire:key="cl-{{ $cl->id }}" x-data="{ sembunyi: false }">
                             <div class="flex items-center gap-2 px-2">
                                 @if ($ubah)
-                                    <input type="text" value="{{ $cl->judul }}" aria-label="Judul checklist"
+                                    <input type="text" value="{{ $cl->judul }}" aria-label="Checklist title"
                                            x-on:change="$wire.ubahJudulChecklist({{ $cl->id }}, $event.target.value)"
                                            class="min-w-0 flex-1 rounded-md border-0 bg-transparent px-1 py-1 text-base font-semibold hover:bg-white/60 focus:bg-white focus:ring-2 focus:ring-brand">
                                 @else
@@ -385,11 +385,11 @@
                                 @endif
                                 @if ($selesai)
                                     <button type="button" x-on:click="sembunyi = ! sembunyi" class="rounded-md bg-[#E9EBEE] px-2 py-1.5 text-xs font-medium hover:bg-[#DCDFE4]"
-                                            x-text="sembunyi ? 'Tampilkan yang selesai ({{ $selesai }})' : 'Sembunyikan yang selesai'">Sembunyikan yang selesai</button>
+                                            x-text="sembunyi ? 'Tampilkan yang selesai ({{ $selesai }})' : 'Hide completed'">Hide completed</button>
                                 @endif
                                 @if ($ubah)
-                                    <button type="button" wire:click="hapusChecklist({{ $cl->id }})" wire:confirm="Hapus checklist &quot;{{ $cl->judul }}&quot;?"
-                                            class="rounded-md bg-[#E9EBEE] px-2 py-1.5 text-xs font-medium hover:bg-[#DCDFE4]">Hapus</button>
+                                    <button type="button" wire:click="hapusChecklist({{ $cl->id }})" wire:confirm="Delete checklist &quot;{{ $cl->judul }}&quot;?"
+                                            class="rounded-md bg-[#E9EBEE] px-2 py-1.5 text-xs font-medium hover:bg-[#DCDFE4]">Delete</button>
                                 @endif
                             </div>
                             <div class="mt-2 flex items-center gap-2 px-2">
@@ -404,12 +404,12 @@
                                         @if ($it->selesai_at) x-show="! sembunyi" @endif
                                         x-data="{ ubah: false, teks: @js($it->teks) }">
                                         <input type="checkbox" @checked($it->selesai_at) @disabled(! $ubah) wire:click="toggleItem({{ $it->id }})"
-                                               aria-label="Selesai: {{ $it->teks }}" class="mt-1.5 h-4 w-4 rounded text-[#1F845A] focus:ring-brand/30">
+                                               aria-label="Done: {{ $it->teks }}" class="mt-1.5 h-4 w-4 rounded text-[#1F845A] focus:ring-brand/30">
                                         <div class="min-w-0 flex-1">
                                             <p x-show="! ubah" @if ($ubah) x-on:click="ubah = true; $nextTick(() => $refs.teks.focus())" @endif
                                                @class(['break-words py-1 text-sm', 'text-ink-muted line-through' => $it->selesai_at, 'cursor-text' => $ubah])>{{ $it->teks }}</p>
                                             @if ($ubah)
-                                                <input x-show="ubah" x-cloak x-ref="teks" type="text" x-model="teks" aria-label="Ubah item"
+                                                <input x-show="ubah" x-cloak x-ref="teks" type="text" x-model="teks" aria-label="Edit item"
                                                        x-on:keydown.enter.prevent="ubah = false; $wire.ubahItem({{ $it->id }}, teks)"
                                                        x-on:keydown.escape.stop="ubah = false; teks = @js($it->teks)"
                                                        x-on:blur="ubah = false; if (teks !== @js($it->teks)) $wire.ubahItem({{ $it->id }}, teks)"
@@ -450,7 +450,7 @@
                                                 </button>
                                                 <div x-show="buka" x-cloak x-on:click.outside="buka = false" x-on:keydown.escape.stop="buka = false" data-panel-kartu
                                                      class="{{ $panel }} w-60">
-                                                    <h5 class="text-center font-semibold">Tugaskan ke</h5>
+                                                    <h5 class="text-center font-semibold">Assign to</h5>
                                                     <ul class="mt-2 max-h-56 overflow-y-auto">
                                                         @foreach ($this->calonAnggota as $u)
                                                             <li wire:key="tugas-{{ $it->id }}-{{ $u->id }}">
@@ -465,29 +465,29 @@
                                                     </ul>
                                                     @if ($it->user_id)
                                                         <button type="button" x-on:click="buka = false" wire:click="tugaskanItem({{ $it->id }}, null)"
-                                                                class="mt-2 h-8 w-full rounded-md bg-[#E9EBEE] text-xs font-medium">Lepas tugas</button>
+                                                                class="mt-2 h-8 w-full rounded-md bg-[#E9EBEE] text-xs font-medium">Unassign</button>
                                                     @endif
                                                 </div>
                                             </div>
 
-                                            {{-- Tenggat item --}}
+                                            {{-- Item due date --}}
                                             <div class="relative shrink-0" x-data="{ buka: false, nilai: @js(optional($it->tenggat_pada)->format('Y-m-d\TH:i') ?? '') }">
                                                 <button type="button" x-on:click="buka = ! buka" :aria-expanded="buka"
-                                                        aria-label="Tenggat item {{ $it->teks }}"
+                                                        aria-label="Item due date {{ $it->teks }}"
                                                         class="flex h-8 w-8 items-center justify-center rounded-md text-ink-muted hover:bg-[#DCDFE4] hover:text-ink">
                                                     <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" d="M12 7v5l3 1.5m6-1.5a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                                 </button>
                                                 <div x-show="buka" x-cloak x-on:click.outside="buka = false" x-on:keydown.escape.stop="buka = false" data-panel-kartu
                                                      class="{{ $panel }} w-64">
-                                                    <h5 class="text-center font-semibold">Tenggat item</h5>
+                                                    <h5 class="text-center font-semibold">Item due date</h5>
                                                     <label for="tenggat-item-{{ $it->id }}" class="sr-only">Tenggat item {{ $it->teks }}</label>
                                                     <input id="tenggat-item-{{ $it->id }}" type="datetime-local" x-model="nilai"
                                                            class="mt-2 block min-h-[36px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
                                                     <div class="mt-2 flex gap-2">
                                                         <button type="button" x-on:click="buka = false; $wire.tenggatItem({{ $it->id }}, nilai || null)"
-                                                                class="h-8 flex-1 rounded-md bg-navy text-xs font-medium text-white">Simpan</button>
+                                                                class="h-8 flex-1 rounded-md bg-navy text-xs font-medium text-white">Save</button>
                                                         <button type="button" x-on:click="nilai = ''; buka = false; $wire.tenggatItem({{ $it->id }}, null)"
-                                                                class="h-8 rounded-md bg-[#E9EBEE] px-2 text-xs">Hapus</button>
+                                                                class="h-8 rounded-md bg-[#E9EBEE] px-2 text-xs">Delete</button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -501,9 +501,9 @@
                                                 <div x-show="buka" x-cloak x-on:click.outside="buka = false" x-on:keydown.escape.stop="buka = false" data-panel-kartu
                                                      class="absolute right-0 z-20 mt-1 w-48 rounded-xl border border-line bg-card py-1 text-sm shadow-lg">
                                                     <button type="button" x-on:click="buka = false" wire:click="itemJadiKartu({{ $it->id }})"
-                                                            class="block w-full px-3 py-2 text-left hover:bg-page">Jadikan kartu</button>
+                                                            class="block w-full px-3 py-2 text-left hover:bg-page">Convert to card</button>
                                                     <button type="button" x-on:click="buka = false" wire:click="hapusItem({{ $it->id }})"
-                                                            class="block w-full px-3 py-2 text-left text-[#AE2E24] hover:bg-page">Hapus item</button>
+                                                            class="block w-full px-3 py-2 text-left text-[#AE2E24] hover:bg-page">Delete item</button>
                                                 </div>
                                             </div>
                                         @endif
@@ -512,23 +512,23 @@
                             </ul>
                             @if ($ubah)
                                 <form wire:submit="tambahItem({{ $cl->id }})" class="mt-1 flex gap-2 px-2 pl-8">
-                                    <label for="item-baru-{{ $cl->id }}" class="sr-only">Item baru</label>
-                                    <input id="item-baru-{{ $cl->id }}" type="text" wire:model="itemBaru.{{ $cl->id }}" placeholder="Tambah item…"
+                                    <label for="item-baru-{{ $cl->id }}" class="sr-only">New item</label>
+                                    <input id="item-baru-{{ $cl->id }}" type="text" wire:model="itemBaru.{{ $cl->id }}" placeholder="Add an item…"
                                            class="block min-h-[36px] min-w-0 flex-1 rounded-md border-line bg-white text-sm focus:border-brand focus:ring-brand/30">
-                                    <button type="submit" class="h-9 shrink-0 rounded-md bg-[#E9EBEE] px-3 text-sm font-medium hover:bg-[#DCDFE4]">Tambah</button>
+                                    <button type="submit" class="h-9 shrink-0 rounded-md bg-[#E9EBEE] px-3 text-sm font-medium hover:bg-[#DCDFE4]">Add</button>
                                 </form>
                             @endif
                         </section>
                     @endforeach
 
-                    {{-- Komentar & aktivitas --}}
+                    {{-- Comments & activity --}}
                     <section>
-                        <h3 class="px-2 text-base font-semibold">Komentar & aktivitas</h3>
+                        <h3 class="px-2 text-base font-semibold">Comments & activity</h3>
                         @if ($ubah)
                             <form wire:submit="kirimKomentar" class="mt-2 flex gap-2 px-2">
                                 <x-avatar :name="auth()->user()->nama ?? auth()->user()->name" size="sm" />
                                 <div class="min-w-0 flex-1">
-                                    <label for="komentar-baru" class="sr-only">Tulis komentar</label>
+                                    <label for="komentar-baru" class="sr-only">Write a comment</label>
                                     <div class="relative"
                                          x-data="{
                                             ...window.editorTeksDasar('komentar'),
@@ -558,11 +558,11 @@
                                                     <button type="button" title="{{ $judulFormat }}" aria-label="{{ $judulFormat }} komentar"
                                                             x-on:click="{{ $perintah }}" class="{{ $tombolFormat }}">{!! $isiTombol !!}</button>
                                                 @endforeach
-                                                <button type="button" title="Tautan (Ctrl+K)" aria-label="Tautan komentar"
+                                                <button type="button" title="Tautan (Ctrl+K)" aria-label="Comment link"
                                                         x-on:click="tautan()" class="{{ $tombolFormat }}">&#128279;</button>
                                             </div>
                                             <textarea id="komentar-baru" x-ref="komentar" wire:model="komentarBaru" rows="2"
-                                                      placeholder="Tulis komentar… ketik @ untuk menyebut rekan"
+                                                      placeholder="Write a comment… type @ to mention someone"
                                                       x-on:input="cari()" x-on:keydown="pintas($event)"
                                                       x-on:keydown.escape.stop="cocok = []" x-on:blur="setTimeout(() => cocok = [], 150)"
                                                       class="block w-full border-0 text-sm focus:ring-0"></textarea>
@@ -577,9 +577,9 @@
                                             </template>
                                         </ul>
                                     </div>
-                                    <p class="mt-1 text-[11px] text-ink-muted">Ketik @ untuk menyebut rekan. Tombol di atas untuk tebal, miring, daftar, dan tautan.</p>
+                                    <p class="mt-1 text-[11px] text-ink-muted">Type @ to mention someone. The buttons above give bold, italic, lists and links.</p>
                                     @error('komentarBaru')<p class="mt-1 text-xs text-[#AE2E24]">{{ $message }}</p>@enderror
-                                    <button type="submit" class="mt-2 h-9 rounded-md bg-navy px-3 text-sm font-medium text-white hover:bg-navy-900">Kirim</button>
+                                    <button type="submit" class="mt-2 h-9 rounded-md bg-navy px-3 text-sm font-medium text-white hover:bg-navy-900">Send</button>
                                 </div>
                             </form>
                         @endif
@@ -595,11 +595,11 @@
                                                 <span class="text-xs text-ink-muted">{{ $d->created_at?->diffForHumans() }}@if ($d->diubah_at) (diubah)@endif</span></p>
                                             @if ($ubahKomentarId === $d->id)
                                                 <form wire:submit="simpanKomentar" class="mt-1">
-                                                    <textarea wire:model="isiKomentar" rows="3" aria-label="Ubah komentar"
+                                                    <textarea wire:model="isiKomentar" rows="3" aria-label="Edit comment"
                                                               class="block w-full rounded-lg border-line bg-white text-sm focus:border-brand focus:ring-brand/30"></textarea>
                                                     <div class="mt-1 flex gap-2">
-                                                        <button type="submit" class="h-8 rounded-md bg-navy px-3 text-xs font-medium text-white">Simpan</button>
-                                                        <button type="button" wire:click="$set('ubahKomentarId', null)" class="h-8 rounded-md px-3 text-xs hover:bg-[#DCDFE4]">Batal</button>
+                                                        <button type="submit" class="h-8 rounded-md bg-navy px-3 text-xs font-medium text-white">Save</button>
+                                                        <button type="button" wire:click="$set('ubahKomentarId', null)" class="h-8 rounded-md px-3 text-xs hover:bg-[#DCDFE4]">Cancel</button>
                                                     </div>
                                                 </form>
                                             @else
@@ -620,13 +620,13 @@
 
                                                     @if ($ubah)
                                                         <div class="relative" x-data="{ buka: false }">
-                                                            <button type="button" x-on:click="buka = ! buka" aria-label="Beri reaksi"
+                                                            <button type="button" x-on:click="buka = ! buka" aria-label="React"
                                                                     class="inline-flex h-6 items-center rounded-full border border-line bg-white px-2 text-xs text-ink-muted hover:bg-page">☺+</button>
                                                             <div x-show="buka" x-cloak x-on:click.outside="buka = false" x-on:keydown.escape.stop="buka = false" data-panel-kartu
                                                                  class="absolute left-0 z-20 mt-1 flex gap-1 rounded-xl border border-line bg-card p-1.5 shadow-lg">
                                                                 @foreach (\App\Models\Kanban\Reaksi::PILIHAN as $pilihan)
                                                                     <button type="button" x-on:click="buka = false" wire:click="toggleReaksi({{ $d->id }}, '{{ $pilihan }}')"
-                                                                            aria-label="Reaksi {{ $pilihan }}"
+                                                                            aria-label="React {{ $pilihan }}"
                                                                             class="flex h-8 w-8 items-center justify-center rounded-md text-base hover:bg-page">{{ $pilihan }}</button>
                                                                 @endforeach
                                                             </div>
@@ -636,10 +636,10 @@
                                                 @if ($ubah)
                                                     <div class="mt-1 flex gap-3 text-xs text-ink-muted">
                                                         @if ((int) $d->user_id === (int) auth()->id())
-                                                            <button type="button" wire:click="mulaiUbahKomentar({{ $d->id }})" class="underline hover:text-ink">Ubah</button>
+                                                            <button type="button" wire:click="mulaiUbahKomentar({{ $d->id }})" class="underline hover:text-ink">Edit</button>
                                                         @endif
                                                         @if ((int) $d->user_id === (int) auth()->id() || $this->admin)
-                                                            <button type="button" wire:click="hapusKomentar({{ $d->id }})" wire:confirm="Hapus komentar ini?" class="underline hover:text-[#AE2E24]">Hapus</button>
+                                                            <button type="button" wire:click="hapusKomentar({{ $d->id }})" wire:confirm="Delete this comment?" class="underline hover:text-[#AE2E24]">Delete</button>
                                                         @endif
                                                     </div>
                                                 @endif
@@ -657,7 +657,7 @@
                                     </li>
                                 @endif
                             @empty
-                                <li class="text-sm text-ink-muted">Belum ada komentar atau aktivitas.</li>
+                                <li class="text-sm text-ink-muted">No comments or activity yet.</li>
                             @endforelse
                         </ol>
                     </section>
@@ -667,15 +667,15 @@
                 @if ($ubah)
                     <aside class="space-y-4">
                         <div class="space-y-1.5">
-                            <h3 class="text-xs font-medium text-ink-muted">Tambahkan ke kartu</h3>
+                            <h3 class="text-xs font-medium text-ink-muted">Add to card</h3>
 
-                            {{-- Anggota --}}
+                            {{-- Members --}}
                             <div class="relative" x-data="{ buka: false }">
-                                <button type="button" x-on:click="buka = ! buka" :aria-expanded="buka" class="{{ $tombol }}">Anggota</button>
+                                <button type="button" x-on:click="buka = ! buka" :aria-expanded="buka" class="{{ $tombol }}">Members</button>
                                 <div x-show="buka" x-cloak x-on:click.outside="buka = false" x-on:keydown.escape.stop="buka = false" data-panel-kartu class="{{ $panel }}"
                                      x-data="{ cari: '' }">
-                                    <h4 class="text-center font-semibold">Anggota</h4>
-                                    <input type="search" x-model="cari" placeholder="Cari staf…" aria-label="Cari staf"
+                                    <h4 class="text-center font-semibold">Members</h4>
+                                    <input type="search" x-model="cari" placeholder="Search staff…" aria-label="Search staff"
                                            class="mt-2 block min-h-[36px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
                                     <ul class="mt-2 max-h-64 overflow-y-auto">
                                         @foreach ($this->calonAnggota as $u)
@@ -710,7 +710,7 @@
                                         @endforeach
                                     </ul>
                                     <form wire:submit="buatLabel" class="mt-3 border-t border-line pt-3">
-                                        <input type="text" wire:model="namaLabelBaru" placeholder="Label baru (boleh kosong)" aria-label="Nama label baru"
+                                        <input type="text" wire:model="namaLabelBaru" placeholder="New label (optional)" aria-label="New label name"
                                                class="block min-h-[36px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
                                         <div class="mt-2 grid grid-cols-5 gap-1">
                                             @foreach (Warna::LABEL as $w => [$t, $latar])
@@ -721,7 +721,7 @@
                                                 </label>
                                             @endforeach
                                         </div>
-                                        <button type="submit" class="mt-2 h-8 w-full rounded-md bg-navy text-xs font-medium text-white">Buat & pasang</button>
+                                        <button type="submit" class="mt-2 h-8 w-full rounded-md bg-navy text-xs font-medium text-white">Create & apply</button>
                                     </form>
                                 </div>
                             </div>
@@ -731,63 +731,71 @@
                                 <button type="button" x-on:click="buka = ! buka" :aria-expanded="buka" class="{{ $tombol }}">Checklist</button>
                                 <form x-show="buka" x-cloak x-on:click.outside="buka = false" x-on:keydown.escape.stop="buka = false" data-panel-kartu class="{{ $panel }}"
                                       wire:submit="tambahChecklist" x-on:submit="buka = false">
-                                    <h4 class="text-center font-semibold">Tambah checklist</h4>
-                                    <label for="judul-checklist" class="mt-2 block text-xs font-medium text-ink-muted">Judul</label>
+                                    <h4 class="text-center font-semibold">Add checklist</h4>
+                                    <label for="judul-checklist" class="mt-2 block text-xs font-medium text-ink-muted">Title</label>
                                     <input id="judul-checklist" type="text" wire:model="judulChecklist"
                                            class="mt-1 block min-h-[36px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
-                                    <label for="salin-item-dari" class="mt-2 block text-xs font-medium text-ink-muted">Copy items from…</label>
-                                    <select id="salin-item-dari" wire:model="salinItemDari"
-                                            class="mt-1 block min-h-[36px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
-                                        <option value="">(kosong)</option>
-                                        @foreach ($this->checklistSumber as $sumber)
-                                            <option value="{{ $sumber->id }}">{{ Str::limit($sumber->kartu?->judul, 28) }} — {{ $sumber->judul }} ({{ $sumber->item_count }})</option>
-                                        @endforeach
-                                    </select>
-                                    <button type="submit" class="mt-2 h-9 w-full rounded-md bg-navy px-3 text-sm font-medium text-white">Tambah</button>
+                                    <p class="mt-2 text-xs font-medium text-ink-muted">Copy items from…</p>
+                                    <div x-data="{ pilihan: @js($salinItemDari ? optional($this->checklistSumber->firstWhere('id', (int) $salinItemDari))->judul : null) }">
+                                        <p class="mt-1 flex items-center gap-2 text-sm" x-show="pilihan">
+                                            <span class="min-w-0 flex-1 truncate" x-text="pilihan"></span>
+                                            <button type="button" x-on:click="pilihan = null; $wire.set('salinItemDari', null)"
+                                                    class="text-xs text-navy underline">Clear</button>
+                                        </p>
+                                        <x-kanban.pilih-cari x-show="! pilihan"
+                                            :pilihan="$this->checklistSumber->map(fn ($c) => [
+                                                'nilai' => $c->id,
+                                                'teks' => Str::limit($c->kartu?->judul, 26).' — '.$c->judul,
+                                                'petunjuk' => $c->item_count.' items',
+                                            ])"
+                                            onpilih="pilihan = p.teks; $wire.set('salinItemDari', p.nilai)"
+                                            cari="Search checklist…" kosong="No checklist with items yet." tinggi="max-h-40" />
+                                    </div>
+                                    <button type="submit" class="mt-2 h-9 w-full rounded-md bg-navy px-3 text-sm font-medium text-white">Add</button>
                                 </form>
                             </div>
 
-                            {{-- Tanggal --}}
+                            {{-- Dates --}}
                             <div class="relative" x-data="{ buka: false }">
-                                <button type="button" x-on:click="buka = ! buka" :aria-expanded="buka" class="{{ $tombol }}">Tanggal</button>
+                                <button type="button" x-on:click="buka = ! buka" :aria-expanded="buka" class="{{ $tombol }}">Dates</button>
                                 <form x-show="buka" x-cloak x-on:click.outside="buka = false" x-on:keydown.escape.stop="buka = false" data-panel-kartu class="{{ $panel }}"
                                       wire:submit="simpanTanggal" x-on:submit="buka = false">
-                                    <h4 class="text-center font-semibold">Tanggal</h4>
-                                    <label for="tgl-mulai" class="mt-2 block text-xs font-medium text-ink-muted">Mulai</label>
+                                    <h4 class="text-center font-semibold">Dates</h4>
+                                    <label for="tgl-mulai" class="mt-2 block text-xs font-medium text-ink-muted">Start</label>
                                     <input id="tgl-mulai" type="date" wire:model="mulai"
                                            class="mt-1 block min-h-[36px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
-                                    <label for="tgl-tenggat" class="mt-2 block text-xs font-medium text-ink-muted">Tenggat</label>
+                                    <label for="tgl-tenggat" class="mt-2 block text-xs font-medium text-ink-muted">Due date</label>
                                     <input id="tgl-tenggat" type="datetime-local" wire:model="tenggat"
                                            class="mt-1 block min-h-[36px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
                                     <div class="mt-3 flex gap-2">
-                                        <button type="submit" class="h-9 flex-1 rounded-md bg-navy px-3 text-sm font-medium text-white">Simpan</button>
-                                        <button type="button" wire:click="hapusTanggal" x-on:click="buka = false" class="h-9 rounded-md bg-[#E9EBEE] px-3 text-sm">Hapus</button>
+                                        <button type="submit" class="h-9 flex-1 rounded-md bg-navy px-3 text-sm font-medium text-white">Save</button>
+                                        <button type="button" wire:click="hapusTanggal" x-on:click="buka = false" class="h-9 rounded-md bg-[#E9EBEE] px-3 text-sm">Delete</button>
                                     </div>
                                 </form>
                             </div>
 
-                            {{-- Lampiran --}}
+                            {{-- Attachment --}}
                             <div>
                                 <label class="{{ $tombol }} cursor-pointer focus-within:ring-2 focus-within:ring-brand">
-                                    <span wire:loading.remove wire:target="berkas">Lampiran</span>
-                                    <span wire:loading wire:target="berkas">Mengunggah…</span>
+                                    <span wire:loading.remove wire:target="berkas">Attachment</span>
+                                    <span wire:loading wire:target="berkas">Uploading…</span>
                                     <input type="file" wire:model="berkas" multiple class="sr-only">
                                 </label>
-                                <p class="mt-1 text-[11px] text-ink-muted">Bisa juga seret berkas ke kartu, atau tempel gambar (Ctrl+V). Maksimal {{ round((int) config('kanban.maks_lampiran_kb') / 1024) }} MB per berkas.</p>
+                                <p class="mt-1 text-[11px] text-ink-muted">You can also drag files onto the card, or paste an image (Ctrl+V). Max {{ round((int) config('kanban.maks_lampiran_kb') / 1024) }} MB per file.</p>
 
                                 <div class="relative mt-1.5" x-data="{ buka: false }">
-                                    <button type="button" x-on:click="buka = ! buka" :aria-expanded="buka" class="{{ $tombol }}">Lampirkan tautan</button>
+                                    <button type="button" x-on:click="buka = ! buka" :aria-expanded="buka" class="{{ $tombol }}">Attach a link</button>
                                     <form x-show="buka" x-cloak x-on:click.outside="buka = false" x-on:keydown.escape.stop="buka = false" data-panel-kartu class="{{ $panel }}"
                                           wire:submit="tambahTautan" x-on:submit="buka = false">
-                                        <h4 class="text-center font-semibold">Lampirkan tautan</h4>
-                                        <label for="tautan-url" class="mt-2 block text-xs font-medium text-ink-muted">Alamat</label>
+                                        <h4 class="text-center font-semibold">Attach a link</h4>
+                                        <label for="tautan-url" class="mt-2 block text-xs font-medium text-ink-muted">Address</label>
                                         <input id="tautan-url" type="url" wire:model="tautanUrl" placeholder="https://drive.google.com/…"
                                                class="mt-1 block min-h-[36px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
                                         @error('tautanUrl')<p class="mt-1 text-xs text-[#AE2E24]">{{ $message }}</p>@enderror
-                                        <label for="tautan-nama" class="mt-2 block text-xs font-medium text-ink-muted">Nama tampilan (opsional)</label>
+                                        <label for="tautan-nama" class="mt-2 block text-xs font-medium text-ink-muted">Display name (optional)</label>
                                         <input id="tautan-nama" type="text" wire:model="tautanNama" placeholder="mis. Folder hasil edit"
                                                class="mt-1 block min-h-[36px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
-                                        <button type="submit" class="mt-3 h-9 rounded-md bg-navy px-3 text-sm font-medium text-white">Lampirkan</button>
+                                        <button type="submit" class="mt-3 h-9 rounded-md bg-navy px-3 text-sm font-medium text-white">Attach</button>
                                     </form>
                                 </div>
                                 @error('berkas')<p class="mt-1 text-xs text-[#AE2E24]">{{ $message }}</p>@enderror
@@ -807,11 +815,11 @@
                                     </div>
                                     @php $gambarLampiran = $k->lampiran->filter->isGambar(); @endphp
                                     @if ($gambarLampiran->isNotEmpty())
-                                        <p class="mt-3 text-xs font-medium text-ink-muted">Dari lampiran</p>
+                                        <p class="mt-3 text-xs font-medium text-ink-muted">From attachments</p>
                                         <div class="mt-1.5 grid grid-cols-3 gap-1.5">
                                             @foreach ($gambarLampiran->take(6) as $lg)
                                                 <button type="button" wire:click="jadikanSampul({{ $lg->id }})" wire:key="cov-{{ $lg->id }}"
-                                                        title="{{ $lg->nama }}" aria-label="Jadikan cover: {{ $lg->nama }}"
+                                                        title="{{ $lg->nama }}" aria-label="Make cover: {{ $lg->nama }}"
                                                         class="h-12 overflow-hidden rounded {{ (int) $k->cover_lampiran_id === $lg->id ? 'ring-2 ring-ink ring-offset-1' : 'ring-1 ring-line' }}">
                                                     <img src="{{ route('kanban.lampiran', ['lampiran' => $lg, 'kecil' => 1]) }}" alt="" class="h-full w-full object-cover">
                                                 </button>
@@ -821,57 +829,54 @@
 
                                     @if ($ubah)
                                         <label class="mt-3 flex min-h-[36px] cursor-pointer items-center justify-center rounded-md bg-[#E9EBEE] px-3 text-xs font-medium text-ink hover:bg-line focus-within:ring-2 focus-within:ring-brand">
-                                            <span wire:loading.remove wire:target="berkasCover">Unggah gambar cover</span>
-                                            <span wire:loading wire:target="berkasCover">Mengunggah…</span>
+                                            <span wire:loading.remove wire:target="berkasCover">Upload cover image</span>
+                                            <span wire:loading wire:target="berkasCover">Uploading…</span>
                                             <input type="file" wire:model="berkasCover" accept="image/*" class="sr-only">
                                         </label>
                                         @error('berkasCover')<p class="mt-1 text-xs text-[#AE2E24]">{{ $message }}</p>@enderror
                                     @endif
                                     @if ($k->cover_lampiran_id)
                                         <button type="button" wire:click="toggleSampulPenuh"
-                                                class="mt-2 h-8 w-full rounded-md bg-[#E9EBEE] text-xs font-medium">{{ $k->cover_penuh ? 'Cover ukuran biasa' : 'Cover ukuran penuh' }}</button>
+                                                class="mt-2 h-8 w-full rounded-md bg-[#E9EBEE] text-xs font-medium">{{ $k->cover_penuh ? 'Normal size cover' : 'Full size cover' }}</button>
                                     @endif
                                     @if ($k->cover_warna || $k->cover_lampiran_id)
-                                        <button type="button" wire:click="warnaSampul(null)" class="mt-2 h-8 w-full rounded-md bg-[#E9EBEE] text-xs font-medium">Lepas cover</button>
+                                        <button type="button" wire:click="warnaSampul(null)" class="mt-2 h-8 w-full rounded-md bg-[#E9EBEE] text-xs font-medium">Remove cover</button>
                                     @endif
                                 </div>
                             </div>
                         </div>
 
                         <div class="space-y-1.5">
-                            <h3 class="text-xs font-medium text-ink-muted">Tindakan</h3>
+                            <h3 class="text-xs font-medium text-ink-muted">Actions</h3>
 
-                            {{-- Pindahkan --}}
+                            {{-- Move --}}
                             <div class="relative" x-data="{ buka: false }">
-                                <button type="button" x-on:click="buka = ! buka" :aria-expanded="buka" class="{{ $tombol }}">Pindahkan</button>
+                                <button type="button" x-on:click="buka = ! buka" :aria-expanded="buka" class="{{ $tombol }}">Move</button>
                                 <form x-show="buka" x-cloak x-on:click.outside="buka = false" x-on:keydown.escape.stop="buka = false" data-panel-kartu class="{{ $panel }}"
                                       wire:submit="pindahkan" x-on:submit="buka = false">
-                                    <h4 class="text-center font-semibold">Pindahkan kartu</h4>
-                                    <label for="pindah-board" class="mt-2 block text-xs font-medium text-ink-muted">Board</label>
-                                    <select id="pindah-board" wire:model.live="pindahBoard"
-                                            class="mt-1 block min-h-[36px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
-                                        @foreach ($this->boardTujuan as $b)
-                                            <option value="{{ $b->id }}">{{ $b->nama }}</option>
-                                        @endforeach
-                                    </select>
-                                    <div class="mt-2 grid grid-cols-[minmax(0,1fr)_5rem] gap-2">
+                                    <h4 class="text-center font-semibold">Move card</h4>
+                                    <p class="mt-2 text-xs font-medium text-ink-muted">Board</p>
+                                    <p class="text-sm">{{ $this->boardTujuan->firstWhere('id', (int) $pindahBoard)?->nama ?? '—' }}</p>
+                                    <x-kanban.pilih-cari
+                                        :pilihan="$this->boardTujuan->map(fn ($b) => ['nilai' => $b->id, 'teks' => $b->nama])"
+                                        onpilih="$wire.set('pindahBoard', p.nilai)"
+                                        cari="Search board…" tinggi="max-h-32" />
+
+                                    <div class="mt-3 grid grid-cols-[minmax(0,1fr)_5rem] gap-2">
                                         <div>
-                                            <label for="pindah-list" class="block text-xs font-medium text-ink-muted">List</label>
-                                            <select id="pindah-list" wire:model.live="pindahKolom"
-                                                    class="mt-1 block min-h-[36px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
-                                                @forelse ($this->kolomTujuan as $kol)
-                                                    <option value="{{ $kol->id }}">{{ $kol->nama }}</option>
-                                                @empty
-                                                    <option value="">Belum ada list</option>
-                                                @endforelse
-                                            </select>
+                                            <p class="text-xs font-medium text-ink-muted">List</p>
+                                            <p class="truncate text-sm">{{ $this->kolomTujuan->firstWhere('id', (int) $pindahKolom)?->nama ?? '—' }}</p>
+                                            <x-kanban.pilih-cari
+                                                :pilihan="$this->kolomTujuan->map(fn ($kol) => ['nilai' => $kol->id, 'teks' => $kol->nama])"
+                                                onpilih="$wire.set('pindahKolom', p.nilai)"
+                                                cari="Search list…" kosong="This board has no list yet." tinggi="max-h-32" />
                                         </div>
                                         <div>
                                             @php
                                                 $isi = (int) ($this->kolomTujuan->firstWhere('id', $pindahKolom)?->kartu_count ?? 0);
                                                 $maks = (int) $pindahKolom === (int) $k->kolom_id && ! $k->diarsipkan_at ? $isi : $isi + 1;
                                             @endphp
-                                            <label for="pindah-urutan" class="block text-xs font-medium text-ink-muted">Urutan</label>
+                                            <label for="pindah-urutan" class="block text-xs font-medium text-ink-muted">Position</label>
                                             <select id="pindah-urutan" wire:model="pindahUrutan"
                                                     class="mt-1 block min-h-[36px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
                                                 @for ($i = 1; $i <= max(1, $maks); $i++)
@@ -881,7 +886,7 @@
                                         </div>
                                     </div>
                                     @error('pindahKolom')<p class="mt-1 text-xs text-[#AE2E24]">{{ $message }}</p>@enderror
-                                    <button type="submit" class="mt-3 h-9 rounded-md bg-navy px-3 text-sm font-medium text-white">Pindahkan</button>
+                                    <button type="submit" class="mt-3 h-9 rounded-md bg-navy px-3 text-sm font-medium text-white">Move</button>
                                 </form>
                             </div>
 
@@ -889,23 +894,22 @@
                                 <button type="button" x-on:click="buka = ! buka" :aria-expanded="buka" class="{{ $tombol }}">Copy</button>
                                 <form x-show="buka" x-cloak x-on:click.outside="buka = false" x-on:keydown.escape.stop="buka = false" data-panel-kartu class="{{ $panel }}"
                                       wire:submit="salin" x-on:submit="buka = false">
-                                    <h4 class="text-center font-semibold">Copy kartu</h4>
-                                    <label for="judul-salinan" class="mt-2 block text-xs font-medium text-ink-muted">Judul</label>
+                                    <h4 class="text-center font-semibold">Copy card</h4>
+                                    <label for="judul-salinan" class="mt-2 block text-xs font-medium text-ink-muted">Title</label>
                                     <textarea id="judul-salinan" wire:model="judulSalinan" rows="2"
                                               class="mt-1 block w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30"></textarea>
                                     @error('judulSalinan')<p class="mt-1 text-xs text-[#AE2E24]">{{ $message }}</p>@enderror
 
-                                    <label for="salin-kolom" class="mt-2 block text-xs font-medium text-ink-muted">List tujuan</label>
-                                    <select id="salin-kolom" wire:model="salinKolom"
-                                            class="mt-1 block min-h-[36px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
-                                        @foreach ($this->kolomTujuan as $kol)
-                                            <option value="{{ $kol->id }}">{{ $kol->nama }}</option>
-                                        @endforeach
-                                    </select>
+                                    <p class="mt-2 text-xs font-medium text-ink-muted">To list</p>
+                                    <p class="truncate text-sm">{{ $this->kolomTujuan->firstWhere('id', (int) $salinKolom)?->nama ?? '—' }}</p>
+                                    <x-kanban.pilih-cari
+                                        :pilihan="$this->kolomTujuan->map(fn ($kol) => ['nilai' => $kol->id, 'teks' => $kol->nama])"
+                                        onpilih="$wire.set('salinKolom', p.nilai)"
+                                        cari="Search list…" tinggi="max-h-32" />
                                     @error('salinKolom')<p class="mt-1 text-xs text-[#AE2E24]">{{ $message }}</p>@enderror
 
                                     <fieldset class="mt-3">
-                                        <legend class="text-xs font-medium text-ink-muted">Ikut di-copy</legend>
+                                        <legend class="text-xs font-medium text-ink-muted">Copy along</legend>
                                         @foreach (['label' => 'Label', 'anggota' => 'Anggota', 'checklist' => 'Checklist', 'lampiran' => 'Lampiran'] as $kunci => $labelBawa)
                                             <label class="mt-1 flex min-h-[32px] items-center gap-2">
                                                 <input type="checkbox" wire:model="bawaSalinan" value="{{ $kunci }}" class="rounded text-brand focus:ring-brand/30">
@@ -913,13 +917,13 @@
                                             </label>
                                         @endforeach
                                     </fieldset>
-                                    <button type="submit" class="mt-3 h-9 rounded-md bg-navy px-3 text-sm font-medium text-white">Buat copy</button>
+                                    <button type="submit" class="mt-3 h-9 rounded-md bg-navy px-3 text-sm font-medium text-white">Create copy</button>
                                 </form>
                             </div>
 
                             @unless ($k->order_id)
                                 <button type="button" wire:click="toggleTemplat" class="{{ $tombol }}" aria-pressed="{{ $k->templat ? 'true' : 'false' }}">
-                                    {{ $k->templat ? 'Bukan template lagi' : 'Jadikan template' }}
+                                    {{ $k->templat ? 'Unmark as template' : 'Make template' }}
                                     @if ($k->templat)<span class="ml-auto text-navy" aria-hidden="true">✓</span>@endif
                                 </button>
                             @endunless
@@ -929,11 +933,11 @@
                                 {{ $this->mengikuti ? 'Unfollow' : 'Follow' }}
                                 @if ($this->mengikuti)<span class="ml-auto text-navy" aria-hidden="true">✓</span>@endif
                             </button>
-                            <button type="button" wire:click="arsipkan" class="{{ $tombol }}">Arsipkan</button>
+                            <button type="button" wire:click="arsipkan" class="{{ $tombol }}">Archive</button>
                             @unless ($k->order_id)
                                 <button type="button" wire:click="hapus"
-                                        wire:confirm="Hapus kartu ini selamanya beserta checklist, komentar, dan lampirannya? Tindakan ini tidak bisa dibatalkan."
-                                        class="{{ $tombol }} !bg-[#FFECEB] !text-[#AE2E24] hover:!bg-[#FFD5D2]">Hapus kartu</button>
+                                        wire:confirm="Delete this card forever, along with its checklists, comments and attachments? This cannot be undone."
+                                        class="{{ $tombol }} !bg-[#FFECEB] !text-[#AE2E24] hover:!bg-[#FFD5D2]">Delete card</button>
                             @endunless
                         </div>
                     </aside>

@@ -184,7 +184,7 @@ class KanbanTest extends TestCase
         $lain = $this->staf('tim_event', 'Lain');
         $board = $this->boardBebas($pemilik);
 
-        Livewire::actingAs($lain)->test(Beranda::class)->call('bintang', $board->id)->assertSee('Berbintang');
+        Livewire::actingAs($lain)->test(Beranda::class)->call('bintang', $board->id)->assertSee('Starred');
 
         $this->assertFalse(Akses::anggota($lain, $board));
         $this->assertFalse(Akses::bolehUbah($lain, $board));
@@ -222,13 +222,13 @@ class KanbanTest extends TestCase
         $kartu = $this->tata()->tambahKartu($todo, 'A', $pemilik);
 
         Livewire::actingAs($lain)->test(PapanBoard::class, ['board' => $board])
-            ->assertSee('Gabung board')
+            ->assertSee('Join board')
             ->call('urutKartu', $kartu->id, 0, $todo->id)
             ->assertForbidden();
 
         Livewire::actingAs($lain)->test(PapanBoard::class, ['board' => $board])
             ->call('gabung')
-            ->assertDontSee('Gabung board')
+            ->assertDontSee('Join board')
             ->call('tambahKolom')
             ->assertHasErrors('namaKolomBaru');
 
@@ -395,7 +395,7 @@ class KanbanTest extends TestCase
 
         Livewire::actingAs($user)->withQueryParams(['kartu' => $kartu->id])
             ->test(PapanBoard::class, ['board' => $board])
-            ->assertSee('Tulis komentar');
+            ->assertSee('Write a comment');
 
         Livewire::actingAs($user)->test(PapanBoard::class, ['board' => $board])
             ->call('bukaKartu', $kartu->id)->assertSet('kartuId', $kartu->id)
@@ -574,7 +574,7 @@ class KanbanTest extends TestCase
         [$user, $board, $kartu] = $this->kartuUji();
 
         Livewire::actingAs($user)->test(DetailKartu::class, ['kartuId' => $kartu->id])
-            ->call('arsipkan')->assertSee('Kartu ini diarsipkan.')
+            ->call('arsipkan')->assertSee('This card is archived.')
             ->call('toggleLabel', $board->label()->first()->id)->assertForbidden();
 
         Livewire::actingAs($user)->test(PapanBoard::class, ['board' => $board])

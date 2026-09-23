@@ -28,9 +28,9 @@ class EksporBoardController extends Controller
             $bidang = $board->bidang()->get();
 
             fputcsv($keluar, array_merge([
-                'List', 'Kartu', 'Deskripsi', 'Label', 'Anggota', 'Mulai', 'Tenggat',
-                'Tenggat selesai', 'Checklist selesai', 'Checklist total', 'Komentar',
-                'Lampiran', 'Kode order', 'Diarsipkan', 'Dibuat',
+                'List', 'Card', 'Description', 'Labels', 'Members', 'Start', 'Due date',
+                'Due date done', 'Checklist done', 'Checklist total', 'Comments',
+                'Attachments', 'Order code', 'Archived', 'Created',
             ], $bidang->pluck('nama')->all()));
 
             Kartu::query()

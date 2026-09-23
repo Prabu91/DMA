@@ -17,12 +17,12 @@ final class OtomasiOrder
 
     /** Pemicu yang tersedia, berurutan seperti alur order. */
     public const PEMICU = [
-        'dp' => 'DP dibayar',
-        'lunas' => 'Order lunas',
-        'h7' => 'Konfirmasi H-7',
-        'h2' => 'Konfirmasi H-2',
-        'hari_h' => 'Konfirmasi Hari-H (event selesai)',
-        'sampai_kantor' => 'Materi sampai kantor',
+        'dp' => 'Deposit paid',
+        'lunas' => 'Order fully paid',
+        'h7' => 'H-7 confirmed',
+        'h2' => 'H-2 confirmed',
+        'hari_h' => 'Event day confirmed (event done)',
+        'sampai_kantor' => 'Material arrived at the office',
     ];
 
     /** Kolom order yang perlu diawasi supaya pemicu terdeteksi. */

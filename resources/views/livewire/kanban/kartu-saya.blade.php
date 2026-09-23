@@ -2,8 +2,8 @@
 
 <div class="h-full overflow-y-auto pb-16">
     <div class="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
-        <h1 class="text-xl font-semibold text-ink">Kartu saya</h1>
-        <p class="text-sm text-ink-muted">Cari kartu di semua board yang bisa Anda lihat.</p>
+        <h1 class="text-xl font-semibold text-ink">My cards</h1>
+        <p class="text-sm text-ink-muted">Search cards across every board you can see.</p>
 
         {{-- Tab --}}
         <div class="mt-4 flex flex-wrap gap-1 border-b border-line" role="tablist">
@@ -21,29 +21,29 @@
         {{-- Saringan --}}
         <div class="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem_12rem]">
             <div>
-                <label for="cari-kartu-saya" class="sr-only">Cari kartu</label>
+                <label for="cari-kartu-saya" class="sr-only">Search cards</label>
                 <input id="cari-kartu-saya" type="search" wire:model.live.debounce.400ms="cari"
-                       placeholder="Cari judul, deskripsi, atau #123…"
+                       placeholder="Search title, description, or #123…"
                        class="block min-h-[42px] w-full rounded-lg border-line text-sm focus:border-brand focus:ring-brand/30">
             </div>
             <div>
                 <label for="saring-board" class="sr-only">Board</label>
                 <select id="saring-board" wire:model.live="boardId"
                         class="block min-h-[42px] w-full rounded-lg border-line text-sm focus:border-brand focus:ring-brand/30">
-                    <option value="">Semua board</option>
+                    <option value="">All boards</option>
                     @foreach ($this->boardTerlihat as $b)
                         <option value="{{ $b->id }}">{{ $b->nama }}</option>
                     @endforeach
                 </select>
             </div>
             <div>
-                <label for="saring-tenggat-saya" class="sr-only">Tenggat</label>
+                <label for="saring-tenggat-saya" class="sr-only">Due date</label>
                 <select id="saring-tenggat-saya" wire:model.live="saringTenggat"
                         class="block min-h-[42px] w-full rounded-lg border-line text-sm focus:border-brand focus:ring-brand/30">
-                    <option value="">Semua tenggat</option>
-                    <option value="lewat">Lewat tenggat</option>
-                    <option value="minggu">Tenggat minggu ini</option>
-                    <option value="tanpa">Tanpa tenggat</option>
+                    <option value="">All due dates</option>
+                    <option value="lewat">Overdue</option>
+                    <option value="minggu">Due this week</option>
+                    <option value="tanpa">No due date</option>
                 </select>
             </div>
         </div>
@@ -51,9 +51,9 @@
         <div class="mt-2 flex flex-wrap items-center gap-4 text-sm">
             <label class="flex min-h-[32px] items-center gap-2 text-ink-muted">
                 <input type="checkbox" wire:model.live="termasukArsip" class="rounded text-brand focus:ring-brand/30">
-                Termasuk yang diarsipkan
+                Include archived
             </label>
-            <button type="button" wire:click="bersihkan" class="text-navy underline">Bersihkan filter</button>
+            <button type="button" wire:click="bersihkan" class="text-navy underline">Clear filter</button>
             <span class="ml-auto text-ink-muted">{{ $this->hasil->total() }} kartu</span>
         </div>
 
@@ -103,11 +103,11 @@
             @empty
                 <li class="rounded-xl border border-line bg-card px-4 py-10 text-center text-sm text-ink-muted">
                     @if ($tab === 'saya')
-                        Belum ada kartu yang ditugaskan ke Anda.
+                        No cards assigned to you yet.
                     @elseif ($tab === 'ikuti')
-                        Anda belum mengikuti kartu mana pun.
+                        You are not following any card yet.
                     @else
-                        Tidak ada kartu yang cocok.
+                        No matching cards.
                     @endif
                 </li>
             @endforelse

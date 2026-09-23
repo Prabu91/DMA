@@ -179,7 +179,7 @@ class KanbanLampiranEksporTest extends TestCase
             ->assertHeader('content-type', 'text/csv; charset=UTF-8')
             ->streamedContent();
 
-        $this->assertStringContainsString('List,Kartu,Deskripsi', $isi);
+        $this->assertStringContainsString('List,Card,Description', $isi);
         $this->assertStringContainsString('"To do","SD Harapan"', $isi);
         $this->assertStringContainsString('2026-10-02 09:30', $isi);
         $this->assertStringStartsWith("\xEF\xBB\xBF", $isi, 'BOM supaya rapi di Excel');
@@ -216,7 +216,7 @@ class KanbanLampiranEksporTest extends TestCase
 
         $papan = Livewire::actingAs($this->faris)->test(PapanBoard::class, ['board' => $this->board]);
         $this->assertCount(20, $papan->get('aktivitas'));
-        $papan->assertSee('Muat lebih banyak');
+        $papan->assertSee('Load more');
 
         $papan->call('aktivitasLagi')->assertSet('jumlahAktivitas', 40);
         $this->assertGreaterThan(20, $papan->get('aktivitas')->count());

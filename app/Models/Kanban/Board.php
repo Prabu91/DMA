@@ -18,8 +18,8 @@ class Board extends Model
     public const JENIS_ORDER = 'order';
 
     public const VISIBILITAS = [
-        'workspace' => 'Semua staf',
-        'privat' => 'Hanya anggota',
+        'workspace' => 'All staff',
+        'privat' => 'Members only',
     ];
 
     protected $fillable = ['nama', 'deskripsi', 'warna', 'latar_path', 'jenis', 'visibilitas', 'dibuat_oleh', 'diarsipkan_at'];

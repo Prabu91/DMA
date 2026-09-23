@@ -66,9 +66,9 @@ class PapanBoard extends Component
 
     public const URUT_TABEL = [
         'list' => 'List',
-        'judul' => 'Judul',
-        'tenggat' => 'Tenggat',
-        'dibuat' => 'Dibuat',
+        'judul' => 'Title',
+        'tenggat' => 'Due date',
+        'dibuat' => 'Created',
     ];
 
     public Board $board;
@@ -723,7 +723,7 @@ class PapanBoard extends Component
     public function tambahKolom(): void
     {
         $this->wajibUbah();
-        $this->validate(['namaKolomBaru' => ['required', 'string', 'max:120']], ['namaKolomBaru.required' => 'Beri nama list.']);
+        $this->validate(['namaKolomBaru' => ['required', 'string', 'max:120']], ['namaKolomBaru.required' => 'Give the list a name.']);
 
         app(Tata::class)->tambahKolom($this->board, $this->namaKolomBaru, auth()->user());
         $this->reset('namaKolomBaru');
@@ -752,8 +752,8 @@ class PapanBoard extends Component
 
         $jumlah = app(Tata::class)->pindahSemuaKartu($asal, $tujuan, auth()->user());
         $this->pesan = $jumlah
-            ? $jumlah.' kartu dipindahkan ke "'.$tujuan->nama.'".'
-            : 'List "'.$asal->nama.'" tidak punya kartu.';
+            ? $jumlah.' cards moved to "'.$tujuan->nama.'".'
+            : 'List "'.$asal->nama.'" has no cards.';
         $this->segarkan();
     }
 
@@ -764,8 +764,8 @@ class PapanBoard extends Component
 
         $jumlah = app(Tata::class)->arsipkanSemuaKartu($kolom, auth()->user());
         $this->pesan = $jumlah
-            ? $jumlah.' kartu di "'.$kolom->nama.'" diarsipkan. Bisa dipulihkan dari menu board.'
-            : 'List "'.$kolom->nama.'" tidak punya kartu.';
+            ? $jumlah.' cards in "'.$kolom->nama.'" archived. They can be restored from the board menu.'
+            : 'List "'.$kolom->nama.'" has no cards.';
         $this->segarkan();
     }
 
@@ -837,7 +837,7 @@ class PapanBoard extends Component
     public function tambahKartu(): void
     {
         $this->wajibUbah();
-        $this->validate(['judulKartuBaru' => ['required', 'string', 'max:255']], ['judulKartuBaru.required' => 'Tulis judul kartu.']);
+        $this->validate(['judulKartuBaru' => ['required', 'string', 'max:255']], ['judulKartuBaru.required' => 'Write a card title.']);
 
         app(Tata::class)->tambahKartu($this->kolomMilikBoard((int) $this->tambahKartuDi), $this->judulKartuBaru, auth()->user());
         $this->judulKartuBaru = '';
@@ -875,7 +875,7 @@ class PapanBoard extends Component
         $kartu = $this->kartuMilikBoard($kartuId);
         $kolom = Kolom::find($kartu->kolom_id);
         if ($kolom?->diarsipkan_at) {
-            $this->pesan = 'List kartu ini masih diarsipkan — pulihkan list-nya dulu.';
+            $this->pesan = 'This card\'s list is still archived — restore the list first.';
 
             return;
         }
@@ -965,7 +965,7 @@ class PapanBoard extends Component
         $this->wajibKelola();
         $this->validate(
             ['latar' => ['image', 'max:'.(int) config('kanban.maks_lampiran_kb')]],
-            ['latar.image' => 'Latar board harus berupa gambar.'],
+            ['latar.image' => 'The board background must be an image.'],
         );
 
         try {
@@ -977,7 +977,7 @@ class PapanBoard extends Component
         } catch (Throwable $e) {
             report($e);
             $this->reset('latar');
-            $this->dispatch('toast', teks: 'Latar board gagal diunggah. Coba gambar lain atau yang ukurannya lebih kecil.', jenis: 'gagal');
+            $this->dispatch('toast', teks: 'The board background could not be uploaded. Try another image, or a smaller one.', jenis: 'gagal');
 
             return;
         }
@@ -994,7 +994,7 @@ class PapanBoard extends Component
         }
 
         $this->reset('latar');
-        $this->pesan = 'Latar board diperbarui.';
+        $this->pesan = 'Board background updated.';
         $this->segarkan();
     }
 
@@ -1029,7 +1029,7 @@ class PapanBoard extends Component
     public function salinBoard()
     {
         abort_unless(Akses::bolehLihat(auth()->user(), $this->board), 403);
-        $this->validate(['namaSalinanBoard' => ['required', 'string', 'max:120']], ['namaSalinanBoard.required' => 'Beri nama board baru.']);
+        $this->validate(['namaSalinanBoard' => ['required', 'string', 'max:120']], ['namaSalinanBoard.required' => 'Give the new board a name.']);
 
         $baru = app(Tata::class)->salinBoard($this->board, $this->namaSalinanBoard, $this->salinDenganKartu, auth()->user());
 
@@ -1055,7 +1055,7 @@ class PapanBoard extends Component
         $tata = app(Tata::class);
 
         if ($tata->adaKartuOrder($kolom)) {
-            $this->pesan = 'List "'.$kolom->nama.'" berisi kartu order yang tidak bisa dihapus. Pindahkan kartunya dulu, atau arsipkan list-nya.';
+            $this->pesan = 'List "'.$kolom->nama.'" holds order cards that cannot be deleted. Move those cards first, or archive the list instead.';
             $this->segarkan();
 
             return;
@@ -1066,8 +1066,8 @@ class PapanBoard extends Component
         $tata->hapusKolom($kolom, auth()->user());
 
         $this->pesan = $jumlah
-            ? 'List "'.$nama.'" dan '.$jumlah.' kartunya dihapus permanen.'
-            : 'List "'.$nama.'" dihapus.';
+            ? 'List "'.$nama.'" and its '.$jumlah.' cards were deleted permanently.'
+            : 'List "'.$nama.'" deleted.';
         $this->segarkan();
     }
 
@@ -1154,12 +1154,12 @@ class PapanBoard extends Component
             'namaBidangBaru' => ['required', 'string', 'max:80'],
             'jenisBidangBaru' => ['required', Rule::in(array_keys(Bidang::JENIS))],
             'opsiBidangBaru' => ['nullable', 'string', 'max:500'],
-        ], ['namaBidangBaru.required' => 'Beri nama bidangnya.']);
+        ], ['namaBidangBaru.required' => 'Give the field a name.']);
 
         $opsi = $this->pecahOpsi($this->opsiBidangBaru);
 
         if ($this->jenisBidangBaru === 'pilihan' && $opsi === []) {
-            $this->addError('opsiBidangBaru', 'Tulis dulu pilihannya, satu per baris.');
+            $this->addError('opsiBidangBaru', 'Write the options first, one per line.');
 
             return;
         }
@@ -1240,7 +1240,7 @@ class PapanBoard extends Component
         }
 
         OtomasiOrder::simpan($this->otomasi);
-        $this->pesan = 'Otomasi board Order disimpan.';
+        $this->pesan = 'Order board automation saved.';
     }
 
     /** Tombol "Muat lebih banyak" di panel aktivitas. */
@@ -1292,7 +1292,7 @@ class PapanBoard extends Component
 
     public function simpanSaringan(): void
     {
-        $this->validate(['namaSaringan' => ['required', 'string', 'max:60']], ['namaSaringan.required' => 'Beri nama saringannya.']);
+        $this->validate(['namaSaringan' => ['required', 'string', 'max:60']], ['namaSaringan.required' => 'Give the filter a name.']);
         abort_unless($this->adaSaringan, 422);
 
         Saringan::updateOrCreate(

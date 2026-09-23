@@ -8,14 +8,14 @@
     {{-- Kotak cari khusus tabel; memakai penyaring yang sama dengan papan. --}}
     <div class="mb-3 flex flex-wrap items-center gap-2">
         <div class="relative min-w-0 flex-1 sm:max-w-sm">
-            <label for="cari-tabel" class="sr-only">Cari kartu di board ini</label>
+            <label for="cari-tabel" class="sr-only">Search cards on this board</label>
             <input id="cari-tabel" type="search" wire:model.live.debounce.400ms="cari"
-                   placeholder="Cari judul kartu di board ini…"
+                   placeholder="Search card titles on this board…"
                    class="block min-h-[40px] w-full rounded-lg border-0 bg-white/95 text-sm text-ink placeholder:text-ink-muted focus:ring-2 focus:ring-brand">
         </div>
         @if ($this->adaSaringan)
             <button type="button" wire:click="bersihkanSaringan"
-                    class="min-h-[40px] rounded-lg bg-white/20 px-3 text-sm text-white hover:bg-white/30">Bersihkan filter</button>
+                    class="min-h-[40px] rounded-lg bg-white/20 px-3 text-sm text-white hover:bg-white/30">Clear filter</button>
         @endif
         <span class="ml-auto text-xs text-white/90">{{ $this->baris->total() }} kartu</span>
     </div>
@@ -35,10 +35,10 @@
                         </th>
                     @endforeach
                     <th scope="col" class="px-3 py-2 font-medium">Label</th>
-                    <th scope="col" class="px-3 py-2 font-medium">Anggota</th>
+                    <th scope="col" class="px-3 py-2 font-medium">Members</th>
                     <th scope="col" class="px-3 py-2 font-medium" aria-sort="{{ $urutTabel === 'tenggat' ? ($arahTabel === 'asc' ? 'ascending' : 'descending') : 'none' }}">
                         <button type="button" wire:click="urutkan('tenggat')" class="inline-flex items-center gap-1 hover:text-ink">
-                            Tenggat
+                            Due date
                             @if ($urutTabel === 'tenggat')<span aria-hidden="true">{{ $arahTabel === 'asc' ? '↑' : '↓' }}</span>@endif
                         </button>
                     </th>
@@ -101,7 +101,7 @@
                 @empty
                     <tr>
                         <td colspan="7" class="px-3 py-10 text-center text-ink-muted">
-                            {{ $this->adaSaringan ? 'Tidak ada kartu yang cocok dengan filter.' : 'Board ini belum punya kartu.' }}
+                            {{ $this->adaSaringan ? 'No cards match the filter.' : 'This board has no cards yet.' }}
                         </td>
                     </tr>
                 @endforelse
@@ -109,5 +109,5 @@
         </table>
     </div>
     <div class="mt-3 text-white [&_a]:text-white [&_span]:text-white/80">{{ $this->baris->links() }}</div>
-    <p class="mt-2 px-1 text-xs text-white/90">Klik baris untuk membuka kartu. Di layar kecil, tabel bisa digeser ke samping.</p>
+    <p class="mt-2 px-1 text-xs text-white/90">Click a row to open the card. On small screens the table scrolls sideways.</p>
 </div>

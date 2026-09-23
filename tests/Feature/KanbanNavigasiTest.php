@@ -155,7 +155,7 @@ class KanbanNavigasiTest extends TestCase
             'board_id' => $this->board->id,
         ]);
 
-        Livewire::actingAs($this->faris)->test(Beranda::class)->assertSee('Baru dibuka');
+        Livewire::actingAs($this->faris)->test(Beranda::class)->assertSee('Recently opened');
     }
 
     public function test_kunjungan_dicatat_per_orang(): void
@@ -165,7 +165,7 @@ class KanbanNavigasiTest extends TestCase
 
         $this->papan();
 
-        Livewire::actingAs($lain)->test(Beranda::class)->assertDontSee('Baru dibuka');
+        Livewire::actingAs($lain)->test(Beranda::class)->assertDontSee('Recently opened');
         $this->assertSame(1, DB::table('kanban_kunjungan')->count());
     }
 
@@ -181,7 +181,7 @@ class KanbanNavigasiTest extends TestCase
     public function test_daftar_pintasan_memuat_yang_baru(): void
     {
         $this->papan()
-            ->assertSee('Bersihkan filter')
-            ->assertSee('Beri / hapus bintang board');
+            ->assertSee('Clear the filter')
+            ->assertSee('Star / unstar the board');
     }
 }

@@ -134,6 +134,6 @@ class KanbanUnggahGagalTest extends TestCase
     {
         $mb = round((int) config('kanban.maks_lampiran_kb') / 1024);
 
-        $this->detail()->assertSee('Maksimal '.$mb.' MB per berkas');
+        $this->detail()->assertSee('Max '.$mb.' MB per file');
     }
 }

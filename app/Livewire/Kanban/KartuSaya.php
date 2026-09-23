@@ -23,9 +23,9 @@ class KartuSaya extends Component
     use WithPagination;
 
     public const TAB = [
-        'saya' => 'Ditugaskan ke saya',
-        'ikuti' => 'Saya ikuti',
-        'semua' => 'Semua kartu',
+        'saya' => 'Assigned to me',
+        'ikuti' => 'Following',
+        'semua' => 'All cards',
     ];
 
     #[Url]
@@ -114,6 +114,6 @@ class KartuSaya extends Component
 
     public function render()
     {
-        return view('livewire.kanban.kartu-saya')->title('Kartu saya');
+        return view('livewire.kanban.kartu-saya')->title('My cards');
     }
 }

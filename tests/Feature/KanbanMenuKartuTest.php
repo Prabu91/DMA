@@ -169,11 +169,11 @@ class KanbanMenuKartuTest extends TestCase
     public function test_menu_kartu_tampil_di_papan(): void
     {
         $this->papan()
-            ->assertSee('Buka kartu')
-            ->assertSee('Ubah label')
-            ->assertSee('Ubah anggota')
-            ->assertSee('Ubah cover')
-            ->assertSee('Ubah tanggal')
+            ->assertSee('Open card')
+            ->assertSee('Change labels')
+            ->assertSee('Change members')
+            ->assertSee('Change cover')
+            ->assertSee('Change dates')
             ->assertSee('Copy card')
             ->assertSee('Copy link')
             ->assertSee('Collapse list');

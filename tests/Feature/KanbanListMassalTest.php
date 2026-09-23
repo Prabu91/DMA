@@ -91,7 +91,7 @@ class KanbanListMassalTest extends TestCase
 
         $this->papan()
             ->call('pindahSemuaKartu', $this->todo->id, $this->selesai->id)
-            ->assertSee('3 kartu dipindahkan ke &quot;Selesai&quot;.', false);
+            ->assertSee('3 cards moved to &quot;Selesai&quot;.', false);
 
         $this->assertSame([], $this->urutan($this->todo));
         $this->assertSame(['Sudah ada', 'C kartu', 'A kartu', 'B kartu'], $this->urutan($this->selesai));
@@ -102,7 +102,7 @@ class KanbanListMassalTest extends TestCase
     {
         $this->papan()
             ->call('pindahSemuaKartu', $this->selesai->id, $this->todo->id)
-            ->assertSee('tidak punya kartu');
+            ->assertSee('has no cards');
 
         $this->assertSame(3, $this->todo->kartu()->count());
     }
@@ -116,7 +116,7 @@ class KanbanListMassalTest extends TestCase
     {
         $this->papan()
             ->call('arsipkanSemuaKartu', $this->todo->id)
-            ->assertSee('3 kartu di &quot;To do&quot; diarsipkan.', false);
+            ->assertSee('3 cards in &quot;To do&quot; archived.', false);
 
         $this->assertSame(0, $this->todo->kartu()->count());
         $this->assertSame(3, Kartu::where('kolom_id', $this->todo->id)->whereNotNull('diarsipkan_at')->count());
@@ -158,6 +158,6 @@ class KanbanListMassalTest extends TestCase
         // Papan menyediakan kunci penyimpanan per board dan tombol lipat.
         $this->papan()
             ->assertSeeHtml("kanban:lipat:{$this->board->id}")
-            ->assertSee('Lipat list');
+            ->assertSee('Collapse list');
     }
 }

@@ -21,6 +21,19 @@
             /* Saat diseret, kartu bayangan tampil miring seperti Trello. */
             .sortable-drag { transform: rotate(3deg); }
             .sortable-ghost { opacity: .35; }
+            /* Batang gulir: tipis dan menyatu dengan latarnya, tidak putih mencolok. */
+            .gulir-terang { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.45) transparent; }
+            .gulir-gelap  { scrollbar-width: thin; scrollbar-color: rgba(9,30,66,.25) transparent; }
+            .gulir-terang::-webkit-scrollbar, .gulir-gelap::-webkit-scrollbar { width: 10px; height: 10px; }
+            .gulir-terang::-webkit-scrollbar-track, .gulir-gelap::-webkit-scrollbar-track { background: transparent; }
+            .gulir-terang::-webkit-scrollbar-thumb, .gulir-gelap::-webkit-scrollbar-thumb {
+                border: 3px solid transparent; border-radius: 9999px; background-clip: content-box;
+            }
+            .gulir-terang::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,.45); }
+            .gulir-terang::-webkit-scrollbar-thumb:hover { background-color: rgba(255,255,255,.7); }
+            .gulir-gelap::-webkit-scrollbar-thumb { background-color: rgba(9,30,66,.25); }
+            .gulir-gelap::-webkit-scrollbar-thumb:hover { background-color: rgba(9,30,66,.45); }
+
             /* Bilah bawah menyingkir selama kartu terbuka. */
             body.kartu-terbuka .bilah-apung { display: none; }
             /* Deskripsi & komentar berformat (Markdown). */
@@ -50,21 +63,21 @@
                     {{-- Menu ringkas: di layar HP tautan navigasi disembunyikan, jadi dikumpulkan di sini. --}}
                     <div class="relative sm:hidden" x-data="{ buka: false }">
                         <button type="button" x-on:click="buka = ! buka" x-on:keydown.escape.window="buka = false"
-                                :aria-expanded="buka" aria-label="Menu navigasi"
+                                :aria-expanded="buka" aria-label="Navigation menu"
                                 class="flex h-9 w-9 items-center justify-center rounded-md hover:bg-white/10">
                             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" d="M4 7h16M4 12h16M4 17h16" /></svg>
                         </button>
                         <div x-show="buka" x-cloak x-on:click.outside="buka = false"
                              class="absolute left-0 z-50 mt-2 w-60 overflow-hidden rounded-xl border border-line bg-card py-1 text-sm text-ink shadow-lg">
-                            <a href="{{ route('kanban.beranda') }}" wire:navigate class="block px-3 py-2.5 hover:bg-page">Semua board</a>
-                            <a href="{{ route('kanban.kartu-saya') }}" wire:navigate class="block px-3 py-2.5 hover:bg-page">Kartu saya</a>
+                            <a href="{{ route('kanban.beranda') }}" wire:navigate class="block px-3 py-2.5 hover:bg-page">All boards</a>
+                            <a href="{{ route('kanban.kartu-saya') }}" wire:navigate class="block px-3 py-2.5 hover:bg-page">My cards</a>
                             <form method="GET" action="{{ route('kanban.kartu-saya') }}" class="border-t border-line px-3 py-2">
                                 <input type="hidden" name="tab" value="semua">
-                                <label for="cari-hp" class="text-xs font-medium text-ink-muted">Cari kartu di semua board</label>
-                                <input id="cari-hp" type="search" name="q" placeholder="Judul kartu…"
+                                <label for="cari-hp" class="text-xs font-medium text-ink-muted">Search cards on every board</label>
+                                <input id="cari-hp" type="search" name="q" placeholder="Card title…"
                                        class="mt-1 block min-h-[38px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
                             </form>
-                            <a href="{{ rtrim(config('app.url'), '/') }}/app/dashboard" class="block border-t border-line px-3 py-2.5 hover:bg-page">Panel staf ↗</a>
+                            <a href="{{ rtrim(config('app.url'), '/') }}/app/dashboard" class="block border-t border-line px-3 py-2.5 hover:bg-page">Staff panel ↗</a>
                         </div>
                     </div>
 
@@ -72,12 +85,12 @@
                         <span class="flex h-7 w-7 items-center justify-center rounded-md bg-white text-[11px] font-semibold text-navy">DMA</span>
                         <span class="hidden text-sm font-semibold sm:inline">Kanban</span>
                     </a>
-                    <a href="{{ route('kanban.beranda') }}" wire:navigate class="hidden rounded-md px-2 py-1.5 text-sm text-white/85 hover:bg-white/10 hover:text-white sm:block">Semua board</a>
-                    <a href="{{ route('kanban.kartu-saya') }}" wire:navigate class="hidden rounded-md px-2 py-1.5 text-sm text-white/85 hover:bg-white/10 hover:text-white sm:block">Kartu saya</a>
+                    <a href="{{ route('kanban.beranda') }}" wire:navigate class="hidden rounded-md px-2 py-1.5 text-sm text-white/85 hover:bg-white/10 hover:text-white sm:block">All boards</a>
+                    <a href="{{ route('kanban.kartu-saya') }}" wire:navigate class="hidden rounded-md px-2 py-1.5 text-sm text-white/85 hover:bg-white/10 hover:text-white sm:block">My cards</a>
                     <form method="GET" action="{{ route('kanban.kartu-saya') }}" class="hidden lg:block">
                         <input type="hidden" name="tab" value="semua">
-                        <label for="cari-global" class="sr-only">Cari kartu di semua board</label>
-                        <input id="cari-global" type="search" name="q" placeholder="Cari kartu…"
+                        <label for="cari-global" class="sr-only">Search cards on every board</label>
+                        <input id="cari-global" type="search" name="q" placeholder="Search cards…"
                                class="h-8 w-48 rounded-md border-0 bg-white/15 px-2.5 text-sm text-white placeholder:text-white/70 focus:bg-white focus:text-ink focus:placeholder:text-ink-muted focus:ring-2 focus:ring-brand">
                     </form>
                 </div>
@@ -85,7 +98,7 @@
                 <div class="flex items-center gap-1 sm:gap-2" x-data="{ buka: false }">
                     @php $saya = auth()->user(); @endphp
                     <a href="{{ rtrim(config('app.url'), '/') }}/app/dashboard"
-                       class="hidden rounded-md px-2 py-1.5 text-sm text-white/85 hover:bg-white/10 hover:text-white md:block">Panel staf ↗</a>
+                       class="hidden rounded-md px-2 py-1.5 text-sm text-white/85 hover:bg-white/10 hover:text-white md:block">Staff panel ↗</a>
                     <livewire:kanban.lonceng />
                     <div class="relative">
                         <button type="button" x-on:click="buka = ! buka" x-on:keydown.escape.window="buka = false"
@@ -102,10 +115,10 @@
                                 <div class="font-medium">{{ $saya->nama ?? $saya->name }}</div>
                                 <div class="truncate text-xs text-ink-muted">{{ $saya->email }}</div>
                             </div>
-                            <a href="{{ rtrim(config('app.url'), '/') }}/app/dashboard" role="menuitem" class="block px-3 py-2 hover:bg-page">Panel staf ↗</a>
+                            <a href="{{ rtrim(config('app.url'), '/') }}/app/dashboard" role="menuitem" class="block px-3 py-2 hover:bg-page">Staff panel ↗</a>
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
-                                <button type="submit" role="menuitem" class="block w-full px-3 py-2 text-left hover:bg-page">Keluar</button>
+                                <button type="submit" role="menuitem" class="block w-full px-3 py-2 text-left hover:bg-page">Sign out</button>
                             </form>
                         </div>
                     </div>
@@ -116,7 +129,7 @@
                 {{ $slot }}
             </main>
 
-            {{-- Bilah mengambang: pindah board tanpa mampir ke halaman Semua board. --}}
+            {{-- Bilah mengambang: pindah board tanpa mampir ke halaman All boards. --}}
             <livewire:kanban.bilah-apung />
 
             {{-- Kabar sesaat (terutama unggahan yang gagal) --}}
@@ -141,7 +154,7 @@
                          class="pointer-events-auto flex w-[min(28rem,100%)] items-start gap-3 rounded-xl px-4 py-3 text-sm shadow-lg"
                          :class="kabar.gagal ? 'bg-[#AE2E24] text-white' : 'bg-ink text-white'">
                         <span class="min-w-0 flex-1" x-text="kabar.teks"></span>
-                        <button type="button" x-on:click="buang(kabar.id)" aria-label="Tutup pemberitahuan"
+                        <button type="button" x-on:click="buang(kabar.id)" aria-label="Dismiss notification"
                                 class="-my-1 -mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md hover:bg-white/15">
                             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18" /></svg>
                         </button>

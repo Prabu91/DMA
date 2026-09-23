@@ -138,7 +138,7 @@ class SinkronOrder
                 continue;
             }
 
-            $kartu->board->catat('kartu_pindah', 'otomatis ('.OtomasiOrder::label($pemicu).') ke list '.$tujuan->nama, $kartu);
+            $kartu->board->catat('kartu_pindah', 'automatic ('.OtomasiOrder::label($pemicu).') to list '.$tujuan->nama, $kartu);
 
             return [
                 'kolom_id' => $tujuan->id,

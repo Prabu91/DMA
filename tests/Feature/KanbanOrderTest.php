@@ -210,7 +210,7 @@ class KanbanOrderTest extends TestCase
 
         Livewire::actingAs($this->staf('super_admin', 'Super'))->test(DetailKartu::class, ['kartuId' => $kartu->id])
             ->assertSee('Order')
-            ->assertDontSee('Hapus permanen')
+            ->assertDontSee('Delete permanently')
             ->call('hapus')->assertStatus(422);
     }
 
@@ -223,7 +223,7 @@ class KanbanOrderTest extends TestCase
             ->assertSee('TK Miftahul Khoir')
             ->assertSee('Menunggu DP')
             ->assertSee($order->tanggal_event->translatedFormat('j M Y'))
-            ->assertSee('Buka order di panel staf');
+            ->assertSee('Open order in staff panel');
     }
 
     public function test_perintah_backfill_membuat_kartu_order_lama(): void
@@ -271,7 +271,7 @@ class KanbanOrderTest extends TestCase
             ->set('otomasi.dp', (string) $siapEvent->id)
             ->set('otomasi.hari_h', (string) $selesai->id)
             ->call('simpanOtomasi')
-            ->assertSee('Otomasi board Order disimpan.');
+            ->assertSee('Order board automation saved.');
 
         $order = $this->order();
         $kartu = $this->kartu($order);
@@ -285,7 +285,7 @@ class KanbanOrderTest extends TestCase
         $this->assertDatabaseHas('kanban_aktivitas', [
             'kartu_id' => $kartu->id,
             'aksi' => 'kartu_pindah',
-            'keterangan' => 'otomatis (Konfirmasi Hari-H (event selesai)) ke list Event selesai',
+            'keterangan' => 'automatic (Event day confirmed (event done)) to list Event selesai',
         ]);
     }
 

@@ -69,7 +69,7 @@ class KanbanBilahApungTest extends TestCase
     {
         $this->bilah()
             ->assertSet('boardId', null)
-            ->assertSee('Belum ada board yang dibuka');
+            ->assertSee('No board opened yet');
 
         $this->assertNull($this->bilah()->get('boardTujuan'));
     }
@@ -81,9 +81,9 @@ class KanbanBilahApungTest extends TestCase
         $this->assertSame([], $bilah->get('kelompok'));
 
         $bilah->call('togglePanel')->assertSet('buka', true)
-            ->assertSee('5. Editing')->assertSee('6. Desain')->assertSee('Lihat semua board');
+            ->assertSee('5. Editing')->assertSee('6. Desain')->assertSee('See all boards');
 
-        $bilah->call('togglePanel')->assertSet('buka', false)->assertDontSee('Lihat semua board');
+        $bilah->call('togglePanel')->assertSet('buka', false)->assertDontSee('See all boards');
     }
 
     public function test_panel_bisa_dicari(): void
@@ -91,7 +91,7 @@ class KanbanBilahApungTest extends TestCase
         $bilah = $this->bilah()->call('togglePanel')->set('cari', 'desain');
 
         $judul = collect($bilah->get('kelompok'))->pluck('judul')->all();
-        $this->assertSame(['Hasil pencarian'], $judul);
+        $this->assertSame(['Search results'], $judul);
         $bilah->assertSee('6. Desain')->assertDontSee('5. Editing');
     }
 

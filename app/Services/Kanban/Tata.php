@@ -233,10 +233,10 @@ class Tata
 
     /** Urutan kartu yang bisa dipilih di menu list (padanan "Sort by" Trello). */
     public const URUTAN = [
-        'tenggat' => 'Tenggat terdekat',
-        'judul' => 'Judul A–Z',
-        'baru' => 'Dibuat terbaru',
-        'lama' => 'Dibuat terlama',
+        'tenggat' => 'Earliest due date',
+        'judul' => 'Title A–Z',
+        'baru' => 'Newest first',
+        'lama' => 'Oldest first',
     ];
 
     /** Pindahkan semua kartu sebuah list ke list lain, urutannya dipertahankan. */

@@ -80,7 +80,7 @@ class KanbanTampilanTest extends TestCase
     {
         $this->actingAs($this->faris)->get(route('kanban.board', $this->board).'?tampilan=tabel')
             ->assertOk()
-            ->assertSee('Klik baris untuk membuka kartu.');
+            ->assertSee('Click a row to open the card.');
     }
 
     public function test_tabel_menampilkan_semua_kartu_dengan_list_dan_tenggat(): void

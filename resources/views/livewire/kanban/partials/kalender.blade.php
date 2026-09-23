@@ -13,16 +13,16 @@
 {{-- Tampilan kalender: kartu diletakkan pada tanggal tenggatnya. --}}
 <div class="min-h-0 flex-1 overflow-auto p-3 pb-16 sm:px-4">
     <div class="mb-3 flex flex-wrap items-center gap-2 text-white">
-        <button type="button" wire:click="geserBulan(-1)" aria-label="Bulan sebelumnya"
+        <button type="button" wire:click="geserBulan(-1)" aria-label="Previous month"
                 class="flex h-9 w-9 items-center justify-center rounded-md bg-white/15 hover:bg-white/25">‹</button>
         <h2 class="min-w-[10rem] text-center text-base font-semibold">
             {{ $namaBulan[$bulanAktif->month - 1] }} {{ $bulanAktif->year }}
         </h2>
-        <button type="button" wire:click="geserBulan(1)" aria-label="Bulan berikutnya"
+        <button type="button" wire:click="geserBulan(1)" aria-label="Next month"
                 class="flex h-9 w-9 items-center justify-center rounded-md bg-white/15 hover:bg-white/25">›</button>
-        <button type="button" wire:click="bulanIni" class="h-9 rounded-md bg-white/15 px-3 text-sm hover:bg-white/25">Bulan ini</button>
+        <button type="button" wire:click="bulanIni" class="h-9 rounded-md bg-white/15 px-3 text-sm hover:bg-white/25">This month</button>
         @if ($this->bolehUbah)
-            <span class="hidden text-xs text-white/80 sm:inline">Seret kartu ke tanggal lain untuk mengganti tenggat.</span>
+            <span class="hidden text-xs text-white/80 sm:inline">Drag a card to another date to change its due date.</span>
         @endif
         @if ($this->tanpaTenggat)
             <span class="ml-auto rounded-md bg-white/15 px-2.5 py-1.5 text-xs">{{ $this->tanpaTenggat }} kartu tanpa tenggat (tidak tampil di kalender)</span>
@@ -60,7 +60,7 @@
                     </div>
 
                     <ul @if ($this->bolehUbah) wire:sort="ubahTenggatKalender" wire:sort:group="kalender" wire:sort:group-id="{{ $kunci }}" wire:sort:config="{ delay: 220, delayOnTouchOnly: true, touchStartThreshold: 6 }" @endif
-                        class="min-h-[2.5rem] space-y-1" aria-label="Kartu bertenggat {{ $tanggal->format('d-m-Y') }}">
+                        class="min-h-[2.5rem] space-y-1" aria-label="Cards bertenggat {{ $tanggal->format('d-m-Y') }}">
                         @foreach ($kartuHari as $kartu)
                             @php $keadaan = $kartu->keadaanTenggat(); @endphp
                             <li wire:key="kal-{{ $kartu->id }}" wire:sort:item="{{ $kartu->id }}">

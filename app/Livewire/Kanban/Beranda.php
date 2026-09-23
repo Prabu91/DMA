@@ -63,17 +63,17 @@ class Beranda extends Component
         $semua = $this->board;
 
         if ($this->lihatArsip) {
-            return [['judul' => 'Board diarsipkan', 'board' => $semua]];
+            return [['judul' => 'Archived boards', 'board' => $semua]];
         }
 
         $baru = $semua->filter(fn ($b) => $b->dibuka_at !== null)
             ->sortByDesc('dibuka_at')->take(4)->values();
 
         return array_values(array_filter([
-            ['judul' => 'Berbintang', 'board' => $semua->where('saya_bintang', true)->values()],
-            ['judul' => 'Baru dibuka', 'board' => $baru],
-            ['judul' => 'Board Anda', 'board' => $semua->filter(fn ($b) => $b->saya_anggota || $b->isOrder())->values()],
-            ['judul' => 'Board lain di workspace', 'board' => $semua->filter(fn ($b) => ! $b->saya_anggota && ! $b->isOrder())->values()],
+            ['judul' => 'Starred', 'board' => $semua->where('saya_bintang', true)->values()],
+            ['judul' => 'Recently opened', 'board' => $baru],
+            ['judul' => 'Your boards', 'board' => $semua->filter(fn ($b) => $b->saya_anggota || $b->isOrder())->values()],
+            ['judul' => 'Other boards in the workspace', 'board' => $semua->filter(fn ($b) => ! $b->saya_anggota && ! $b->isOrder())->values()],
         ], fn ($k) => $k['board']->isNotEmpty()));
     }
 
@@ -90,7 +90,7 @@ class Beranda extends Component
             'nama' => ['required', 'string', 'max:120'],
             'warna' => ['required', Rule::in(array_keys(Warna::BOARD))],
             'visibilitas' => ['required', Rule::in(array_keys(Board::VISIBILITAS))],
-        ], ['nama.required' => 'Beri nama board.']);
+        ], ['nama.required' => 'Give the board a name.']);
 
         $board = app(Tata::class)->buatBoard($this->nama, $this->warna, $this->visibilitas, auth()->user());
 
@@ -134,12 +134,12 @@ class Beranda extends Component
         $nama = $board->nama;
         app(Tata::class)->hapusBoard($board, auth()->user());
 
-        $this->pesan = 'Board "'.$nama.'" dihapus permanen.';
+        $this->pesan = 'Board "'.$nama.'" deleted permanently.';
         unset($this->board, $this->kelompok);
     }
 
     public function render()
     {
-        return view('livewire.kanban.beranda')->title('Semua board');
+        return view('livewire.kanban.beranda')->title('All boards');
     }
 }
