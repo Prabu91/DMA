@@ -20,11 +20,13 @@ use App\Services\Kanban\Gambar;
 use App\Services\Kanban\Kabar;
 use App\Services\Kanban\Tata;
 use App\Support\Kanban\Akses;
+use App\Support\Kanban\PanelOrder;
 use App\Support\Kanban\Posisi;
 use App\Support\Kanban\Warna;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -91,6 +93,9 @@ class DetailKartu extends Component
     /** Yang ikut disalin: label, anggota, checklist, lampiran. */
     public array $bawaSalinan = ['label', 'anggota', 'checklist'];
 
+    /** Isian panel Order yang masih kosong: [kunci baris => nilai]. */
+    public array $orderIsi = [];
+
     /** Isi bidang khusus kartu ini: [id bidang => nilai]. */
     public array $bidangIsi = [];
 
@@ -122,6 +127,10 @@ class DetailKartu extends Component
         $this->judulSalinan = $k->judul;
         $this->salinKolom = $k->kolom_id;
         $this->muatBidangIsi();
+        $this->orderIsi = collect($this->panelOrder)
+            ->filter(fn (array $b) => $b['sumber'] !== null)
+            ->mapWithKeys(fn (array $b) => [$b['kunci'] => (string) ($b['nilai'] ?? '')])
+            ->all();
     }
 
     // ---------------- Data ----------------
@@ -131,9 +140,11 @@ class DetailKartu extends Component
     {
         return Kartu::with([
             'board', 'kolom', 'label', 'anggota:id,nama,name', 'coverLampiran',
+            'coverMarketing:id,nama,name,kanban_cover_path',
             'checklist.item',
             'lampiran.pengunggah:id,nama,name',
-            'order' => fn ($q) => $q->with(['sekolah:id,nama', 'marketing:id,nama,name', 'cabang:id,nama']),
+            // Panel order memakai data sekolah selengkapnya (alamat, PIC, maps).
+            'order' => fn ($q) => $q->with(['sekolah', 'marketing:id,nama,name', 'cabang:id,nama', 'timEvent:id,nama,name']),
         ])->findOrFail($this->kartuId);
     }
 
@@ -240,7 +251,7 @@ class DetailKartu extends Component
 
     private function segarkan(bool $papan = true): void
     {
-        unset($this->kartu, $this->riwayat, $this->labelBoard, $this->bolehUbah, $this->bidang, $this->checklistSumber);
+        unset($this->kartu, $this->riwayat, $this->labelBoard, $this->bolehUbah, $this->bidang, $this->checklistSumber, $this->panelOrder, $this->bolehIsiOrder);
         if ($papan) {
             $this->dispatch('kartu-berubah');
         }
@@ -410,6 +421,51 @@ class DetailKartu extends Component
     }
 
     // ---------------- Checklist ----------------
+
+    // ---------------- Panel order ----------------
+
+    /**
+     * Baris panel Order, susunannya sama dengan template yang dipakai tim di
+     * Trello. Baris yang kosong boleh dilengkapi dari kartu ini.
+     */
+    #[Computed]
+    public function panelOrder(): array
+    {
+        $order = $this->kartu->order;
+
+        return $order ? PanelOrder::baris($order) : [];
+    }
+
+    #[Computed]
+    public function bolehIsiOrder(): bool
+    {
+        $order = $this->kartu->order;
+
+        return $order !== null && Gate::allows('update', $order);
+    }
+
+    public function simpanIsiOrder(string $kunci): void
+    {
+        $order = $this->kartu->order;
+        abort_unless($order && Gate::allows('update', $order), 403);
+
+        [$tabel, $kolom] = PanelOrder::isian()[$kunci] ?? [null, null];
+        abort_unless($kolom !== null, 422);
+
+        $nilai = trim((string) ($this->orderIsi[$kunci] ?? ''));
+        $tujuan = $tabel === 'order' ? $order : $order->sekolah;
+
+        if (! $tujuan) {
+            return;
+        }
+
+        $tujuan->{$kolom} = $nilai === '' ? null : mb_substr($nilai, 0, 500);
+        $tujuan->save();
+
+        $this->catat('kartu_diubah', 'lengkapi '.$kunci);
+        unset($this->panelOrder);
+        $this->segarkan();
+    }
 
     // ---------------- Bidang khusus ----------------
 
@@ -950,7 +1006,7 @@ class DetailKartu extends Component
     public function toggleSampulPenuh(): void
     {
         $kartu = $this->wajibUbah();
-        abort_unless($kartu->cover_lampiran_id, 422);
+        abort_unless($kartu->cover_lampiran_id || $kartu->cover_marketing_id, 422);
 
         $kartu->update(['cover_penuh' => ! $kartu->cover_penuh]);
         $this->segarkan();
@@ -962,7 +1018,13 @@ class DetailKartu extends Component
         if ($lampiranId !== null) {
             abort_unless(Lampiran::where('kartu_id', $kartu->id)->whereKey($lampiranId)->first()?->isGambar(), 422);
         }
-        $kartu->update(['cover_lampiran_id' => $lampiranId, 'cover_warna' => null, 'cover_penuh' => $lampiranId ? $kartu->cover_penuh : false]);
+        // Cover pilihan sendiri menggantikan thumbnail marketing.
+        $kartu->update([
+            'cover_lampiran_id' => $lampiranId,
+            'cover_warna' => null,
+            'cover_marketing_id' => null,
+            'cover_penuh' => $lampiranId ? $kartu->cover_penuh : false,
+        ]);
         $this->segarkan();
     }
 
@@ -970,7 +1032,7 @@ class DetailKartu extends Component
     {
         $kartu = $this->wajibUbah();
         abort_unless($warna === null || array_key_exists($warna, Warna::LABEL), 422);
-        $kartu->update(['cover_warna' => $warna, 'cover_lampiran_id' => null, 'cover_penuh' => false]);
+        $kartu->update(['cover_warna' => $warna, 'cover_lampiran_id' => null, 'cover_marketing_id' => null, 'cover_penuh' => false]);
         $this->segarkan();
     }
 

@@ -86,6 +86,14 @@ class KanbanBilahApungTest extends TestCase
         $bilah->call('togglePanel')->assertSet('buka', false)->assertDontSee('See all boards');
     }
 
+    public function test_panel_punya_tampilan_grid_dan_daftar(): void
+    {
+        $this->bilah()->call('togglePanel')
+            ->assertSeeHtml('aria-label="Grid view"')
+            ->assertSeeHtml('aria-label="List view"')
+            ->assertSeeHtml("localStorage.getItem('kanban:tata-board')");
+    }
+
     public function test_panel_bisa_dicari(): void
     {
         $bilah = $this->bilah()->call('togglePanel')->set('cari', 'desain');

@@ -16,7 +16,7 @@ class Kartu extends Model
 
     protected $fillable = [
         'board_id', 'kolom_id', 'posisi', 'judul', 'deskripsi', 'order_id', 'templat',
-        'cover_warna', 'cover_lampiran_id', 'cover_penuh', 'mulai_pada', 'tenggat_pada',
+        'cover_warna', 'cover_lampiran_id', 'cover_marketing_id', 'cover_penuh', 'mulai_pada', 'tenggat_pada',
         'tenggat_selesai_at', 'diingatkan_at', 'dibuat_oleh', 'diarsipkan_at',
     ];
 
@@ -97,6 +97,12 @@ class Kartu extends Model
         return $this->hasMany(Aktivitas::class)->latest('created_at')->latest('id');
     }
 
+    /** Marketing yang thumbnail bawaannya dipakai sebagai cover kartu ini. */
+    public function coverMarketing(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cover_marketing_id');
+    }
+
     public function coverLampiran(): BelongsTo
     {
         return $this->belongsTo(Lampiran::class, 'cover_lampiran_id');
@@ -111,6 +117,26 @@ class Kartu extends Model
      * Keadaan tenggat seperti lencana Trello: selesai (hijau), lewat (merah),
      * segera (kuning, kurang dari 24 jam), atau biasa. Null bila tanpa tenggat.
      */
+    /** Cover kartu berupa gambar: dari lampiran, atau thumbnail marketing. */
+    public function coverUrl(bool $kecil = true): ?string
+    {
+        if ($this->coverLampiran?->isGambar()) {
+            return route('kanban.lampiran', array_filter([
+                'lampiran' => $this->coverLampiran->id,
+                'kecil' => $kecil ? 1 : null,
+            ]));
+        }
+
+        if ($this->coverMarketing?->kanban_cover_path) {
+            return route('kanban.cover-marketing', [
+                'user' => $this->cover_marketing_id,
+                'v' => substr(md5((string) $this->coverMarketing->kanban_cover_path), 0, 8),
+            ]);
+        }
+
+        return null;
+    }
+
     public function keadaanTenggat(): ?string
     {
         if (! $this->tenggat_pada) {

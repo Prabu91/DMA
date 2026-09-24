@@ -40,6 +40,7 @@ class Order extends Model
         'order_induk_id',
         'booking_code',
         'redaksi',
+        'tema_yearbook',
         'tahap',
         'tahap_masuk_at',
         'tahap_pj_id',

@@ -222,7 +222,7 @@ class KanbanOrderTest extends TestCase
             ->assertSee($order->booking_code)
             ->assertSee('TK Miftahul Khoir')
             ->assertSee('Menunggu DP')
-            ->assertSee($order->tanggal_event->translatedFormat('j M Y'))
+            ->assertSee($order->tanggal_event->translatedFormat('j F Y'))
             ->assertSee('Open order in staff panel');
     }
 

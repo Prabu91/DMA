@@ -106,9 +106,10 @@
     <div class="fixed inset-0 bg-black/50" wire:click="tutup"></div>
 
     <div class="relative mx-auto my-0 w-full max-w-3xl bg-[#F1F2F4] text-ink sm:my-12 sm:rounded-2xl">
-        @if ($k->coverLampiran?->isGambar())
+        @php $coverKartu = $k->coverUrl(); @endphp
+        @if ($coverKartu)
             <div class="flex h-40 items-center justify-center overflow-hidden bg-[#DCDFE4] sm:rounded-t-2xl">
-                <img src="{{ route('kanban.lampiran', ['lampiran' => $k->coverLampiran, 'kecil' => 1]) }}" alt="" class="h-full object-contain">
+                <img src="{{ $coverKartu }}" alt="" class="h-full object-contain">
             </div>
         @elseif ($k->cover_warna)
             <div class="h-24 sm:rounded-t-2xl {{ Warna::labelLatar($k->cover_warna) }}"></div>
@@ -118,7 +119,7 @@
                 class="absolute right-2 top-2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/10 text-lg hover:bg-black/20">✕</button>
 
         @if ($k->diarsipkan_at)
-            <div class="flex flex-wrap items-center gap-3 bg-[#F5CD47] px-5 py-3 text-sm {{ $k->coverLampiran || $k->cover_warna ? '' : 'sm:rounded-t-2xl' }}">
+            <div class="flex flex-wrap items-center gap-3 bg-[#F5CD47] px-5 py-3 text-sm {{ $coverKartu || $k->cover_warna ? '' : 'sm:rounded-t-2xl' }}">
                 <span class="font-medium">This card is archived.</span>
                 @if (\App\Support\Kanban\Akses::bolehUbah(auth()->user(), $k->board))
                     <button type="button" wire:click="pulihkan" class="rounded-md bg-white/70 px-3 py-1.5 font-medium hover:bg-white">Restore</button>
@@ -199,16 +200,50 @@
                         <section class="rounded-xl border border-navy/20 bg-white p-4">
                             <h3 class="text-sm font-semibold text-navy">{{ $k->order?->isSusulan() ? 'Order susulan' : 'Order' }}</h3>
                             @if ($k->order)
-                                <dl class="mt-2 grid grid-cols-[7rem_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm">
-                                    <dt class="text-ink-muted">Code</dt><dd class="font-medium">{{ $k->order->booking_code }}</dd>
-                                    <dt class="text-ink-muted">School</dt><dd>{{ $k->order->sekolah?->nama ?? '—' }}</dd>
-                                    <dt class="text-ink-muted">Marketing</dt><dd>{{ $k->order->marketing?->nama ?? $k->order->marketing?->name ?? '—' }}</dd>
-                                    <dt class="text-ink-muted">Branch</dt><dd>{{ $k->order->cabang?->nama ?? '—' }}</dd>
-                                    <dt class="text-ink-muted">Status</dt><dd>{{ $k->order->statusLabel() }}</dd>
-                                    <dt class="text-ink-muted">Event date</dt><dd>{{ $k->order->tanggal_event?->translatedFormat('j M Y') ?? 'Not set yet' }}</dd>
+                                <p class="mt-0.5 text-xs text-ink-muted">
+                                    {{ $k->order->booking_code }} · {{ $k->order->cabang?->nama ?? '—' }} ·
+                                    {{ $k->order->marketing?->nama ?? $k->order->marketing?->name ?? 'Tanpa marketing' }} ·
+                                    {{ $k->order->statusLabel() }}
+                                </p>
+
+                                {{-- Susunannya sama dengan template kartu yang dipakai tim. --}}
+                                <dl class="mt-3 space-y-1.5 text-sm">
+                                    @foreach ($this->panelOrder as $baris)
+                                        <div wire:key="order-{{ $baris['kunci'] }}" class="grid grid-cols-[8.5rem_minmax(0,1fr)] items-start gap-x-3">
+                                            <dt class="pt-1 text-xs font-medium uppercase tracking-wide text-ink-muted">{{ $baris['label'] }}</dt>
+                                            <dd class="min-w-0">
+                                                @if ($baris['nilai'] !== null && $baris['jenis'] === 'tautan')
+                                                    <a href="{{ $baris['nilai'] }}" target="_blank" rel="noopener" class="break-all text-navy underline">{{ $baris['nilai'] }}</a>
+                                                @elseif ($baris['nilai'] !== null)
+                                                    <span class="whitespace-pre-line break-words">{{ $baris['nilai'] }}</span>
+                                                @elseif ($baris['sumber'] && $this->bolehIsiOrder)
+                                                    {{-- Data yang belum ada tinggal dilengkapi di sini. --}}
+                                                    @if ($baris['jenis'] === 'panjang')
+                                                        <textarea wire:model.blur="orderIsi.{{ $baris['kunci'] }}" wire:change="simpanIsiOrder('{{ $baris['kunci'] }}')"
+                                                                  rows="2" placeholder="Add {{ mb_strtolower($baris['label']) }}…"
+                                                                  class="block w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30"></textarea>
+                                                    @else
+                                                        <input type="text" wire:model.blur="orderIsi.{{ $baris['kunci'] }}" wire:change="simpanIsiOrder('{{ $baris['kunci'] }}')"
+                                                               placeholder="Add {{ mb_strtolower($baris['label']) }}…"
+                                                               class="block min-h-[32px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
+                                                    @endif
+                                                @else
+                                                    <span class="text-ink-muted">—</span>
+                                                @endif
+                                            </dd>
+                                        </div>
+                                    @endforeach
                                 </dl>
-                                <a href="{{ route('app.order.show', $k->order_id) }}" target="_blank" rel="noopener"
-                                   class="mt-3 inline-flex min-h-[36px] items-center rounded-md bg-navy px-3 text-sm font-medium text-white hover:bg-navy-900">Open order in staff panel ↗</a>
+
+                                <div class="mt-3 flex flex-wrap items-center gap-2">
+                                    <a href="{{ route('app.order.show', $k->order_id) }}" target="_blank" rel="noopener"
+                                       class="inline-flex min-h-[36px] items-center rounded-md bg-navy px-3 text-sm font-medium text-white hover:bg-navy-900">Open order in staff panel ↗</a>
+                                    <button type="button" x-data
+                                            x-on:click="navigator.clipboard?.writeText(@js(\App\Support\Kanban\PanelOrder::teks($k->order)))
+                                                        .then(() => window.toast('Order details copied.', 'oke'))
+                                                        .catch(() => window.toast('Could not copy.'))"
+                                            class="inline-flex min-h-[36px] items-center rounded-md bg-[#E9EBEE] px-3 text-sm font-medium text-ink hover:bg-[#DCDFE4]">Copy all</button>
+                                </div>
                             @else
                                 <p class="mt-1 text-sm text-ink-muted">This order is outside your branch or has been deleted.</p>
                             @endif

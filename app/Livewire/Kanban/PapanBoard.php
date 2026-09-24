@@ -249,7 +249,7 @@ class PapanBoard extends Component
     private function kartuTersaring()
     {
         return $this->kartuDisaring()
-            ->with(['label', 'anggota:id,nama,name', 'coverLampiran', 'order:id,booking_code,status,order_induk_id', 'bidangNilai'])
+            ->with(['label', 'anggota:id,nama,name', 'coverLampiran', 'coverMarketing:id,nama,name,kanban_cover_path', 'order:id,booking_code,status,order_induk_id', 'bidangNilai'])
             ->withCount([
                 'komentar',
                 'lampiran',
@@ -641,6 +641,7 @@ class PapanBoard extends Component
         $this->kartuMilikBoard($kartuId)->update([
             'cover_warna' => $warna,
             'cover_lampiran_id' => null,
+            'cover_marketing_id' => null,
             'cover_penuh' => false,
         ]);
         $this->segarkan();

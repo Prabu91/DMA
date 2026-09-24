@@ -76,6 +76,9 @@ class SinkronOrder
             $kartu->label()->attach($this->labelSusulan($board)->id);
         }
 
+        $this->pasangCoverMarketing($kartu, $order);
+        $this->sinkronTimEvent($kartu, $order);
+
         $board->catat('kartu_dibuat', 'dari order '.$order->booking_code.' ke list '.$kolom->nama, $kartu);
 
         return $kartu;
@@ -116,6 +119,66 @@ class SinkronOrder
         if ($ubah) {
             $kartu->update($ubah);
         }
+
+        if ($order->wasChanged('marketing_id')) {
+            $this->pasangCoverMarketing($kartu, $order);
+        }
+    }
+
+    /**
+     * Tim event yang ditugaskan di order otomatis jadi anggota kartu, lengkap
+     * dengan kabar penugasannya — jadi tidak perlu ditambahkan manual lagi.
+     */
+    public function sinkronTimEvent(?Kartu $kartu, Order $order): void
+    {
+        $kartu ??= Kartu::where('order_id', $order->id)->first();
+
+        if (! $kartu) {
+            return;
+        }
+
+        $tim = $order->timEvent()->pluck('users.id')->all();
+        $sekarang = $kartu->anggota()->pluck('users.id')->all();
+        $baru = array_diff($tim, $sekarang);
+
+        if (! $baru) {
+            return;
+        }
+
+        $kartu->anggota()->syncWithoutDetaching($baru);
+        $kabar = app(Kabar::class);
+        $oleh = auth()->user() ?? User::find($order->marketing_id);
+
+        foreach (User::whereIn('id', $baru)->get() as $anggota) {
+            $kartu->board?->catat('anggota_kartu_ditambah', $anggota->nama ?? $anggota->name, $kartu);
+
+            if ($oleh && $oleh->id !== $anggota->id) {
+                $kabar->ditugaskan($kartu, $anggota, $oleh);
+            }
+        }
+    }
+
+    /**
+     * Cover kartu mengikuti thumbnail marketing pemilik order. Cover yang
+     * dipasang orang sendiri (gambar lampiran atau warna) tidak diganggu.
+     */
+    private function pasangCoverMarketing(Kartu $kartu, Order $order): void
+    {
+        if ($kartu->cover_lampiran_id || $kartu->cover_warna) {
+            return;
+        }
+
+        $marketing = $order->marketing_id ? User::find($order->marketing_id) : null;
+        $punya = app(CoverMarketing::class)->punyaCover($marketing);
+
+        if (! $punya && ! $kartu->cover_marketing_id) {
+            return;
+        }
+
+        $kartu->update([
+            'cover_marketing_id' => $punya ? $marketing->id : null,
+            'cover_penuh' => $punya,
+        ]);
     }
 
     /**

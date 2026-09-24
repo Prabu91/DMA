@@ -5,6 +5,7 @@ namespace App\Livewire\Booking;
 use App\Models\Order;
 use App\Models\OrderPembayaran;
 use App\Models\User;
+use App\Services\Kanban\SinkronOrder;
 use App\Support\Cart;
 use App\Support\FolderKerja;
 use App\Support\OrderStatus;
@@ -209,6 +210,9 @@ class OrderDetail extends Component
         $this->order->timEvent()->sync($valid);
         $nama = User::whereIn('id', $valid)->get()->map(fn ($u) => $u->nama ?? $u->name)->implode(', ');
         $this->order->catat('tim_event', $nama ?: 'dikosongkan');
+
+        // Kartu kanban ikut: tim event jadi anggota kartu & dapat kabar.
+        app(SinkronOrder::class)->sinkronTimEvent(null, $this->order->fresh());
 
         unset($this->order);
         $this->timMsg = 'Tim event diperbarui.';

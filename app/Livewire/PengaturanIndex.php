@@ -3,13 +3,18 @@
 namespace App\Livewire;
 
 use App\Models\Order;
+use App\Models\User;
+use App\Services\Kanban\CoverMarketing;
 use App\Support\FolderKerja;
 use App\Support\Pengaturan;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 /**
  * Saklar aplikasi yang boleh diubah admin sendiri, tanpa deploy ulang.
@@ -18,6 +23,8 @@ use Livewire\Component;
 #[Layout('layouts.app')]
 class PengaturanIndex extends Component
 {
+    use WithFileUploads;
+
     public bool $hargaPublikDisembunyikan = false;
 
     public ?string $success = null;
@@ -36,6 +43,9 @@ class PengaturanIndex extends Component
 
     /** Token API mentah — hanya ada di memori, ditampilkan sekali setelah dibuat. */
     public ?string $tokenBaru = null;
+
+    /** Thumbnail marketing yang sedang diunggah: [id marketing => berkas]. */
+    public array $coverMarketing = [];
 
     public function mount(): void
     {
@@ -169,6 +179,64 @@ class PengaturanIndex extends Component
         $this->success = $nilai
             ? 'Harga kini disembunyikan dari pengunjung yang belum masuk.'
             : 'Harga kini terlihat untuk semua pengunjung.';
+    }
+
+    // ---------------- Thumbnail marketing (kanban) ----------------
+
+    /** Marketing beserta cabangnya, untuk daftar thumbnail. */
+    #[Computed]
+    public function marketing(): Collection
+    {
+        return User::role('marketing')
+            ->with('cabang:id,nama')
+            ->orderBy('cabang_id')
+            ->orderBy('nama')
+            ->get(['id', 'nama', 'name', 'cabang_id', 'kanban_cover_path']);
+    }
+
+    public function updatedCoverMarketing(mixed $berkas, string $kunci): void
+    {
+        abort_unless(auth()->user()?->isAdminSales(), 403);
+
+        try {
+            $this->validate(
+                ['coverMarketing.'.$kunci => ['image', 'max:5120']],
+                [
+                    'coverMarketing.'.$kunci.'.image' => 'Thumbnail harus berupa gambar.',
+                    'coverMarketing.'.$kunci.'.max' => 'Ukuran gambar maksimal 5 MB.',
+                ],
+            );
+        } catch (ValidationException $e) {
+            $this->error = (string) collect($e->validator->errors()->all())->first();
+            unset($this->coverMarketing[$kunci]);
+
+            return;
+        }
+
+        $marketing = $this->marketingKe((int) $kunci);
+        app(CoverMarketing::class)->simpan($marketing, $berkas);
+
+        unset($this->coverMarketing[$kunci], $this->marketing);
+        $this->success = 'Thumbnail '.($marketing->nama ?? $marketing->name).' diperbarui. Kartu order barunya otomatis memakai gambar ini.';
+    }
+
+    public function hapusCoverMarketing(int $userId): void
+    {
+        abort_unless(auth()->user()?->isAdminSales(), 403);
+
+        $marketing = $this->marketingKe($userId);
+        app(CoverMarketing::class)->hapus($marketing);
+
+        unset($this->marketing);
+        $this->success = 'Thumbnail '.($marketing->nama ?? $marketing->name).' dihapus.';
+    }
+
+    private function marketingKe(int $id): User
+    {
+        $marketing = User::findOrFail($id);
+        abort_unless($marketing->hasRole('marketing'), 422);
+
+        return $marketing;
     }
 
     public function render()

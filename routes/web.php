@@ -200,6 +200,7 @@ Route::prefix('kanban')->name('kanban.')
         Route::get('/b/{board}/ekspor.csv', \App\Http\Controllers\Kanban\EksporBoardController::class)->whereNumber('board')->name('ekspor');
         Route::get('/b/{board}/latar', \App\Http\Controllers\Kanban\LatarBoardController::class)->whereNumber('board')->name('latar');
         Route::get('/lampiran/{lampiran}', \App\Http\Controllers\Kanban\LampiranController::class)->whereNumber('lampiran')->name('lampiran');
+        Route::get('/cover-marketing/{user}', \App\Http\Controllers\Kanban\CoverMarketingController::class)->whereNumber('user')->name('cover-marketing');
     });
 
 // Auth staf bawaan Breeze — tetap di root (login, register, password, verifikasi).

@@ -114,4 +114,48 @@
             </div>
         </form>
     </x-card>
+
+    {{-- Thumbnail marketing untuk kartu kanban --}}
+    <x-card class="mt-6">
+        <h2 class="text-base font-semibold text-ink">Thumbnail marketing (kanban)</h2>
+        <p class="mt-1 text-sm text-ink-muted">
+            Gambar ini otomatis jadi cover kartu order milik marketing tersebut, supaya sekali lihat ketahuan
+            kartu itu punya siapa. Kartu yang covernya sudah diatur sendiri tidak diganggu.
+        </p>
+
+        <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            @forelse ($this->marketing as $m)
+                <div wire:key="cover-{{ $m->id }}" class="overflow-hidden rounded-xl border border-line">
+                    <div class="flex h-28 items-center justify-center bg-page">
+                        @if ($m->kanban_cover_path)
+                            <img src="{{ route('kanban.cover-marketing', ['user' => $m->id, 'v' => substr(md5($m->kanban_cover_path), 0, 8)]) }}"
+                                 alt="Thumbnail {{ $m->nama ?? $m->name }}" class="h-full w-full object-cover">
+                        @else
+                            <span class="text-xs text-ink-muted">Belum ada thumbnail</span>
+                        @endif
+                    </div>
+                    <div class="space-y-2 px-3 py-2.5">
+                        <div class="min-w-0">
+                            <p class="truncate text-sm font-medium text-ink">{{ $m->nama ?? $m->name }}</p>
+                            <p class="truncate text-xs text-ink-muted">{{ $m->cabang?->nama ?? 'Tanpa cabang' }}</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <label class="inline-flex min-h-[32px] cursor-pointer items-center rounded-md bg-page px-3 text-xs font-medium text-ink hover:bg-line focus-within:ring-2 focus-within:ring-brand">
+                                <span wire:loading.remove wire:target="coverMarketing.{{ $m->id }}">{{ $m->kanban_cover_path ? 'Ganti gambar' : 'Unggah gambar' }}</span>
+                                <span wire:loading wire:target="coverMarketing.{{ $m->id }}">Mengunggah…</span>
+                                <input type="file" wire:model="coverMarketing.{{ $m->id }}" accept="image/*" class="sr-only">
+                            </label>
+                            @if ($m->kanban_cover_path)
+                                <x-confirm action="hapusCoverMarketing({{ $m->id }})" variant="ghost" size="sm"
+                                           confirm-label="Ya, hapus" title="Hapus thumbnail"
+                                           message="Hapus thumbnail {{ $m->nama ?? $m->name }}? Kartu yang sudah memakainya akan kembali polos.">Hapus</x-confirm>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            @empty
+                <p class="text-sm text-ink-muted">Belum ada pengguna berperan marketing.</p>
+            @endforelse
+        </div>
+    </x-card>
 </div>

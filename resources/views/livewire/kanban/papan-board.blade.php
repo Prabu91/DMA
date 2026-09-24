@@ -437,22 +437,23 @@
                                     @endif
                                     <button type="button" wire:click="bukaKartu({{ $kartu->id }})"
                                             class="block w-full overflow-hidden rounded-lg text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-brand">
-                                        @if ($kartu->coverLampiran?->isGambar() && $kartu->cover_penuh)
+                                        @php $coverKartu = $kartu->coverUrl(); @endphp
+                                        @if ($coverKartu && $kartu->cover_penuh)
                                             {{-- Sampul penuh: judul dibaca di atas gambar, seperti "full cover" Trello. --}}
                                             <span class="relative block min-h-[9rem] w-full">
-                                                <img src="{{ route('kanban.lampiran', ['lampiran' => $kartu->coverLampiran, 'kecil' => 1]) }}" alt="" loading="lazy"
+                                                <img src="{{ $coverKartu }}" alt="" loading="lazy"
                                                      class="absolute inset-0 h-full w-full object-cover">
                                                 <span class="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent"></span>
                                                 <span class="judul-kartu absolute inset-x-0 bottom-0 block px-3 pb-2 pt-6 text-sm font-medium text-white">
                                                     {{ $kartu->judul }}
                                                 </span>
                                             </span>
-                                        @elseif ($kartu->coverLampiran?->isGambar())
-                                            <img src="{{ route('kanban.lampiran', ['lampiran' => $kartu->coverLampiran, 'kecil' => 1]) }}" alt="" loading="lazy" class="max-h-40 w-full object-cover">
+                                        @elseif ($coverKartu)
+                                            <img src="{{ $coverKartu }}" alt="" loading="lazy" class="max-h-40 w-full object-cover">
                                         @elseif ($kartu->cover_warna)
                                             <span class="block h-8 {{ Warna::labelLatar($kartu->cover_warna) }}"></span>
                                         @endif
-                                        <span @class(['block px-3 pb-2 pt-2', 'hidden' => $kartu->coverLampiran?->isGambar() && $kartu->cover_penuh])>
+                                        <span @class(['block px-3 pb-2 pt-2', 'hidden' => $coverKartu && $kartu->cover_penuh])>
                                             @if ($kartu->label->isNotEmpty())
                                                 <span class="mb-1.5 flex flex-wrap gap-1">
                                                     @foreach ($kartu->label as $l)
