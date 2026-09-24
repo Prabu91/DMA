@@ -901,7 +901,7 @@
                                         <div>
                                             <p class="text-xs font-medium text-ink-muted">List</p>
                                             <p class="truncate text-sm">{{ $this->kolomTujuan->firstWhere('id', (int) $pindahKolom)?->nama ?? '—' }}</p>
-                                            <x-kanban.pilih-cari
+                                            <x-kanban.pilih-cari wire:key="kolom-tujuan-{{ $pindahBoard }}"
                                                 :pilihan="$this->kolomTujuan->map(fn ($kol) => ['nilai' => $kol->id, 'teks' => $kol->nama])"
                                                 onpilih="$wire.set('pindahKolom', p.nilai)"
                                                 cari="Search list…" kosong="This board has no list yet." tinggi="max-h-32" />

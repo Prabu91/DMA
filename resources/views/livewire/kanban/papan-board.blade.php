@@ -720,14 +720,63 @@
                         class="mt-2 h-8 w-full rounded-md bg-[#E9EBEE] text-xs font-medium">Remove due date</button>
             </div>
 
-            {{-- Submenu: pindah --}}
-            <div x-show="sub === 'pindah'" x-cloak class="px-3 py-2">
+            {{-- Submenu: pindah — pilih board dulu, lalu list & urutannya --}}
+            @php
+                $boardPindah = $this->boardPindahMenu->firstWhere('id', $pindahBoardMenu ?: $board->id);
+                $kolomPindah = $this->kolomPindahMenu->firstWhere('id', $pindahKolomMenu);
+                $isiKolom = (int) ($kolomPindah->kartu_count ?? 0);
+            @endphp
+            <div x-show="sub === 'pindah'" x-cloak class="px-3 py-2" x-data="{ langkah: 'board' }">
                 <x-kanban.kembali />
-                <p class="text-xs font-medium text-ink-muted">Move to list</p>
-                <x-kanban.pilih-cari
-                    :pilihan="$this->kolom->map(fn ($k) => ['nilai' => $k->id, 'teks' => $k->nama])"
-                    onpilih="$wire.pindahKartuKe(kartuMenu.id, p.nilai); tutupMenuKartu()"
-                    cari="Search list…" />
+                <p class="text-sm font-semibold">Move card</p>
+
+                {{-- Board --}}
+                <p class="mt-2 text-xs font-medium uppercase tracking-wide text-ink-muted">Board</p>
+                <button type="button" x-on:click="langkah = (langkah === 'board' ? '' : 'board')"
+                        class="mt-1 flex min-h-[34px] w-full items-center gap-2 rounded-md border border-line px-2 text-left text-sm hover:bg-page">
+                    <span class="h-4 w-6 shrink-0 rounded {{ \App\Support\Kanban\Warna::board($boardPindah?->warna) }}"></span>
+                    <span class="min-w-0 flex-1 truncate">{{ $boardPindah?->nama ?? 'Choose board…' }}</span>
+                    <svg class="h-4 w-4 shrink-0 text-ink-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6" /></svg>
+                </button>
+                <div x-show="langkah === 'board'" x-cloak>
+                    <x-kanban.pilih-cari
+                        :pilihan="$this->boardPindahMenu->map(fn ($b) => ['nilai' => $b->id, 'teks' => $b->nama])"
+                        onpilih="$wire.pilihBoardPindah(p.nilai); langkah = 'list'"
+                        cari="Search board…" tinggi="max-h-32" />
+                </div>
+
+                {{-- List --}}
+                <p class="mt-3 text-xs font-medium uppercase tracking-wide text-ink-muted">List</p>
+                <button type="button" x-on:click="langkah = (langkah === 'list' ? '' : 'list')"
+                        class="mt-1 flex min-h-[34px] w-full items-center gap-2 rounded-md border border-line px-2 text-left text-sm hover:bg-page">
+                    <span class="min-w-0 flex-1 truncate">{{ $kolomPindah?->nama ?? 'Choose list…' }}</span>
+                    <svg class="h-4 w-4 shrink-0 text-ink-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6" /></svg>
+                </button>
+                <div x-show="langkah === 'list'" x-cloak>
+                    <x-kanban.pilih-cari wire:key="kolom-pindah-{{ $pindahBoardMenu ?: $board->id }}"
+                        :pilihan="$this->kolomPindahMenu->map(fn ($k) => ['nilai' => $k->id, 'teks' => $k->nama, 'petunjuk' => $k->kartu_count.' cards'])"
+                        onpilih="$wire.pilihKolomPindah(p.nilai); langkah = ''"
+                        cari="Search list…" kosong="This board has no list yet." tinggi="max-h-32" />
+                </div>
+
+                {{-- Urutan --}}
+                @if ($kolomPindah)
+                    <label for="urutan-pindah-menu" class="mt-3 block text-xs font-medium uppercase tracking-wide text-ink-muted">Position</label>
+                    <select id="urutan-pindah-menu" wire:model="pindahUrutanMenu"
+                            class="mt-1 block min-h-[34px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
+                        @for ($i = 1; $i <= max(1, $isiKolom + 1); $i++)
+                            <option value="{{ $i }}">{{ $i }}</option>
+                        @endfor
+                    </select>
+                @endif
+
+                <button type="button" x-on:click="$wire.pindahKartuMenu(kartuMenu.id); tutupMenuKartu()"
+                        @disabled(! $kolomPindah)
+                        @class([
+                            'mt-3 h-9 w-full rounded-md text-sm font-medium',
+                            'bg-navy text-white hover:bg-navy-900' => (bool) $kolomPindah,
+                            'cursor-not-allowed bg-[#E9EBEE] text-ink-muted' => ! $kolomPindah,
+                        ])>Move</button>
             </div>
         </div>
     @endif

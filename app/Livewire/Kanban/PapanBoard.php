@@ -126,6 +126,13 @@ class PapanBoard extends Component
     public ?string $cap = null;
 
     // Menu board.
+    /** Tujuan "Move card" di menu kartu: board, list, lalu urutannya. */
+    public ?int $pindahBoardMenu = null;
+
+    public ?int $pindahKolomMenu = null;
+
+    public int $pindahUrutanMenu = 1;
+
     public string $namaBidangBaru = '';
 
     public string $jenisBidangBaru = 'teks';
@@ -521,7 +528,7 @@ class PapanBoard extends Component
 
     private function segarkan(): void
     {
-        unset($this->bidangBoard, $this->bidangDepan, $this->saringanTersimpan, $this->templat, $this->kolom, $this->baris, $this->kalender, $this->linimasa, $this->dasbor, $this->awalLinimasa, $this->tanpaTenggat, $this->bulanAktif, $this->arsip, $this->aktivitas, $this->labelBoard, $this->anggotaBoard, $this->calonAnggota, $this->sayaAnggota, $this->sayaBintang, $this->bolehUbah, $this->bolehKelola);
+        unset($this->boardPindahMenu, $this->kolomPindahMenu, $this->bidangBoard, $this->bidangDepan, $this->saringanTersimpan, $this->templat, $this->kolom, $this->baris, $this->kalender, $this->linimasa, $this->dasbor, $this->awalLinimasa, $this->tanpaTenggat, $this->bulanAktif, $this->arsip, $this->aktivitas, $this->labelBoard, $this->anggotaBoard, $this->calonAnggota, $this->sayaAnggota, $this->sayaBintang, $this->bolehUbah, $this->bolehKelola);
     }
 
     private function wajibUbah(): void
@@ -687,6 +694,70 @@ class PapanBoard extends Component
             1,
             auth()->user(),
         );
+        $this->segarkan();
+    }
+
+    /** Board tujuan yang boleh diubah pengguna — untuk "Move card" di menu kartu. */
+    #[Computed]
+    public function boardPindahMenu(): Collection
+    {
+        $user = auth()->user();
+
+        return Board::aktif()
+            ->orderByRaw("case when jenis = 'order' then 0 else 1 end")
+            ->orderBy('nama')
+            ->get()
+            ->filter(fn (Board $b) => Akses::bolehUbah($user, $b))
+            ->values();
+    }
+
+    /** List di board tujuan, beserta jumlah kartunya (untuk pilihan urutan). */
+    #[Computed]
+    public function kolomPindahMenu(): Collection
+    {
+        $boardId = $this->pindahBoardMenu ?: $this->board->id;
+
+        return Kolom::where('board_id', $boardId)
+            ->whereNull('diarsipkan_at')
+            ->withCount(['kartu' => fn ($q) => $q->whereNull('diarsipkan_at')])
+            ->orderBy('posisi')
+            ->get();
+    }
+
+    /** Ganti board tujuan: listnya ikut berganti, pilihan lama dikosongkan. */
+    public function pilihBoardPindah(int $boardId): void
+    {
+        $this->wajibUbah();
+
+        $this->pindahBoardMenu = $boardId;
+        $this->pindahKolomMenu = null;
+        $this->pindahUrutanMenu = 1;
+
+        unset($this->kolomPindahMenu);
+    }
+
+    public function pilihKolomPindah(int $kolomId): void
+    {
+        $this->wajibUbah();
+
+        $this->pindahKolomMenu = $kolomId;
+        $this->pindahUrutanMenu = 1;
+    }
+
+    /** Jalankan "Move card": board + list + urutan yang dipilih di menu kartu. */
+    public function pindahKartuMenu(int $kartuId): void
+    {
+        $this->wajibUbah();
+        $kartu = $this->kartuMilikBoard($kartuId);
+
+        $kolom = Kolom::whereNull('diarsipkan_at')->findOrFail(
+            $this->pindahKolomMenu ?: abort(422),
+        );
+        abort_unless(Akses::bolehUbah(auth()->user(), $kolom->board), 403);
+
+        app(Tata::class)->pindahKartu($kartu, $kolom, max(1, $this->pindahUrutanMenu) - 1, auth()->user());
+
+        $this->reset(['pindahBoardMenu', 'pindahKolomMenu', 'pindahUrutanMenu']);
         $this->segarkan();
     }
 

@@ -127,6 +127,49 @@ class KanbanMenuKartuTest extends TestCase
         $this->assertSame($this->selesai->id, $this->kartu->fresh()->kolom_id);
     }
 
+    public function test_move_card_pilih_board_lalu_list_dan_urutan(): void
+    {
+        $lain = app(Tata::class)->buatBoard('6. QC', 'hijau', 'workspace', $this->faris);
+        $tujuan = app(Tata::class)->tambahKolom($lain, 'Antrian QC', $this->faris);
+        app(Tata::class)->tambahKartu($tujuan, 'Kartu lama', $this->faris);
+
+        $papan = $this->papan()
+            ->call('pilihBoardPindah', $lain->id)
+            ->assertSet('pindahKolomMenu', null);
+
+        // Listnya ikut berganti ke board yang dipilih.
+        $this->assertSame(['Antrian QC'], $papan->get('kolomPindahMenu')->pluck('nama')->all());
+
+        $papan->call('pilihKolomPindah', $tujuan->id)
+            ->set('pindahUrutanMenu', 2)
+            ->call('pindahKartuMenu', $this->kartu->id)
+            ->assertSet('pindahKolomMenu', null);
+
+        $this->kartu->refresh();
+        $this->assertSame($tujuan->id, $this->kartu->kolom_id);
+        $this->assertSame($lain->id, $this->kartu->board_id);
+        $this->assertSame(['Kartu lama', 'RA MADANI'], $tujuan->kartu()->pluck('judul')->all());
+    }
+
+    public function test_move_card_tanpa_list_ditolak(): void
+    {
+        $this->papan()->call('pindahKartuMenu', $this->kartu->id)->assertStatus(422);
+    }
+
+    public function test_board_tujuan_hanya_yang_boleh_diubah(): void
+    {
+        $dewi = User::factory()->create(['nama' => 'Dewi', 'cabang_id' => $this->faris->cabang_id]);
+        $dewi->assignRole('editor');
+        app(Tata::class)->buatBoard('Rahasia Dewi', 'merah', 'privat', $dewi);
+
+        // Rizky anggota board ini saja; board privat orang lain tidak ikut.
+        $nama = Livewire::actingAs($this->rizky)->test(PapanBoard::class, ['board' => $this->board])
+            ->get('boardPindahMenu')->pluck('nama')->all();
+
+        $this->assertContains('5. Editing', $nama);
+        $this->assertNotContains('Rahasia Dewi', $nama);
+    }
+
     public function test_copy_card_membuat_salinan_di_list_yang_sama(): void
     {
         $label = $this->board->label()->first();
