@@ -80,6 +80,7 @@
             const d = el.dataset;
             const daftar = (isi) => (isi ? isi.split(',').map(Number) : []);
             const titik = e.touches?.[0] ?? e;
+            this.$nextTick(() => this.rapikanMenuKartu());
             this.kartuMenu = {
                 id: Number(el.getAttribute('wire:sort:item')),
                 kolom: Number(d.kolom),
@@ -89,9 +90,17 @@
                 warna: d.warna || null,
                 tenggat: d.tenggat || null,
                 x: Math.max(8, Math.min(titik.clientX ?? 0, window.innerWidth - 248)),
-                y: Math.min(titik.clientY ?? 0, Math.max(8, window.innerHeight - 330)),
+                y: Math.min(titik.clientY ?? 0, Math.max(8, window.innerHeight - 410)),
             };
             this.sub = null;
+        },
+        /** Geser menu ke atas bila ujungnya tertutup bilah mengambang. */
+        rapikanMenuKartu() {
+            const el = this.$refs.menuKartu;
+            if (! el || ! this.kartuMenu) return;
+            const r = el.getBoundingClientRect();
+            const batas = window.innerHeight - 80;
+            if (r.bottom > batas) this.kartuMenu.y = Math.max(8, batas - r.height);
         },
         tutupMenuKartu() { this.kartuMenu = null; this.sub = null },
         punyaLabel(id) { return (this.kartuMenu?.label ?? []).includes(id) },
@@ -343,8 +352,8 @@
                                             class="flex h-8 w-8 items-center justify-center rounded-md text-ink-muted hover:bg-line hover:text-ink">
                                         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" /></svg>
                                     </button>
-                                    <div x-show="buka" x-cloak x-on:click.outside="buka = false" x-on:keydown.escape.window="buka = false"
-                                         class="absolute left-0 z-30 mt-1 w-52 rounded-xl border border-line bg-card py-1 text-sm shadow-lg">
+                                    <div x-show="buka" x-cloak x-on:click.outside="buka = false" x-on:keydown.escape.window="buka = false" x-effect="buka && $nextTick(() => { const r = $el.getBoundingClientRect(); $el.style.maxHeight = Math.max(180, window.innerHeight - r.top - 88) + 'px' })"
+                                         class="gulir-gelap absolute left-0 z-40 mt-1 w-52 overflow-y-auto rounded-xl border border-line bg-card py-1 text-sm shadow-lg">
                                         <button type="button" x-on:click="buka = false" wire:click="mulaiTambahKartu({{ $kolom->id }})" class="block w-full px-3 py-2 text-left hover:bg-page">Add card</button>
                                         <button type="button" x-on:click="buka = false; ubah = true; $nextTick(() => $refs.masukan.select())" class="block w-full px-3 py-2 text-left hover:bg-page">Rename list</button>
                                         <button type="button" x-on:click="buka = false" wire:click="salinKolom({{ $kolom->id }})" class="block w-full px-3 py-2 text-left hover:bg-page">Copy list</button>
@@ -403,7 +412,7 @@
                         </div>
 
                         <ol @if ($ubah) wire:sort="urutKartu" wire:sort:group="kartu" wire:sort:group-id="{{ $kolom->id }}" wire:sort:config="{ delay: 220, delayOnTouchOnly: true, touchStartThreshold: 6, bubbleScroll: false }" @endif
-                            class="gulir-gelap flex min-h-[10px] flex-col gap-2 overflow-y-auto px-2 py-1" aria-label="Cards di {{ $kolom->nama }}">
+                            class="gulir-gelap flex min-h-[10px] flex-col gap-2 overflow-y-auto px-2 py-1" aria-label="Cards in {{ $kolom->nama }}">
                             @foreach ($kolom->kartu as $kartu)
                                 @php $tenggat = $kartu->keadaanTenggat(); @endphp
                                 <li wire:key="kartu-{{ $kartu->id }}" wire:sort:item="{{ $kartu->id }}"
@@ -536,7 +545,8 @@
                                                 <button type="button" x-on:click="buka = ! buka" :aria-expanded="buka"
                                                         class="h-9 rounded-md px-2 text-sm text-ink-muted hover:bg-line hover:text-ink">From template</button>
                                                 <ul x-show="buka" x-cloak x-on:click.outside="buka = false"
-                                                    class="absolute right-0 z-30 mt-1 w-56 overflow-hidden rounded-xl border border-line bg-card py-1 text-sm shadow-lg">
+                                                    x-effect="buka && $nextTick(() => { const r = $el.getBoundingClientRect(); $el.style.maxHeight = Math.max(180, window.innerHeight - r.top - 88) + 'px' })"
+                                                    class="gulir-gelap absolute right-0 z-40 mt-1 w-56 overflow-y-auto rounded-xl border border-line bg-card py-1 text-sm shadow-lg">
                                                     @foreach ($this->templat as $tpl)
                                                         <li wire:key="tpl-{{ $kolom->id }}-{{ $tpl->id }}">
                                                             <button type="button" x-on:click="buka = false" wire:click="dariTemplat({{ $tpl->id }}, {{ $kolom->id }})"
@@ -601,8 +611,9 @@
             $barisMenu = 'flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-page';
             $ikonMenu = 'h-4 w-4 shrink-0 text-ink-muted';
         @endphp
-        <div x-show="kartuMenu" x-cloak x-on:keydown.escape.window="tutupMenuKartu()" x-on:click.outside="tutupMenuKartu()"
-             class="fixed z-40 w-60 overflow-hidden rounded-xl border border-line bg-card py-1 text-sm text-ink shadow-xl"
+        <div x-show="kartuMenu" x-cloak x-ref="menuKartu" x-on:keydown.escape.window="tutupMenuKartu()" x-on:click.outside="tutupMenuKartu()"
+             x-effect="sub; kartuMenu && $nextTick(() => rapikanMenuKartu())"
+             class="gulir-gelap fixed z-40 max-h-[calc(100dvh-7rem)] w-60 overflow-y-auto rounded-xl border border-line bg-card py-1 text-sm text-ink shadow-xl"
              x-bind:style="kartuMenu ? 'left:' + kartuMenu.x + 'px; top:' + kartuMenu.y + 'px' : ''" role="menu">
 
             <div class="truncate border-b border-line px-3 py-2 text-xs text-ink-muted" x-text="kartuMenu?.judul"></div>
@@ -734,7 +745,7 @@
                 <button type="button" x-on:click="menu = false" aria-label="Close menu" class="flex h-9 w-9 items-center justify-center rounded-md hover:bg-page">✕</button>
             </div>
 
-            <div class="min-h-0 flex-1 overflow-y-auto p-3">
+            <div class="gulir-gelap min-h-0 flex-1 overflow-y-auto p-3 pb-20">
                 {{-- Utama --}}
                 <div x-show="bagian === 'utama'" class="space-y-1">
                     @if ($board->isOrder())
