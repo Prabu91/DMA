@@ -44,6 +44,14 @@
             if (e.key === 'x') { $wire.bersihkanSaringan(); return }
             if (e.key === 's') { $wire.bintang(); return }
         },
+        lipatSemua(daftar) {
+            this.lipat = [...daftar];
+            try { localStorage.setItem(this.kunciLipat, JSON.stringify(this.lipat)) } catch (e) {}
+        },
+        bukaSemua() {
+            this.lipat = [];
+            try { localStorage.setItem(this.kunciLipat, JSON.stringify(this.lipat)) } catch (e) {}
+        },
         toggleLipat(id) {
             this.lipat = this.terlipat(id) ? this.lipat.filter(x => x !== id) : [...this.lipat, id];
             try { localStorage.setItem(this.kunciLipat, JSON.stringify(this.lipat)) } catch (e) {}
@@ -310,7 +318,10 @@
                 @foreach ($this->kolom as $kolom)
                     <li wire:key="kolom-{{ $kolom->id }}" wire:sort:item="{{ $kolom->id }}"
                         x-bind:class="terlipat({{ $kolom->id }}) ? 'w-12' : 'w-[272px]'"
-                        class="flex max-h-full shrink-0 flex-col rounded-xl bg-[#F1F2F4] text-ink shadow-sm">
+                        @if ($kolom->disematkan)
+                            style="position: sticky; left: {{ $loop->index * 284 }}px; z-index: {{ 25 - $loop->index }};"
+                        @endif
+                        class="flex max-h-full shrink-0 flex-col rounded-xl text-ink shadow-sm {{ $kolom->warna ? \App\Support\Kanban\Warna::labelLatar($kolom->warna) : 'bg-[#F1F2F4]' }}">
 
                         {{-- Bentuk terlipat: hanya nama & jumlah kartu, memberi ruang untuk list lain. --}}
                         <div x-show="terlipat({{ $kolom->id }})" x-cloak class="flex h-full flex-col items-center gap-2 py-2">
@@ -322,9 +333,6 @@
                         </div>
 
                         <div x-show="! terlipat({{ $kolom->id }})" class="flex min-h-0 flex-1 flex-col">
-                        @if ($kolom->warna)
-                            <div class="h-1.5 rounded-t-xl {{ \App\Support\Kanban\Warna::labelLatar($kolom->warna) }}"></div>
-                        @endif
                         <div class="flex items-start gap-1 px-2 pt-2"
                              x-data="{ ubah: false, nama: @js($kolom->nama), simpan() { this.ubah = false; if (this.nama.trim() && this.nama !== @js($kolom->nama)) $wire.ubahNamaKolom({{ $kolom->id }}, this.nama) } }">
                             <div @class(['pegangan-list min-w-0 flex-1 rounded-md', 'cursor-grab active:cursor-grabbing' => $ubah]) @if ($ubah) wire:sort:handle @endif>
@@ -338,6 +346,11 @@
                             </div>
                             <span class="mt-1.5 shrink-0 rounded px-1.5 text-xs text-ink-muted"
                                   title="{{ $kolom->jumlah_kartu }} cards in this list">{{ $kolom->jumlah_kartu }}</span>
+                            @if ($kolom->disematkan)
+                                <span class="mt-1.5 shrink-0 text-ink-muted" title="Pinned list">
+                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14.8 2.6a1 1 0 011.6.3l4.7 4.7a1 1 0 01-.3 1.6l-2.2 1-1.3 4.2a1 1 0 01-1.6.4l-2.4-2.4-4.5 4.5-1.4-1.4 4.5-4.5-2.4-2.4a1 1 0 01.4-1.6l4.2-1.3z" /></svg>
+                                </span>
+                            @endif
                             {{-- Collapse list, sama seperti tombol "Collapse list" di Trello. --}}
                             <button type="button" x-on:click="toggleLipat({{ $kolom->id }})" title="Collapse list"
                                     aria-label="Collapse list {{ $kolom->nama }}" wire:sort:ignore
@@ -358,6 +371,8 @@
                                         <button type="button" x-on:click="buka = false; ubah = true; $nextTick(() => $refs.masukan.select())" class="block w-full px-3 py-2 text-left hover:bg-page">Rename list</button>
                                         <button type="button" x-on:click="buka = false" wire:click="salinKolom({{ $kolom->id }})" class="block w-full px-3 py-2 text-left hover:bg-page">Copy list</button>
                                         <button type="button" x-on:click="buka = false; toggleLipat({{ $kolom->id }})" class="block w-full px-3 py-2 text-left hover:bg-page">Collapse list</button>
+                                        <button type="button" x-on:click="buka = false" wire:click="togglePinKolom({{ $kolom->id }})"
+                                                class="block w-full px-3 py-2 text-left hover:bg-page">{{ $kolom->disematkan ? 'Unpin list' : 'Pin list' }}</button>
 
                                         <div class="border-t border-line px-3 py-2">
                                             <p class="text-xs font-medium text-ink-muted">List header colour</p>
@@ -819,6 +834,17 @@
                             Change background
                         </button>
                     @endif
+                    {{-- Lipat / buka semua list sekaligus, seperti "Collapse all lists" di Trello. --}}
+                    <button type="button" x-on:click="menu = false; lipatSemua(@js($this->kolom->pluck('id')))"
+                            class="flex min-h-[40px] w-full items-center gap-3 rounded-lg px-3 text-left hover:bg-page">
+                        <svg class="h-4 w-4 text-ink-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6l5 6-5 6M20 6l-5 6 5 6" /></svg>
+                        Collapse all lists
+                    </button>
+                    <button type="button" x-on:click="menu = false; bukaSemua()"
+                            class="flex min-h-[40px] w-full items-center gap-3 rounded-lg px-3 text-left hover:bg-page">
+                        <svg class="h-4 w-4 text-ink-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 6l-5 6 5 6M15 6l5 6-5 6" /></svg>
+                        Expand all lists
+                    </button>
                     <button type="button" x-on:click="bagian = 'label'" class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left hover:bg-page">Label</button>
                     <button type="button" x-on:click="bagian = 'anggota'" class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left hover:bg-page">Anggota ({{ $this->anggotaBoard->count() }})</button>
                     @if ($board->isOrder() && \App\Support\Kanban\Akses::admin(auth()->user()))

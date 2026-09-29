@@ -29,9 +29,13 @@
                 <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     @foreach ($kel['board'] as $b)
                         <li wire:key="b-{{ $loop->parent->index }}-{{ $b->id }}"
-                            class="group relative h-28 overflow-hidden rounded-xl {{ \App\Support\Kanban\Warna::board($b->warna) }} shadow-sm">
+                            class="group relative h-28 overflow-hidden rounded-xl bg-cover bg-center {{ $b->latar_path ? '' : \App\Support\Kanban\Warna::board($b->warna) }} shadow-sm"
+                            @if ($b->latar_path) style="background-image: url('{{ route('kanban.latar', $b) }}')" @endif>
                             <a href="{{ route('kanban.board', $b) }}" wire:navigate
-                               class="absolute inset-0 flex flex-col justify-between p-3 text-white hover:bg-black/10">
+                               @class([
+                                   'absolute inset-0 flex flex-col justify-between p-3 text-white hover:bg-black/10',
+                                   'bg-gradient-to-t from-black/70 via-black/25 to-black/10' => (bool) $b->latar_path,
+                               ])>
                                 <span class="line-clamp-2 pr-8 text-base font-semibold leading-snug">{{ $b->nama }}</span>
                                 <span class="flex flex-wrap items-center gap-1.5 text-xs text-white/90">
                                     @if ($b->isOrder())<span class="rounded bg-white/20 px-1.5 py-0.5 font-medium">Automatic from orders</span>@endif

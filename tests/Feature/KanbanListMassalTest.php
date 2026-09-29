@@ -10,6 +10,7 @@ use App\Models\Kanban\Kolom;
 use App\Models\User;
 use App\Services\Kanban\Tata;
 use App\Support\Kanban\Akses;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -159,5 +160,64 @@ class KanbanListMassalTest extends TestCase
         $this->papan()
             ->assertSeeHtml("kanban:lipat:{$this->board->id}")
             ->assertSee('Collapse list');
+    }
+
+    // ---------------- Sematkan list & warna ----------------
+
+    public function test_list_disematkan_pindah_ke_paling_kiri(): void
+    {
+        $papan = $this->papan();
+        $this->assertSame(['To do', 'Selesai'], $papan->get('kolom')->pluck('nama')->all());
+
+        $papan->call('togglePinKolom', $this->selesai->id);
+
+        // Yang disematkan naik ke kiri, sisanya tetap urut aslinya.
+        $this->assertSame(['Selesai', 'To do'], $this->papan()->get('kolom')->pluck('nama')->all());
+        $this->assertTrue($this->papan()->get('kolom')->firstWhere('nama', 'Selesai')->disematkan);
+    }
+
+    public function test_sematan_bisa_dilepas_lagi(): void
+    {
+        $papan = $this->papan()->call('togglePinKolom', $this->selesai->id);
+        $papan->call('togglePinKolom', $this->selesai->id);
+
+        $this->assertSame(['To do', 'Selesai'], $this->papan()->get('kolom')->pluck('nama')->all());
+        $this->assertDatabaseCount('kanban_kolom_pin', 0);
+    }
+
+    public function test_sematan_hanya_berlaku_untuk_orang_yang_menyematkan(): void
+    {
+        $rizky = User::factory()->create(['nama' => 'Rizky', 'cabang_id' => $this->faris->cabang_id]);
+        $rizky->assignRole('editor');
+        $this->board->anggota()->attach($rizky->id, ['peran' => 'anggota']);
+
+        $this->papan()->call('togglePinKolom', $this->selesai->id);
+
+        $kolomRizky = Livewire::actingAs($rizky)->test(PapanBoard::class, ['board' => $this->board])->get('kolom');
+        $this->assertSame(['To do', 'Selesai'], $kolomRizky->pluck('nama')->all());
+    }
+
+    public function test_list_board_lain_tidak_bisa_disematkan(): void
+    {
+        $lain = app(Tata::class)->buatBoard('Board lain', 'hijau', 'workspace', $this->faris);
+        $kolomLain = app(Tata::class)->tambahKolom($lain, 'List', $this->faris);
+
+        $this->expectException(ModelNotFoundException::class);
+        $this->papan()->call('togglePinKolom', $kolomLain->id);
+    }
+
+    public function test_warna_list_mewarnai_seluruh_kolom(): void
+    {
+        $this->papan()->call('warnaKolom', $this->todo->id, 'hijau');
+
+        // Warna dipakai sebagai latar list, bukan lagi garis tipis di kepalanya.
+        $this->papan()
+            ->assertSeeHtml('flex max-h-full shrink-0 flex-col rounded-xl text-ink shadow-sm bg-[#4BCE97]')
+            ->assertDontSeeHtml('h-1.5 rounded-t-xl');
+    }
+
+    public function test_menu_board_punya_lipat_dan_buka_semua(): void
+    {
+        $this->papan()->assertSee('Collapse all lists')->assertSee('Expand all lists');
     }
 }

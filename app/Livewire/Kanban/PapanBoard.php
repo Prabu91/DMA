@@ -299,10 +299,48 @@ class PapanBoard extends Component
         $jumlah = $this->kartuDisaring()->whereIn('kolom_id', $kolomId)
             ->selectRaw('kolom_id, count(*) as jml')->groupBy('kolom_id')->pluck('jml', 'kolom_id');
 
-        return $kolom->each(function (Kolom $k) use ($kartu, $jumlah) {
+        $disematkan = $this->listDisematkan;
+
+        return $kolom->each(function (Kolom $k) use ($kartu, $jumlah, $disematkan) {
             $k->setRelation('kartu', $kartu->get($k->id, collect()));
             $k->setAttribute('jumlah_kartu', (int) ($jumlah[$k->id] ?? 0));
-        });
+            $k->setAttribute('disematkan', in_array($k->id, $disematkan, true));
+        })
+            // List yang disematkan naik ke kiri, urutan aslinya dipertahankan.
+            ->sortBy(fn (Kolom $k) => [$k->disematkan ? 0 : 1, $k->posisi])
+            ->values();
+    }
+
+    /** Id list yang disematkan pengguna ini (pilihan pribadi, bukan per board). */
+    #[Computed]
+    public function listDisematkan(): array
+    {
+        return DB::table('kanban_kolom_pin')
+            ->join('kanban_kolom', 'kanban_kolom.id', '=', 'kanban_kolom_pin.kolom_id')
+            ->where('kanban_kolom_pin.user_id', auth()->id())
+            ->where('kanban_kolom.board_id', $this->board->id)
+            ->pluck('kanban_kolom_pin.kolom_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
+    /** Sematkan / lepas list — seperti freeze kolom di Excel. */
+    public function togglePinKolom(int $kolomId): void
+    {
+        $kolom = $this->kolomMilikBoard($kolomId);
+        $baris = DB::table('kanban_kolom_pin')->where('user_id', auth()->id())->where('kolom_id', $kolom->id);
+
+        if ($baris->exists()) {
+            $baris->delete();
+        } else {
+            DB::table('kanban_kolom_pin')->insert([
+                'user_id' => auth()->id(),
+                'kolom_id' => $kolom->id,
+                'created_at' => now(),
+            ]);
+        }
+
+        $this->segarkan();
     }
 
     /** Batas kartu yang ditampilkan untuk satu list. */
@@ -528,7 +566,7 @@ class PapanBoard extends Component
 
     private function segarkan(): void
     {
-        unset($this->boardPindahMenu, $this->kolomPindahMenu, $this->bidangBoard, $this->bidangDepan, $this->saringanTersimpan, $this->templat, $this->kolom, $this->baris, $this->kalender, $this->linimasa, $this->dasbor, $this->awalLinimasa, $this->tanpaTenggat, $this->bulanAktif, $this->arsip, $this->aktivitas, $this->labelBoard, $this->anggotaBoard, $this->calonAnggota, $this->sayaAnggota, $this->sayaBintang, $this->bolehUbah, $this->bolehKelola);
+        unset($this->listDisematkan, $this->boardPindahMenu, $this->kolomPindahMenu, $this->bidangBoard, $this->bidangDepan, $this->saringanTersimpan, $this->templat, $this->kolom, $this->baris, $this->kalender, $this->linimasa, $this->dasbor, $this->awalLinimasa, $this->tanpaTenggat, $this->bulanAktif, $this->arsip, $this->aktivitas, $this->labelBoard, $this->anggotaBoard, $this->calonAnggota, $this->sayaAnggota, $this->sayaBintang, $this->bolehUbah, $this->bolehKelola);
     }
 
     private function wajibUbah(): void
