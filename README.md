@@ -85,3 +85,5 @@ Peta kota → kode wilayah untuk impor kecamatan diatur di `config/wilayah.php`.
 ## Deploy
 
 Aplikasi dijalankan dengan Docker (PHP-FPM + Nginx + PostgreSQL) di belakang domain ber-HTTPS. Alur rilis: kerja di `develop`, merge ke `main` saat rilis, lalu server menarik `main` dari repositori.
+
+Langkah lengkapnya ada di [docs/DEPLOY.md](docs/DEPLOY.md) — termasuk kenapa aset harus dibangun lewat container Node dan cara memastikan rilisnya benar-benar tayang.
