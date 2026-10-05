@@ -62,6 +62,116 @@ class KanbanListMassalTest extends TestCase
         return $kolom->kartu()->pluck('judul')->all();
     }
 
+    // ---------------- Move list ----------------
+
+    public function test_move_list_menggeser_posisi_di_board_yang_sama(): void
+    {
+        $papan = $this->papan()
+            ->call('mulaiPindahList', $this->selesai->id)
+            ->assertSet('pindahListBoard', $this->board->id)
+            ->assertSet('pindahListUrutan', 2)
+            ->set('pindahListUrutan', 1)
+            ->call('pindahkanList');
+
+        $this->assertSame(['Selesai', 'To do'], $this->board->kolom()->pluck('nama')->all());
+        $papan->assertSet('pindahListId', null);
+    }
+
+    public function test_move_list_ke_posisi_tengah_di_board_berisi_banyak_list(): void
+    {
+        $tata = app(Tata::class);
+        foreach (['C list', 'D list', 'E list'] as $nama) {
+            $tata->tambahKolom($this->board, $nama, $this->faris);
+        }
+        // Urutan awal: To do, Selesai, C list, D list, E list.
+        $e = Kolom::where('board_id', $this->board->id)->where('nama', 'E list')->firstOrFail();
+
+        $this->papan()
+            ->call('mulaiPindahList', $e->id)
+            ->assertSet('pindahListUrutan', 5)
+            ->set('pindahListUrutan', 2)
+            ->call('pindahkanList');
+
+        $this->assertSame(
+            ['To do', 'E list', 'Selesai', 'C list', 'D list'],
+            $this->board->kolom()->pluck('nama')->all(),
+        );
+    }
+
+    public function test_urutan_awal_move_list_memakai_posisi_asli_bukan_yang_disematkan(): void
+    {
+        $tata = app(Tata::class);
+        $c = $tata->tambahKolom($this->board, 'C list', $this->faris);
+
+        // "C list" disematkan: tampil paling kiri, tapi posisinya tetap ketiga.
+        $papan = $this->papan()->call('togglePinKolom', $c->id);
+        $this->assertSame('C list', $papan->get('kolom')->first()->nama, 'list yang disematkan tampil pertama');
+
+        $papan->call('mulaiPindahList', $c->id)->assertSet('pindahListUrutan', 3);
+    }
+
+    public function test_move_list_ke_board_lain_membawa_kartunya(): void
+    {
+        $tujuan = app(Tata::class)->buatBoard('6. QC', 'hijau', 'workspace', $this->faris);
+        $label = $this->board->label()->first();
+        $kartu = $this->todo->kartu()->first();
+        $kartu->label()->attach($label->id);
+
+        $this->papan()
+            ->call('mulaiPindahList', $this->todo->id)
+            ->call('pilihBoardList', $tujuan->id)
+            ->call('pindahkanList');
+
+        $this->todo->refresh();
+        $this->assertSame($tujuan->id, $this->todo->board_id);
+        $this->assertSame(3, Kartu::where('kolom_id', $this->todo->id)->where('board_id', $tujuan->id)->count());
+        // Label milik board lama tidak ikut, seperti saat memindahkan kartu antar board.
+        $this->assertFalse($kartu->fresh()->label()->exists());
+        $this->assertDatabaseHas('kanban_aktivitas', ['board_id' => $tujuan->id, 'aksi' => 'kolom_pindah']);
+    }
+
+    public function test_move_list_ke_board_yang_tidak_boleh_diubah_ditolak(): void
+    {
+        // Faris admin_sales (lintas cabang), jadi pemeriksaannya dilakukan sebagai editor biasa.
+        $rizky = User::factory()->create(['nama' => 'Rizky', 'cabang_id' => $this->faris->cabang_id]);
+        $rizky->assignRole('editor');
+        $this->board->anggota()->attach($rizky->id, ['peran' => 'anggota']);
+
+        $dewi = User::factory()->create(['nama' => 'Dewi', 'cabang_id' => $this->faris->cabang_id]);
+        $dewi->assignRole('editor');
+        $rahasia = app(Tata::class)->buatBoard('Rahasia Dewi', 'merah', 'privat', $dewi);
+
+        Livewire::actingAs($rizky)->test(PapanBoard::class, ['board' => $this->board])
+            ->call('mulaiPindahList', $this->todo->id)
+            ->call('pilihBoardList', $rahasia->id)
+            ->assertForbidden();
+
+        $this->assertSame($this->board->id, $this->todo->fresh()->board_id);
+    }
+
+    public function test_kartu_baru_bisa_ditaruh_di_atas_list(): void
+    {
+        $this->papan()
+            ->call('mulaiTambahKartu', $this->todo->id, true)
+            ->assertSet('tambahKartuAtas', true)
+            ->set('judulKartuBaru', 'Kartu paling atas')
+            ->call('tambahKartu');
+
+        $this->assertSame('Kartu paling atas', $this->urutan($this->todo)[0]);
+    }
+
+    public function test_kartu_baru_tetap_di_bawah_bila_lewat_tombol_bawah(): void
+    {
+        $this->papan()
+            ->call('mulaiTambahKartu', $this->todo->id)
+            ->assertSet('tambahKartuAtas', false)
+            ->set('judulKartuBaru', 'Kartu paling bawah')
+            ->call('tambahKartu');
+
+        $urutan = $this->urutan($this->todo);
+        $this->assertSame('Kartu paling bawah', end($urutan));
+    }
+
     public function test_urutkan_kartu_per_judul_tenggat_dan_waktu_dibuat(): void
     {
         $papan = $this->papan();
@@ -176,6 +286,26 @@ class KanbanListMassalTest extends TestCase
         $this->assertTrue($this->papan()->get('kolom')->firstWhere('nama', 'Selesai')->disematkan);
     }
 
+    public function test_hanya_sematan_paling_kanan_yang_diberi_pembatas(): void
+    {
+        $tata = app(Tata::class);
+        $c = $tata->tambahKolom($this->board, 'C list', $this->faris);
+
+        // Satu sematan: dialah batas antara wilayah beku dan wilayah yang bergeser.
+        $papan = $this->papan()->call('togglePinKolom', $this->selesai->id);
+        $this->assertSame(1, substr_count($papan->html(), 'batas-sematan'));
+
+        // Dua sematan: pembatasnya tetap satu, di sematan paling kanan.
+        $papan->call('togglePinKolom', $c->id);
+        $html = $this->papan()->html();
+        $this->assertSame(1, substr_count($html, 'batas-sematan'));
+    }
+
+    public function test_papan_tanpa_sematan_tidak_punya_pembatas(): void
+    {
+        $this->assertStringNotContainsString('batas-sematan', $this->papan()->html());
+    }
+
     public function test_sematan_bisa_dilepas_lagi(): void
     {
         $papan = $this->papan()->call('togglePinKolom', $this->selesai->id);
@@ -210,9 +340,10 @@ class KanbanListMassalTest extends TestCase
     {
         $this->papan()->call('warnaKolom', $this->todo->id, 'hijau');
 
-        // Warna dipakai sebagai latar list, bukan lagi garis tipis di kepalanya.
         $this->papan()
-            ->assertSeeHtml('flex max-h-full shrink-0 flex-col rounded-xl text-ink shadow-sm bg-[#4BCE97]')
+            // Warnanya menempel di wadah list ("kolom-list"), …
+            ->assertSeeHtml('bg-[#4BCE97] kolom-list"')
+            // … bukan lagi garis tipis di kepala list.
             ->assertDontSeeHtml('h-1.5 rounded-t-xl');
     }
 

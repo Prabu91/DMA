@@ -61,7 +61,9 @@ class KanbanNavigasiTest extends TestCase
 
     private static function kartuHtml(string $judul): string
     {
-        return 'text-sm text-ink">'.$judul.'</span>';
+        // Dicocokkan lewat kelas penanda "judul-kartu", bukan kelas gaya yang bisa
+        // berubah setiap kali tampilan kartu dirapikan.
+        return 'judul-kartu">'.$judul.'</span>';
     }
 
     // ---------------- Nomor kartu ----------------

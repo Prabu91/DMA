@@ -51,7 +51,8 @@ class KanbanDummy extends Command
 
     private const KOTA = ['Jaksel', 'Jakut', 'Bandung', 'Bekasi', 'Depok', 'Tangsel', 'Bogor', 'Surabaya'];
 
-    private const KEGIATAN = ['Graduation', 'Yearbook', 'Class photos', 'School prewedding', 'Event coverage'];
+    // Memakai nama kategori yang benar-benar dijual (lihat PricelistSeeder).
+    private const KEGIATAN = ['Wisuda', 'Yearbook', 'Angkatan', 'Manasik', 'Kartini', 'Pas Foto'];
 
     public function handle(): int
     {

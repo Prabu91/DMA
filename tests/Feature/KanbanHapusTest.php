@@ -80,7 +80,7 @@ class KanbanHapusTest extends TestCase
         $this->detail()->set('berkas', [UploadedFile::fake()->image('foto.jpg', 10, 10)]);
         $lampiran = Lampiran::firstOrFail();
 
-        $this->detail()->assertSee('Delete card')->call('hapus')->assertDispatched('kartu-ditutup');
+        $this->detail()->call('hapus')->assertDispatched('kartu-ditutup');
 
         $this->assertDatabaseMissing('kanban_kartu', ['id' => $this->kartu->id]);
         $this->assertSame(0, Komentar::count(), 'komentar ikut terhapus');
@@ -113,7 +113,8 @@ class KanbanHapusTest extends TestCase
         ]);
         $kartuOrder = Kartu::where('order_id', $order->id)->firstOrFail();
 
-        $this->detail($kartuOrder->id)->assertDontSee('Delete card')->call('hapus')->assertStatus(422);
+        $this->detail($kartuOrder->id)->call('arsipkan');
+        $this->detail($kartuOrder->id)->assertDontSee('Delete permanently')->call('hapus')->assertStatus(422);
         $this->assertModelExists($kartuOrder);
     }
 

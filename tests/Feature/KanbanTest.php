@@ -81,7 +81,9 @@ class KanbanTest extends TestCase
     /** Potongan HTML judul kartu di papan (bukan di panel aktivitas). */
     private static function kartu(string $judul): string
     {
-        return 'text-sm text-ink">'.$judul.'</span>';
+        // Dicocokkan lewat kelas penanda "judul-kartu", bukan kelas gaya yang bisa
+        // berubah setiap kali tampilan kartu dirapikan.
+        return 'judul-kartu">'.$judul.'</span>';
     }
 
     // ---------------- Subdomain ----------------

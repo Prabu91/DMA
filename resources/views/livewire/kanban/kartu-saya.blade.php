@@ -54,7 +54,7 @@
                 Include archived
             </label>
             <button type="button" wire:click="bersihkan" class="text-navy underline">Clear filter</button>
-            <span class="ml-auto text-ink-muted">{{ $this->hasil->total() }} kartu</span>
+            <span class="ml-auto text-ink-muted">{{ $this->hasil->total() }} cards</span>
         </div>
 
         {{-- Hasil --}}

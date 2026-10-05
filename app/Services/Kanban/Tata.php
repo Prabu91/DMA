@@ -433,6 +433,35 @@ class Tata
         $kolom->update(['posisi' => $posisi]);
     }
 
+    /**
+     * Padanan "Move list" di Trello: pindahkan list ke posisi lain di board ini,
+     * atau ke board lain sekalian dengan seluruh kartunya.
+     */
+    public function pindahKolomKeBoard(Kolom $kolom, Board $tujuan, int $indeks, User $oleh): void
+    {
+        if ((int) $kolom->board_id === (int) $tujuan->id) {
+            $this->pindahKolom($kolom, $indeks, $oleh);
+
+            return;
+        }
+
+        DB::transaction(function () use ($kolom, $tujuan, $indeks, $oleh) {
+            $asal = $kolom->board;
+
+            $kolom->update(['board_id' => $tujuan->id]);
+            $this->pindahKolom($kolom->refresh(), $indeks, $oleh);
+
+            $kartuId = Kartu::where('kolom_id', $kolom->id)->pluck('id');
+            Kartu::whereIn('id', $kartuId)->update(['board_id' => $tujuan->id]);
+
+            // Label milik board lama tidak berlaku di board baru, sama seperti saat memindahkan kartu.
+            DB::table('kanban_kartu_label')->whereIn('kartu_id', $kartuId)->delete();
+
+            $asal?->catat('kolom_pindah', $kolom->nama.' ke board '.$tujuan->nama, null, $oleh->id);
+            $tujuan->catat('kolom_pindah', $kolom->nama.' dari board '.$asal?->nama, null, $oleh->id);
+        });
+    }
+
     private function posisiKartu(Kolom $tujuan, int $kecualiId, int $indeks): float
     {
         $ambil = fn () => Kartu::where('kolom_id', $tujuan->id)->whereNull('diarsipkan_at')

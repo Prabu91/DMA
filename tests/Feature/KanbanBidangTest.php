@@ -207,7 +207,7 @@ class KanbanBidangTest extends TestCase
     {
         $bidang = $this->bidang('pilihan', ['nama' => 'Jenis paket', 'opsi' => ['Wisuda', 'Yearbook']]);
 
-        $this->detail()->set('bidangIsi.'.$bidang->id, 'Prewedding')->assertDispatched('toast');
+        $this->detail()->set('bidangIsi.'.$bidang->id, 'Manasik')->assertDispatched('toast');
         $this->assertSame(0, BidangNilai::count());
 
         $this->detail()->set('bidangIsi.'.$bidang->id, 'Wisuda');

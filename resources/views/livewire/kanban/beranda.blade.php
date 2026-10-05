@@ -40,7 +40,7 @@
                                 <span class="flex flex-wrap items-center gap-1.5 text-xs text-white/90">
                                     @if ($b->isOrder())<span class="rounded bg-white/20 px-1.5 py-0.5 font-medium">Automatic from orders</span>@endif
                                     @if ($b->visibilitas === 'privat')<span class="rounded bg-white/20 px-1.5 py-0.5">Members only</span>@endif
-                                    <span>{{ $b->kartu_count }} kartu</span>
+                                    <span>{{ $b->kartu_count }} cards</span>
                                 </span>
                             </a>
                             @if ($lihatArsip)

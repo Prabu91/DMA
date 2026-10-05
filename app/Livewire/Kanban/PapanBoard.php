@@ -118,6 +118,15 @@ class PapanBoard extends Component
 
     public ?int $tambahKartuDi = null;
 
+    /** Kartu baru ditaruh di atas list (tombol + di kepala list) atau di bawah. */
+    public bool $tambahKartuAtas = false;
+
+    public ?int $pindahListId = null;
+
+    public ?int $pindahListBoard = null;
+
+    public int $pindahListUrutan = 1;
+
     public string $judulKartuBaru = '';
 
     public ?string $pesan = null;
@@ -262,7 +271,9 @@ class PapanBoard extends Component
                 'lampiran',
                 'checklistItem',
                 'checklistItem as checklist_selesai_count' => fn ($q) => $q->whereNotNull('selesai_at'),
-            ]);
+            ])
+            // Penanda mata di muka kartu, seperti kartu yang di-watch di Trello.
+            ->withExists(['pengikut as diikuti' => fn ($q) => $q->whereKey(auth()->id())]);
     }
 
     /**
@@ -919,12 +930,67 @@ class PapanBoard extends Component
 
     // ---------------- Kartu ----------------
 
-    public function mulaiTambahKartu(int $kolomId): void
+    public function mulaiTambahKartu(int $kolomId, bool $atas = false): void
     {
         $this->wajibUbah();
         $this->tambahKartuDi = $kolomId;
+        $this->tambahKartuAtas = $atas;
         $this->judulKartuBaru = '';
         $this->resetErrorBag('judulKartuBaru');
+    }
+
+    /** Buka panel "Move list" untuk list ini. */
+    public function mulaiPindahList(int $kolomId): void
+    {
+        $this->wajibUbah();
+        $kolom = $this->kolomMilikBoard($kolomId);
+        $this->pindahListId = $kolom->id;
+        $this->pindahListBoard = (int) $this->board->id;
+        // Urutan dihitung dari posisi asli, bukan tampilan — list yang disematkan
+        // tampil paling kiri tapi posisinya di board tidak berubah.
+        $urutan = Kolom::where('board_id', $this->board->id)->whereNull('diarsipkan_at')
+            ->orderBy('posisi')->pluck('id')->search($kolom->id);
+        $this->pindahListUrutan = $urutan === false ? 1 : $urutan + 1;
+    }
+
+    /** Board tujuan dipilih: urutannya ikut menyesuaikan jumlah list di sana. */
+    public function pilihBoardList(int $boardId): void
+    {
+        $this->wajibUbah();
+        abort_unless($this->boardPindahMenu->contains('id', $boardId), 403);
+        $this->pindahListBoard = $boardId;
+        $this->pindahListUrutan = $this->jumlahListTujuan() + 1;
+    }
+
+    /** Berapa list di board tujuan (list yang sedang dipindah tidak ikut dihitung). */
+    public function jumlahListTujuan(): int
+    {
+        if (! $this->pindahListBoard) {
+            return 0;
+        }
+
+        return Kolom::where('board_id', $this->pindahListBoard)
+            ->whereNull('diarsipkan_at')
+            ->when($this->pindahListId, fn ($q) => $q->whereKeyNot($this->pindahListId))
+            ->count();
+    }
+
+    public function pindahkanList(): void
+    {
+        $this->wajibUbah();
+        $this->validate([
+            'pindahListBoard' => ['required', 'integer'],
+            'pindahListUrutan' => ['required', 'integer', 'min:1'],
+        ], ['pindahListBoard.required' => 'Choose a destination board.']);
+
+        $kolom = $this->kolomMilikBoard((int) $this->pindahListId);
+        $board = $this->boardPindahMenu->firstWhere('id', (int) $this->pindahListBoard);
+        abort_unless($board, 403);
+
+        app(Tata::class)->pindahKolomKeBoard($kolom, $board, max(0, $this->pindahListUrutan - 1), auth()->user());
+
+        $this->pindahListId = null;
+        $this->segarkan();
     }
 
     /** Dipakai pintasan "n": buka isian kartu baru di list pertama. */
@@ -949,7 +1015,13 @@ class PapanBoard extends Component
         $this->wajibUbah();
         $this->validate(['judulKartuBaru' => ['required', 'string', 'max:255']], ['judulKartuBaru.required' => 'Write a card title.']);
 
-        app(Tata::class)->tambahKartu($this->kolomMilikBoard((int) $this->tambahKartuDi), $this->judulKartuBaru, auth()->user());
+        $kolom = $this->kolomMilikBoard((int) $this->tambahKartuDi);
+        $kartu = app(Tata::class)->tambahKartu($kolom, $this->judulKartuBaru, auth()->user());
+
+        if ($this->tambahKartuAtas) {
+            app(Tata::class)->pindahKartu($kartu, $kolom, 0, auth()->user());
+        }
+
         $this->judulKartuBaru = '';
         $this->segarkan();
     }

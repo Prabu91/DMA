@@ -11,19 +11,42 @@
     ];
 @endphp
 
-<div class="flex h-full flex-col bg-cover bg-center {{ Warna::board($board->warna) }}"
+<div class="flex h-full flex-col bg-cover bg-center [--lebar-list:85vw] sm:[--lebar-list:272px] {{ Warna::board($board->warna) }}"
      @if ($board->latar_path) style="background-image: url('{{ route('kanban.latar', $board) }}')" @endif
      x-data="{
         menu: false,
         saring: false,
         pewaktu: null,
         bantuan: false,
+        // Papan sedang digeser? Dipakai untuk memperkuat pembatas list sematan.
+        geser: false,
         kunciLipat: 'kanban:lipat:{{ $board->id }}',
         lipat: [],
+        // Trello menampilkan label sebagai batang warna; klik salah satunya untuk memunculkan namanya.
+        kunciLabel: 'kanban:label-teks:{{ $board->id }}',
+        labelTeks: false,
+        muatLabelTeks() {
+            try { this.labelTeks = localStorage.getItem(this.kunciLabel) === '1' } catch (e) { this.labelTeks = false }
+        },
+        toggleLabelTeks() {
+            this.labelTeks = ! this.labelTeks;
+            try { localStorage.setItem(this.kunciLabel, this.labelTeks ? '1' : '0') } catch (e) {}
+        },
         muatLipat() {
             try { this.lipat = JSON.parse(localStorage.getItem(this.kunciLipat) ?? '[]') } catch (e) { this.lipat = [] }
         },
         terlipat(id) { return this.lipat.includes(id) },
+        /** Jaga agar panel tidak keluar layar: dibalik ke kiri bila mepet kanan, tingginya dibatasi. */
+        rapikanPanel(el) {
+            el.style.left = '';
+            el.style.right = '';
+            const r = el.getBoundingClientRect();
+            el.style.maxHeight = Math.max(180, window.innerHeight - r.top - 88) + 'px';
+            if (r.right > window.innerWidth - 8) {
+                el.style.left = 'auto';
+                el.style.right = '0';
+            }
+        },
         sedangMengetik(e) {
             const t = e.target;
             return t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName);
@@ -137,6 +160,7 @@
         },
         init() {
             this.muatLipat();
+            this.muatLabelTeks();
             // Periksa perubahan rekan tiap 10 detik; papan hanya digambar ulang bila memang berubah.
             this.pewaktu = setInterval(() => {
                 const aktif = document.activeElement?.tagName;
@@ -151,21 +175,21 @@
      x-on:livewire-upload-error="window.toast('Background photo gagal diunggah. Coba gambar yang ukurannya lebih kecil.')">
 
     {{-- Kepala board --}}
-    <div class="flex shrink-0 flex-wrap items-center gap-1.5 bg-black/25 px-3 py-2 text-white sm:gap-2 sm:px-4">
+    <div class="flex shrink-0 flex-wrap items-center gap-1.5 bg-black/25 px-3 py-1.5 text-white sm:gap-2 sm:px-4 sm:py-2">
         @if ($kelola)
             <form wire:submit="simpanNamaBoard" class="min-w-0">
                 <label for="nama-board" class="sr-only">Board name</label>
                 <input id="nama-board" type="text" wire:model="namaBoard" value="{{ $namaBoard }}" x-on:blur="$wire.simpanNamaBoard()"
                        x-on:keydown.enter.prevent="$el.blur()"
-                       class="w-44 rounded-md border-0 bg-transparent px-2 py-1 text-lg font-semibold text-white hover:bg-white/15 focus:bg-white focus:text-ink focus:ring-2 focus:ring-brand sm:w-auto sm:min-w-[12rem]"
+                       class="w-28 rounded-md border-0 bg-transparent px-2 py-0.5 text-base font-semibold text-white hover:bg-white/15 focus:bg-white focus:text-ink focus:ring-2 focus:ring-brand sm:w-auto sm:min-w-[12rem] sm:py-1 sm:text-lg"
                        style="field-sizing: content">
             </form>
         @else
-            <h1 class="truncate px-2 py-1 text-lg font-semibold">{{ $board->nama }}</h1>
+            <h1 class="min-w-0 truncate px-2 py-0.5 text-base font-semibold sm:py-1 sm:text-lg">{{ $board->nama }}</h1>
         @endif
 
         <button type="button" wire:click="bintang"
-                aria-label="{{ $this->sayaBintang ? 'Delete bintang' : 'Beri bintang' }}" aria-pressed="{{ $this->sayaBintang ? 'true' : 'false' }}"
+                aria-label="{{ $this->sayaBintang ? 'Unstar this board' : 'Star this board' }}" aria-pressed="{{ $this->sayaBintang ? 'true' : 'false' }}"
                 class="flex h-9 w-9 items-center justify-center rounded-md hover:bg-white/15 {{ $this->sayaBintang ? 'text-[#F5CD47]' : '' }}">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="{{ $this->sayaBintang ? 'currentColor' : 'none' }}" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linejoin="round" d="M11.48 3.5a.56.56 0 011.04 0l2.13 5.11a.56.56 0 00.47.34l5.52.44c.5.04.7.66.32.99l-4.2 3.6a.56.56 0 00-.18.56l1.28 5.39a.56.56 0 01-.84.61l-4.73-2.89a.56.56 0 00-.58 0l-4.73 2.89a.56.56 0 01-.84-.61l1.28-5.39a.56.56 0 00-.18-.56l-4.2-3.6a.56.56 0 01.32-.99l5.52-.44a.56.56 0 00.47-.34l2.13-5.11z" /></svg>
         </button>
@@ -178,7 +202,35 @@
             <span class="rounded-md bg-[#F5CD47] px-2 py-1 text-xs font-medium text-ink">Board archived — read only</span>
         @endif
 
-        <div class="ml-auto flex items-center gap-1.5 sm:gap-2">
+        {{-- Bilah tampilan: anak langsung kepala board, jadi di HP turun satu baris dan bisa digulir. --}}
+        <div class="ml-auto hidden min-w-0 items-center gap-0.5 rounded-md bg-white/15 p-0.5 sm:flex"
+             role="group" aria-label="Board view">
+            @foreach (\App\Livewire\Kanban\PapanBoard::TAMPILAN as $kunci => $labelTampilan)
+                <button type="button" wire:click="gantiTampilan('{{ $kunci }}')" aria-pressed="{{ $tampilan === $kunci ? 'true' : 'false' }}"
+                        @class([
+                            'h-9 shrink-0 rounded px-2.5 text-sm sm:h-8',
+                            'bg-white font-medium text-ink' => $tampilan === $kunci,
+                            'text-white/90 hover:bg-white/15' => $tampilan !== $kunci,
+                        ])>{{ $labelTampilan }}</button>
+            @endforeach
+        </div>
+
+        <div class="ml-auto flex items-center gap-1.5 sm:ml-0 sm:gap-2">
+            <div class="relative sm:hidden" x-data="{ bukaTampilan: false }">
+                <button type="button" x-on:click="bukaTampilan = ! bukaTampilan" :aria-expanded="bukaTampilan"
+                        class="flex h-9 items-center gap-1 rounded-md bg-white/15 px-2.5 text-sm" aria-label="Board view">
+                    <span class="max-w-[5.5rem] truncate">{{ \App\Livewire\Kanban\PapanBoard::TAMPILAN[$tampilan] ?? 'Board' }}</span>
+                    <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M7 10l5 5 5-5" /></svg>
+                </button>
+                <div x-show="bukaTampilan" x-cloak x-on:click.outside="bukaTampilan = false" x-on:keydown.escape.window="bukaTampilan = false"
+                     class="absolute left-0 z-40 mt-1 w-44 overflow-hidden rounded-xl border border-line bg-card py-1 text-sm text-ink shadow-lg">
+                    @foreach (\App\Livewire\Kanban\PapanBoard::TAMPILAN as $kunci => $labelTampilan)
+                        <button type="button" x-on:click="bukaTampilan = false" wire:click="gantiTampilan('{{ $kunci }}')"
+                                @class(['flex min-h-[40px] w-full items-center px-3 text-left hover:bg-page', 'font-semibold text-navy' => $tampilan === $kunci])>{{ $labelTampilan }}</button>
+                    @endforeach
+                </div>
+            </div>
+
             <div class="hidden -space-x-1.5 md:flex" aria-label="Board members">
                 @foreach ($this->anggotaBoard->take(6) as $a)
                     <span title="{{ $a->nama ?? $a->name }}" wire:key="ang-{{ $a->id }}">
@@ -193,18 +245,6 @@
             @if (! $board->isOrder() && ! $this->sayaAnggota && ! $board->diarsipkan_at)
                 <button type="button" wire:click="gabung" class="h-9 rounded-md bg-white px-3 text-sm font-medium text-ink hover:bg-white/90">Join board</button>
             @endif
-
-            {{-- Tampilan --}}
-            <div class="order-last flex w-full items-center overflow-x-auto rounded-md bg-white/15 p-0.5 sm:order-none sm:w-auto" role="group" aria-label="Board view">
-                @foreach (\App\Livewire\Kanban\PapanBoard::TAMPILAN as $kunci => $labelTampilan)
-                    <button type="button" wire:click="gantiTampilan('{{ $kunci }}')" aria-pressed="{{ $tampilan === $kunci ? 'true' : 'false' }}"
-                            @class([
-                                'h-8 flex-1 rounded px-2.5 text-sm sm:flex-none',
-                                'bg-white font-medium text-ink' => $tampilan === $kunci,
-                                'text-white/90 hover:bg-white/15' => $tampilan !== $kunci,
-                            ])>{{ $labelTampilan }}</button>
-                @endforeach
-            </div>
 
             {{-- Saring --}}
             <div class="relative">
@@ -243,7 +283,7 @@
 
                     <fieldset class="mt-4">
                         <legend class="text-xs font-medium text-ink-muted">Due date</legend>
-                        @foreach (['' => 'Semua', 'lewat' => 'Overdue', 'segera' => 'Due date 24 jam ke depan', 'selesai' => 'Ditandai selesai', 'tanpa' => 'No due date'] as $k => $t)
+                        @foreach (['' => 'Any', 'lewat' => 'Overdue', 'segera' => 'Due in the next 24 hours', 'selesai' => 'Marked done', 'tanpa' => 'No due date'] as $k => $t)
                             <label class="mt-1 flex min-h-[32px] items-center gap-2">
                                 <input type="radio" wire:model.live="saringTenggat" value="{{ $k }}" class="text-brand focus:ring-brand/30"> {{ $t }}
                             </label>
@@ -309,19 +349,42 @@
 
     {{-- List & kartu --}}
     @if ($tampilan === 'papan')
-    <div class="gulir-terang min-h-0 flex-1 overflow-x-auto overflow-y-hidden overscroll-x-contain"
+    <div class="gulir-terang min-h-0 flex-1 snap-x snap-proximity overflow-x-auto overflow-y-hidden overscroll-x-contain sm:snap-none"
+         x-on:scroll.passive="geser = $el.scrollLeft > 4"
          x-on:pointerdown="panMulai($event)" x-on:pointermove="panGerak($event)"
          x-on:pointerup.window="panSelesai()" x-on:pointercancel.window="panSelesai()" x-on:pointerleave="panSelesai()">
         <div class="flex h-full items-start gap-3 p-3 pb-16 sm:px-4">
             <ol @if ($ubah) wire:sort="urutKolom" wire:sort:config="{ handle: '.pegangan-list', delay: 220, delayOnTouchOnly: true, touchStartThreshold: 6, bubbleScroll: false }" @endif
                 class="flex h-full items-start gap-3" aria-label="List">
+                @php $jumlahPin = $this->kolom->where('disematkan', true)->count(); @endphp
                 @foreach ($this->kolom as $kolom)
+                    @php $pembatas = $kolom->disematkan && $loop->index === $jumlahPin - 1; @endphp
                     <li wire:key="kolom-{{ $kolom->id }}" wire:sort:item="{{ $kolom->id }}"
-                        x-bind:class="terlipat({{ $kolom->id }}) ? 'w-12' : 'w-[272px]'"
-                        @if ($kolom->disematkan)
-                            style="position: sticky; left: {{ $loop->index * 284 }}px; z-index: {{ 25 - $loop->index }};"
+                        @if ($pembatas)
+                            {{-- Saat papan digeser, sekat buramnya melebar supaya kartu yang lewat di
+                                 belakang memudar lebih dulu, tidak terpotong mentah di tepi list. --}}
+                            x-bind:class="(terlipat({{ $kolom->id }}) ? 'w-10' : 'w-[var(--lebar-list)]') + (geser ? ' after:-right-7 after:w-7' : '')"
+                        @else
+                            x-bind:class="terlipat({{ $kolom->id }}) ? 'w-10' : 'w-[var(--lebar-list)]'"
                         @endif
-                        class="flex max-h-full shrink-0 flex-col rounded-xl text-ink shadow-sm {{ $kolom->warna ? \App\Support\Kanban\Warna::labelLatar($kolom->warna) : 'bg-[#F1F2F4]' }}">
+                        @if ($kolom->disematkan)
+                            style="position: sticky; left: calc(var(--lebar-list) * {{ $loop->index }} + {{ $loop->index * 12 }}px); z-index: {{ 25 - $loop->index }};"
+                        @endif
+                        @class([
+                            'snap-start flex max-h-full shrink-0 flex-col rounded-xl text-ink shadow-sm',
+                            $kolom->warna ? \App\Support\Kanban\Warna::labelLatar($kolom->warna) : 'bg-[#F1F2F4]',
+                            // List yang disematkan diberi tepi tegas supaya tidak terlihat menyatu
+                            // dengan list di belakangnya yang lewat di bawahnya.
+                            'ring-2 ring-white/70' => $kolom->disematkan,
+                            // Pembatas beku: sekat buram selebar celah antar-list, dipasang pada
+                            // list sematan paling kanan. Kartu yang lewat di belakangnya mengabur,
+                            // jadi batas antara wilayah beku dan wilayah yang bergeser terlihat jelas.
+                            "after:absolute after:inset-y-0 after:-right-3 after:w-3 after:bg-white/20 after:backdrop-blur-[3px] after:content-['']
+                             before:absolute before:inset-y-2 before:-right-[7.5px] before:z-10 before:w-[3px] before:rounded-full before:bg-white/80 before:content-[''] batas-sematan"
+                                => $pembatas,
+                            // "kolom-list" penanda, bukan gaya — selalu paling akhir.
+                            'kolom-list',
+                        ])>
 
                         {{-- Bentuk terlipat: hanya nama & jumlah kartu, memberi ruang untuk list lain. --}}
                         <div x-show="terlipat({{ $kolom->id }})" x-cloak class="flex h-full flex-col items-center gap-2 py-2">
@@ -333,49 +396,73 @@
                         </div>
 
                         <div x-show="! terlipat({{ $kolom->id }})" class="flex min-h-0 flex-1 flex-col">
-                        <div class="flex items-start gap-1 px-2 pt-2"
+                        <div class="kepala-list group flex items-start gap-0.5 px-2 pt-2"
                              x-data="{ ubah: false, nama: @js($kolom->nama), simpan() { this.ubah = false; if (this.nama.trim() && this.nama !== @js($kolom->nama)) $wire.ubahNamaKolom({{ $kolom->id }}, this.nama) } }">
-                            <div @class(['pegangan-list min-w-0 flex-1 rounded-md', 'cursor-grab active:cursor-grabbing' => $ubah]) @if ($ubah) wire:sort:handle @endif>
-                                <h2 x-show="! ubah" @if ($ubah) x-on:click="ubah = true; $nextTick(() => $refs.masukan.select())" @endif
-                                    class="break-words px-2 py-1.5 text-sm font-semibold">{{ $kolom->nama }}</h2>
-                                @if ($ubah)
-                                    <input x-show="ubah" x-cloak x-ref="masukan" type="text" x-model="nama" wire:sort:ignore aria-label="List name"
-                                           x-on:keydown.enter.prevent="simpan()" x-on:keydown.escape="ubah = false; nama = @js($kolom->nama)" x-on:blur="simpan()"
-                                           class="block w-full rounded-md border-brand px-2 py-1 text-sm font-semibold focus:ring-brand/30">
+                            {{-- Nama dan jumlah kartu sekaligus jadi pegangan seret, seperti kepala list Trello. --}}
+                            <div @class(['pegangan-list flex min-w-0 flex-1 items-start gap-1 rounded-md', 'cursor-grab active:cursor-grabbing' => $ubah]) @if ($ubah) wire:sort:handle @endif>
+                                <div class="min-w-0 flex-1">
+                                    <h2 x-show="! ubah" @if ($ubah) x-on:click="ubah = true; $nextTick(() => $refs.masukan.select())" @endif
+                                        class="break-words px-2 py-1.5 text-sm font-semibold">{{ $kolom->nama }}</h2>
+                                    @if ($ubah)
+                                        <input x-show="ubah" x-cloak x-ref="masukan" type="text" x-model="nama" wire:sort:ignore aria-label="List name"
+                                               x-on:keydown.enter.prevent="simpan()" x-on:keydown.escape="ubah = false; nama = @js($kolom->nama)" x-on:blur="simpan()"
+                                               class="block w-full rounded-md border-brand px-2 py-1 text-sm font-semibold focus:ring-brand/30">
+                                    @endif
+                                </div>
+                                <span class="mt-1.5 shrink-0 rounded px-1 text-xs text-ink/70"
+                                      title="{{ $kolom->jumlah_kartu }} cards in this list">{{ $kolom->jumlah_kartu }}</span>
+                                @if ($kolom->disematkan)
+                                    <span class="mt-1.5 shrink-0 text-ink/70" title="Pinned list">
+                                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14.8 2.6a1 1 0 011.6.3l4.7 4.7a1 1 0 01-.3 1.6l-2.2 1-1.3 4.2a1 1 0 01-1.6.4l-2.4-2.4-4.5 4.5-1.4-1.4 4.5-4.5-2.4-2.4a1 1 0 01.4-1.6l4.2-1.3z" /></svg>
+                                    </span>
                                 @endif
                             </div>
-                            <span class="mt-1.5 shrink-0 rounded px-1.5 text-xs text-ink-muted"
-                                  title="{{ $kolom->jumlah_kartu }} cards in this list">{{ $kolom->jumlah_kartu }}</span>
-                            @if ($kolom->disematkan)
-                                <span class="mt-1.5 shrink-0 text-ink-muted" title="Pinned list">
-                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14.8 2.6a1 1 0 011.6.3l4.7 4.7a1 1 0 01-.3 1.6l-2.2 1-1.3 4.2a1 1 0 01-1.6.4l-2.4-2.4-4.5 4.5-1.4-1.4 4.5-4.5-2.4-2.4a1 1 0 01.4-1.6l4.2-1.3z" /></svg>
-                                </span>
+                            @if ($ubah)
+                                {{-- Tambah kartu di posisi paling atas, sama seperti ikon + di kepala list Trello. --}}
+                                <button type="button" wire:click="mulaiTambahKartu({{ $kolom->id }}, true)" title="Add a card at the top"
+                                        aria-label="Add a card at the top of {{ $kolom->nama }}" wire:sort:ignore
+                                        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-ink/70 hover:bg-black/10 hover:text-ink sm:h-8 sm:w-8">
+                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                        <path stroke-linecap="round" d="M12 5.5v13M5.5 12h13" />
+                                    </svg>
+                                </button>
                             @endif
-                            {{-- Collapse list, sama seperti tombol "Collapse list" di Trello. --}}
+                            {{-- Collapse list baru muncul saat kursor di atas kepala list, seperti Trello. --}}
                             <button type="button" x-on:click="toggleLipat({{ $kolom->id }})" title="Collapse list"
                                     aria-label="Collapse list {{ $kolom->nama }}" wire:sort:ignore
-                                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-ink-muted hover:bg-line hover:text-ink">
+                                    class="hidden h-8 w-8 shrink-0 items-center justify-center rounded-md text-ink/70 hover:bg-black/10 hover:text-ink md:flex md:opacity-0 md:transition-opacity md:focus:opacity-100 md:group-hover:opacity-100">
                                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M4 6l5 6-5 6M20 6l-5 6 5 6" />
                                 </svg>
                             </button>
                             @if ($ubah)
-                                <div class="relative shrink-0" x-data="{ buka: false }">
-                                    <button type="button" x-on:click="buka = ! buka" aria-label="Menu list {{ $kolom->nama }}"
-                                            class="flex h-8 w-8 items-center justify-center rounded-md text-ink-muted hover:bg-line hover:text-ink">
+                                <div class="relative shrink-0" x-data="{ buka: false, sub: null }" x-on:click.outside="buka = false; sub = null">
+                                    <button type="button" x-on:click="buka = ! buka; sub = null" aria-label="Menu list {{ $kolom->nama }}"
+                                            class="flex h-9 w-9 items-center justify-center rounded-md text-ink/70 hover:bg-black/10 hover:text-ink sm:h-8 sm:w-8">
                                         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" /></svg>
                                     </button>
-                                    <div x-show="buka" x-cloak x-on:click.outside="buka = false" x-on:keydown.escape.window="buka = false" x-effect="buka && $nextTick(() => { const r = $el.getBoundingClientRect(); $el.style.maxHeight = Math.max(180, window.innerHeight - r.top - 88) + 'px' })"
-                                         class="gulir-gelap absolute left-0 z-40 mt-1 w-52 overflow-y-auto rounded-xl border border-line bg-card py-1 text-sm shadow-lg">
-                                        <button type="button" x-on:click="buka = false" wire:click="mulaiTambahKartu({{ $kolom->id }})" class="block w-full px-3 py-2 text-left hover:bg-page">Add card</button>
+                                    <div x-show="buka" x-cloak x-on:keydown.escape.window="buka = false; sub = null"
+                                         x-effect="buka && sub !== undefined && $nextTick(() => rapikanPanel($el))"
+                                         class="gulir-gelap absolute left-0 z-40 mt-1 w-56 overflow-y-auto rounded-xl border border-line bg-card py-1 text-sm shadow-lg">
+                                        <div class="flex items-center gap-1 border-b border-line px-2 pb-1.5 pt-0.5">
+                                            <span class="min-w-0 flex-1 truncate text-center font-semibold" x-text="sub === 'pindah' ? 'Move list' : (sub === 'urut' ? 'Sort cards' : 'List actions')">List actions</span>
+                                            <button type="button" x-on:click="buka = false; sub = null" aria-label="Close menu"
+                                                    class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-ink-muted hover:bg-page hover:text-ink"><x-kanban.ikon name="tutup" /></button>
+                                        </div>
+
+                                        <div x-show="! sub">
+                                        <button type="button" x-on:click="buka = false" wire:click="mulaiTambahKartu({{ $kolom->id }}, true)" class="block w-full px-3 py-2 text-left hover:bg-page">Add card</button>
                                         <button type="button" x-on:click="buka = false; ubah = true; $nextTick(() => $refs.masukan.select())" class="block w-full px-3 py-2 text-left hover:bg-page">Rename list</button>
                                         <button type="button" x-on:click="buka = false" wire:click="salinKolom({{ $kolom->id }})" class="block w-full px-3 py-2 text-left hover:bg-page">Copy list</button>
                                         <button type="button" x-on:click="buka = false; toggleLipat({{ $kolom->id }})" class="block w-full px-3 py-2 text-left hover:bg-page">Collapse list</button>
                                         <button type="button" x-on:click="buka = false" wire:click="togglePinKolom({{ $kolom->id }})"
                                                 class="block w-full px-3 py-2 text-left hover:bg-page">{{ $kolom->disematkan ? 'Unpin list' : 'Pin list' }}</button>
+                                        <button type="button" x-on:click="sub = 'pindah'" wire:click="mulaiPindahList({{ $kolom->id }})"
+                                                class="block w-full px-3 py-2 text-left hover:bg-page">Move list</button>
+                                        <button type="button" x-on:click="sub = 'urut'" class="block w-full px-3 py-2 text-left hover:bg-page">Sort cards</button>
 
                                         <div class="border-t border-line px-3 py-2">
-                                            <p class="text-xs font-medium text-ink-muted">List header colour</p>
+                                            <p class="text-xs font-medium text-ink-muted">List colour</p>
                                             <div class="mt-1.5 grid grid-cols-5 gap-1">
                                                 @foreach (Warna::LABEL as $w => [$namaWarna, $latarWarna])
                                                     <button type="button" wire:click="warnaKolom({{ $kolom->id }}, '{{ $w }}')" title="{{ $namaWarna }}"
@@ -386,17 +473,6 @@
                                             @if ($kolom->warna)
                                                 <button type="button" wire:click="warnaKolom({{ $kolom->id }}, null)" class="mt-1.5 text-xs text-navy underline">Remove colour</button>
                                             @endif
-                                        </div>
-
-                                        <div class="border-t border-line px-3 py-2">
-                                            <label for="urut-{{ $kolom->id }}" class="text-xs font-medium text-ink-muted">Sort cards</label>
-                                            <select id="urut-{{ $kolom->id }}" x-on:change="buka = false; $wire.urutkanKartu({{ $kolom->id }}, $event.target.value); $event.target.value = ''"
-                                                    class="mt-1 block min-h-[36px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
-                                                <option value="" selected>Choose order…</option>
-                                                @foreach (\App\Services\Kanban\Tata::URUTAN as $kunciUrut => $labelUrut)
-                                                    <option value="{{ $kunciUrut }}">{{ $labelUrut }}</option>
-                                                @endforeach
-                                            </select>
                                         </div>
 
                                         @if ($this->kolom->count() > 1)
@@ -417,14 +493,53 @@
                                                 wire:confirm="{{ $isiKolom
                                                     ? 'WARNING: list &quot;'.$kolom->nama.'&quot; still holds '.$isiKolom.' cards. Deleting it removes every card inside (along with their comments, checklists and attachments) forever. Continue?'
                                                     : 'Delete list &quot;'.$kolom->nama.'&quot; forever?' }}"
-                                                class="block w-full px-3 py-2 text-left text-[#AE2E24] hover:bg-page">Delete list{{ $isiKolom ? ' + '.$isiKolom.' kartu' : '' }}</button>
+                                                class="block w-full px-3 py-2 text-left text-[#AE2E24] hover:bg-page">Delete list{{ $isiKolom ? ' ('.$isiKolom.' cards)' : '' }}</button>
                                         <button type="button" x-on:click="buka = false" wire:click="arsipkanKolom({{ $kolom->id }})"
                                                 wire:confirm="Archive list &quot;{{ $kolom->nama }}&quot; and its cards? You can restore it from the board menu."
                                                 class="block w-full px-3 py-2 text-left text-[#AE2E24] hover:bg-page">Archive list</button>
+                                        </div>
+
+                                        {{-- Sort cards: daftar pilihan, bukan select bawaan. --}}
+                                        <div x-show="sub === 'urut'" x-cloak class="px-2 py-1">
+                                            <x-kanban.kembali />
+                                            @foreach (\App\Services\Kanban\Tata::URUTAN as $kunciUrut => $labelUrut)
+                                                <button type="button" x-on:click="buka = false; sub = null" wire:click="urutkanKartu({{ $kolom->id }}, '{{ $kunciUrut }}')"
+                                                        class="block w-full rounded-md px-2 py-2 text-left hover:bg-page">{{ $labelUrut }}</button>
+                                            @endforeach
+                                        </div>
+
+                                        {{-- Move list: pilih board dulu, lalu posisinya — alur yang sama dengan Move card. --}}
+                                        <div x-show="sub === 'pindah'" x-cloak class="px-3 py-2">
+                                            <x-kanban.kembali />
+                                            <p class="text-xs font-medium text-ink-muted">Board</p>
+                                            <p class="truncate text-sm">{{ $this->boardPindahMenu->firstWhere('id', (int) $pindahListBoard)?->nama ?? '—' }}</p>
+                                            <x-kanban.pilih-cari wire:key="board-list-{{ $kolom->id }}-{{ $pindahListBoard }}"
+                                                :pilihan="$this->boardPindahMenu->map(fn ($b) => ['nilai' => $b->id, 'teks' => $b->nama])"
+                                                onpilih="$wire.pilihBoardList(p.nilai)"
+                                                cari="Search board…" tinggi="max-h-32" />
+
+                                            <label for="urutan-list-{{ $kolom->id }}" class="mt-3 block text-xs font-medium text-ink-muted">Position</label>
+                                            <select id="urutan-list-{{ $kolom->id }}" wire:model="pindahListUrutan"
+                                                    class="mt-1 block min-h-[36px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
+                                                @for ($i = 1; $i <= max(1, $this->jumlahListTujuan() + 1); $i++)
+                                                    <option value="{{ $i }}">{{ $i }}</option>
+                                                @endfor
+                                            </select>
+                                            @error('pindahListBoard')<p class="mt-1 text-xs text-[#AE2E24]">{{ $message }}</p>@enderror
+                                            @if ((int) $pindahListBoard !== (int) $board->id)
+                                                <p class="mt-2 text-xs text-ink-muted">Kartunya ikut pindah. Label milik board ini dilepas, karena label berbeda di tiap board.</p>
+                                            @endif
+                                            <button type="button" x-on:click="buka = false; sub = null" wire:click="pindahkanList"
+                                                    class="mt-3 h-9 w-full rounded-md bg-navy px-3 text-sm font-medium text-white hover:bg-navy-900">Move</button>
+                                        </div>
                                     </div>
                                 </div>
                             @endif
                         </div>
+
+                        @if ($ubah && $tambahKartuDi === $kolom->id && $tambahKartuAtas)
+                            @include('livewire.kanban.partials.tambah-kartu', ['kolom' => $kolom])
+                        @endif
 
                         <ol @if ($ubah) wire:sort="urutKartu" wire:sort:group="kartu" wire:sort:group-id="{{ $kolom->id }}" wire:sort:config="{ delay: 220, delayOnTouchOnly: true, touchStartThreshold: 6, bubbleScroll: false }" @endif
                             class="gulir-gelap flex min-h-[10px] flex-col gap-2 overflow-y-auto px-2 py-1" aria-label="Cards in {{ $kolom->nama }}">
@@ -440,18 +555,18 @@
                                         data-tenggat="{{ $kartu->tenggat_pada?->format('Y-m-d') }}"
                                         x-on:contextmenu="bukaMenuKartu($event, $el)"
                                     @endif
-                                    class="group relative rounded-lg bg-card shadow-[0_1px_1px_rgba(9,30,66,.25)] hover:ring-2 hover:ring-brand/60">
+                                    class="group relative rounded-lg bg-card shadow-[0_1px_1px_rgba(9,30,66,.25)] hover:bg-[#F1F2F4]">
                                     @if ($ubah)
                                         <button type="button" x-on:click="bukaMenuKartu($event, $el.closest('li'))"
                                                 aria-label="Card menu" aria-haspopup="menu" wire:sort:ignore
-                                                class="absolute right-1 top-1 z-10 flex h-7 w-7 items-center justify-center rounded-md bg-card/90 text-ink-muted opacity-0 shadow-sm ring-1 ring-line transition hover:text-ink focus:opacity-100 group-hover:opacity-100">
+                                                class="absolute right-1 top-1 z-10 flex h-9 w-9 items-center justify-center rounded-md bg-card/90 text-ink-muted shadow-sm ring-1 ring-line transition hover:text-ink focus:opacity-100 md:h-7 md:w-7 md:opacity-0 md:group-hover:opacity-100">
                                             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 3.8l3.7 3.7L8.5 19.2l-4.6.9.9-4.6z" />
                                             </svg>
                                         </button>
                                     @endif
                                     <button type="button" wire:click="bukaKartu({{ $kartu->id }})"
-                                            class="block w-full overflow-hidden rounded-lg text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+                                            class="block w-full cursor-pointer overflow-hidden rounded-lg text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-brand">
                                         @php $coverKartu = $kartu->coverUrl(); @endphp
                                         @if ($coverKartu && $kartu->cover_penuh)
                                             {{-- Sampul penuh: judul dibaca di atas gambar, seperti "full cover" Trello. --}}
@@ -459,75 +574,88 @@
                                                 <img src="{{ $coverKartu }}" alt="" loading="lazy"
                                                      class="absolute inset-0 h-full w-full object-cover">
                                                 <span class="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent"></span>
-                                                <span class="judul-kartu absolute inset-x-0 bottom-0 block px-3 pb-2 pt-6 text-sm font-medium text-white">
+                                                <span class="absolute inset-x-0 bottom-0 block px-3 pb-2 pt-6 text-sm font-medium text-white judul-kartu">
                                                     {{ $kartu->judul }}
                                                 </span>
                                             </span>
                                         @elseif ($coverKartu)
-                                            <img src="{{ $coverKartu }}" alt="" loading="lazy" class="max-h-40 w-full object-cover">
+                                            <img src="{{ $coverKartu }}" alt="" loading="lazy" class="max-h-32 w-full object-cover">
                                         @elseif ($kartu->cover_warna)
                                             <span class="block h-8 {{ Warna::labelLatar($kartu->cover_warna) }}"></span>
                                         @endif
                                         <span @class(['block px-3 pb-2 pt-2', 'hidden' => $coverKartu && $kartu->cover_penuh])>
                                             @if ($kartu->label->isNotEmpty())
-                                                <span class="mb-1.5 flex flex-wrap gap-1">
+                                                {{-- Klik label untuk memunculkan / menyembunyikan namanya, sama seperti Trello. --}}
+                                                <span class="mb-1.5 flex flex-wrap gap-1 pr-8 md:pr-0" x-on:click.stop.prevent="toggleLabelTeks()"
+                                                      title="Click to show or hide label names">
                                                     @foreach ($kartu->label as $l)
-                                                        <span class="inline-block h-4 min-w-[2.5rem] max-w-full truncate rounded px-1.5 text-[11px] font-medium leading-4 {{ Warna::label($l->warna) }}">{{ $l->nama }}</span>
+                                                        <span x-show="labelTeks" x-cloak
+                                                              class="inline-block h-4 min-w-[2.5rem] max-w-full truncate rounded px-1.5 text-[11px] font-medium leading-4 {{ Warna::label($l->warna) }}">{{ $l->nama }}</span>
+                                                        <span x-show="! labelTeks" x-cloak title="{{ $l->nama }}"
+                                                              class="inline-block h-2 w-10 rounded-sm {{ Warna::labelLatar($l->warna) }}"><span class="sr-only">{{ $l->nama }}</span></span>
                                                     @endforeach
                                                 </span>
                                             @endif
-                                            <span class="judul-kartu block break-words text-sm text-ink">{{ $kartu->judul }}</span>
+                                            {{-- "judul-kartu" penanda, bukan gaya: dipakai menu kartu & test, dan sengaja ditaruh
+                                                 paling akhir supaya pencocokannya tidak ikut rusak saat kelas gaya ditambah. --}}
+                                            <span class="block break-words pr-8 leading-snug md:pr-0 text-sm text-ink judul-kartu">{{ $kartu->judul }}</span>
 
-                                            @if (true)
-                                                <span class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
-                                                    @if ($kartu->templat)
-                                                        <span class="rounded bg-[#5E4DB2] px-1.5 py-0.5 font-medium text-white">Template</span>
+                                            {{-- Lencana: penanda di kiri, nomor kartu & anggota menepi ke kanan. --}}
+                                            <span class="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-ink-muted">
+                                                @if ($kartu->templat)
+                                                    <span class="rounded bg-[#5E4DB2] px-1.5 py-0.5 font-medium text-white">Template</span>
+                                                @endif
+                                                @if ($kartu->order_id)
+                                                    <span class="rounded bg-navy/10 px-1.5 py-0.5 font-medium text-navy">{{ $kartu->order?->isSusulan() ? 'Susulan' : 'Order' }}</span>
+                                                @endif
+                                                @if ($kartu->diikuti)
+                                                    <span title="You are following this card"><svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" /><circle cx="12" cy="12" r="2.5" /></svg><span class="sr-only">Following</span></span>
+                                                @endif
+                                                @if ($tenggat)
+                                                    <span @class([
+                                                        'inline-flex items-center gap-1 rounded px-1.5 py-0.5',
+                                                        'bg-[#1F845A] text-white' => $tenggat === 'selesai',
+                                                        'bg-[#C9372C] text-white' => $tenggat === 'lewat',
+                                                        'bg-[#F5CD47] text-ink' => $tenggat === 'segera',
+                                                    ]) title="Due date">
+                                                        <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="{{ $ikon['tenggat'] }}" /></svg>
+                                                        {{ $kartu->tenggat_pada->translatedFormat('j M') }}
+                                                    </span>
+                                                @endif
+                                                @if ($kartu->deskripsi)
+                                                    <span title="This card has a description"><svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="{{ $ikon['deskripsi'] }}" /></svg><span class="sr-only">Has a description</span></span>
+                                                @endif
+                                                @if ($kartu->komentar_count)
+                                                    <span class="inline-flex items-center gap-0.5" title="Comment"><svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $ikon['komentar'] }}" /></svg>{{ $kartu->komentar_count }}</span>
+                                                @endif
+                                                @if ($kartu->lampiran_count)
+                                                    <span class="inline-flex items-center gap-0.5" title="Attachment"><svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="{{ $ikon['lampiran'] }}" /></svg>{{ $kartu->lampiran_count }}</span>
+                                                @endif
+                                                @if ($kartu->checklist_item_count)
+                                                    @php $beres = $kartu->checklist_selesai_count === $kartu->checklist_item_count; @endphp
+                                                    <span @class(['inline-flex items-center gap-0.5 rounded px-1 py-0.5', 'bg-[#1F845A] text-white' => $beres]) title="Checklist">
+                                                        <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $ikon['checklist'] }}" /></svg>{{ $kartu->checklist_selesai_count }}/{{ $kartu->checklist_item_count }}
+                                                    </span>
+                                                @endif
+                                                @foreach ($kartu->bidangNilai as $isi)
+                                                    @php $bd = $this->bidangDepan[$isi->bidang_id] ?? null; @endphp
+                                                    @if ($bd && $isi->nilai !== null && $isi->nilai !== '')
+                                                        {{-- Seperti Trello: isinya saja, nama bidangnya di tooltip. --}}
+                                                        <span class="max-w-full truncate rounded bg-[#E9EBEE] px-1.5 py-0.5" title="{{ $bd->nama }}: {{ $bd->tampilkan($isi->nilai) }}">{{ $bd->tampilkan($isi->nilai) }}</span>
                                                     @endif
-                                                    <span class="text-ink-muted/80" title="Card number">#{{ $kartu->id }}</span>
-                                                    @if ($kartu->order_id)
-                                                        <span class="rounded bg-navy/10 px-1.5 py-0.5 font-medium text-navy">{{ $kartu->order?->isSusulan() ? 'Susulan' : 'Order' }}</span>
-                                                    @endif
-                                                    @if ($tenggat)
-                                                        <span @class([
-                                                            'inline-flex items-center gap-1 rounded px-1.5 py-0.5',
-                                                            'bg-[#1F845A] text-white' => $tenggat === 'selesai',
-                                                            'bg-[#C9372C] text-white' => $tenggat === 'lewat',
-                                                            'bg-[#F5CD47] text-ink' => $tenggat === 'segera',
-                                                        ]) title="Due date">
-                                                            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="{{ $ikon['tenggat'] }}" /></svg>
-                                                            {{ $kartu->tenggat_pada->translatedFormat('j M') }}
-                                                        </span>
-                                                    @endif
-                                                    @if ($kartu->deskripsi)
-                                                        <span title="This card has a description"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="{{ $ikon['deskripsi'] }}" /></svg><span class="sr-only">Has a description</span></span>
-                                                    @endif
-                                                    @if ($kartu->komentar_count)
-                                                        <span class="inline-flex items-center gap-0.5" title="Comment"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $ikon['komentar'] }}" /></svg>{{ $kartu->komentar_count }}</span>
-                                                    @endif
-                                                    @if ($kartu->lampiran_count)
-                                                        <span class="inline-flex items-center gap-0.5" title="Attachment"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="{{ $ikon['lampiran'] }}" /></svg>{{ $kartu->lampiran_count }}</span>
-                                                    @endif
-                                                    @if ($kartu->checklist_item_count)
-                                                        @php $beres = $kartu->checklist_selesai_count === $kartu->checklist_item_count; @endphp
-                                                        <span @class(['inline-flex items-center gap-0.5 rounded px-1 py-0.5', 'bg-[#1F845A] text-white' => $beres]) title="Checklist">
-                                                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $ikon['checklist'] }}" /></svg>{{ $kartu->checklist_selesai_count }}/{{ $kartu->checklist_item_count }}
-                                                        </span>
-                                                    @endif
-                                                    @foreach ($kartu->bidangNilai as $isi)
-                                                        @php $bd = $this->bidangDepan[$isi->bidang_id] ?? null; @endphp
-                                                        @if ($bd && $isi->nilai !== null && $isi->nilai !== '')
-                                                            <span class="rounded bg-[#E9EBEE] px-1.5 py-0.5" title="{{ $bd->nama }}">{{ $bd->nama }}: {{ $bd->tampilkan($isi->nilai) }}</span>
-                                                        @endif
-                                                    @endforeach
+                                                @endforeach
+
+                                                <span class="ml-auto flex items-center gap-1.5">
+                                                    <span class="text-ink-muted/60" title="Card number — bisa dicari dengan mengetik #{{ $kartu->id }}">#{{ $kartu->id }}</span>
                                                     @if ($kartu->anggota->isNotEmpty())
-                                                        <span class="ml-auto flex -space-x-1">
+                                                        <span class="flex -space-x-1">
                                                             @foreach ($kartu->anggota->take(3) as $a)
                                                                 <span title="{{ $a->nama ?? $a->name }}"><x-avatar :name="$a->nama ?? $a->name" size="sm" class="!h-6 !w-6 !text-[10px] ring-2 ring-white" /></span>
                                                             @endforeach
                                                         </span>
                                                     @endif
                                                 </span>
-                                            @endif
+                                            </span>
                                         </span>
                                     </button>
                                 </li>
@@ -537,47 +665,19 @@
                         @php $sisaKartu = $kolom->jumlah_kartu - $kolom->kartu->count(); @endphp
                         @if ($sisaKartu > 0)
                             <button type="button" wire:click="muatLagi({{ $kolom->id }})"
-                                    class="mx-2 mt-1 flex min-h-[34px] items-center justify-center rounded-lg bg-line/70 text-xs font-medium text-ink hover:bg-line">
+                                    class="mx-2 mt-1 flex min-h-[34px] items-center justify-center rounded-lg bg-black/5 text-xs font-medium text-ink hover:bg-black/10">
                                 <span wire:loading.remove wire:target="muatLagi({{ $kolom->id }})">Load {{ min($sisaKartu, \App\Livewire\Kanban\PapanBoard::BATAS_TAMBAH) }} more cards ({{ $sisaKartu }} left)</span>
                                 <span wire:loading wire:target="muatLagi({{ $kolom->id }})">Loading…</span>
                             </button>
                         @endif
 
                         @if ($ubah)
-                            @if ($tambahKartuDi === $kolom->id)
-                                <form wire:submit="tambahKartu" class="px-2 pb-2 pt-1" x-data x-init="$nextTick(() => $refs.judul.focus())">
-                                    <label for="judul-kartu-{{ $kolom->id }}" class="sr-only">Card title</label>
-                                    <textarea id="judul-kartu-{{ $kolom->id }}" x-ref="judul" wire:model="judulKartuBaru" rows="2"
-                                              placeholder="Enter a card title…"
-                                              x-on:keydown.enter.prevent="$wire.tambahKartu().then(() => $refs.judul?.focus())"
-                                              x-on:keydown.escape="$wire.batalTambahKartu()"
-                                              class="block w-full resize-none rounded-lg border-0 text-sm shadow-[0_1px_1px_rgba(9,30,66,.25)] focus:ring-2 focus:ring-brand"></textarea>
-                                    @error('judulKartuBaru')<p class="mt-1 text-xs text-[#AE2E24]">{{ $message }}</p>@enderror
-                                    <div class="mt-2 flex items-center gap-1">
-                                        <button type="submit" class="h-9 rounded-md bg-navy px-3 text-sm font-medium text-white hover:bg-navy-900">Add card</button>
-                                        <button type="button" wire:click="batalTambahKartu" aria-label="Cancel" class="flex h-9 w-9 items-center justify-center rounded-md text-ink-muted hover:bg-line">✕</button>
-                                        @if ($this->templat->isNotEmpty())
-                                            <div class="relative ml-auto" x-data="{ buka: false }">
-                                                <button type="button" x-on:click="buka = ! buka" :aria-expanded="buka"
-                                                        class="h-9 rounded-md px-2 text-sm text-ink-muted hover:bg-line hover:text-ink">From template</button>
-                                                <ul x-show="buka" x-cloak x-on:click.outside="buka = false"
-                                                    x-effect="buka && $nextTick(() => { const r = $el.getBoundingClientRect(); $el.style.maxHeight = Math.max(180, window.innerHeight - r.top - 88) + 'px' })"
-                                                    class="gulir-gelap absolute right-0 z-40 mt-1 w-56 overflow-y-auto rounded-xl border border-line bg-card py-1 text-sm shadow-lg">
-                                                    @foreach ($this->templat as $tpl)
-                                                        <li wire:key="tpl-{{ $kolom->id }}-{{ $tpl->id }}">
-                                                            <button type="button" x-on:click="buka = false" wire:click="dariTemplat({{ $tpl->id }}, {{ $kolom->id }})"
-                                                                    class="block w-full truncate px-3 py-2 text-left hover:bg-page">{{ $tpl->judul }}</button>
-                                                        </li>
-                                                    @endforeach
-                                                </ul>
-                                            </div>
-                                        @endif
-                                    </div>
-                                </form>
+                            @if ($tambahKartuDi === $kolom->id && ! $tambahKartuAtas)
+                                @include('livewire.kanban.partials.tambah-kartu', ['kolom' => $kolom])
                             @else
                                 <button type="button" wire:click="mulaiTambahKartu({{ $kolom->id }})"
-                                        class="mx-2 mb-2 mt-1 flex min-h-[36px] items-center gap-2 rounded-lg px-2 text-left text-sm text-ink-muted hover:bg-line/70 hover:text-ink">
-                                    <span aria-hidden="true" class="text-lg leading-none">+</span> Add card
+                                        class="mx-2 mb-2 mt-1 flex min-h-[36px] items-center gap-2 rounded-lg px-2 text-left text-sm text-ink/80 hover:bg-black/10 hover:text-ink">
+                                    <span aria-hidden="true" class="text-lg leading-none">+</span> Add a card
                                 </button>
                             @endif
                         @else
@@ -589,10 +689,10 @@
             </ol>
 
             @if ($ubah)
-                <div class="w-[272px] shrink-0" x-data="{ buka: false }">
+                <div class="w-[var(--lebar-list)] shrink-0 snap-start" x-data="{ buka: false }">
                     <button type="button" x-show="! buka" x-on:click="buka = true; $nextTick(() => $refs.namaList.focus())"
                             class="flex min-h-[44px] w-full items-center gap-2 rounded-xl bg-white/25 px-3 text-left text-sm font-medium text-white hover:bg-white/35">
-                        <span aria-hidden="true" class="text-lg leading-none">+</span> {{ $this->kolom->isEmpty() ? 'Add list' : 'Add list lain' }}
+                        <span aria-hidden="true" class="text-lg leading-none">+</span> {{ $this->kolom->isEmpty() ? 'Add a list' : 'Add another list' }}
                     </button>
                     <form x-show="buka" x-cloak wire:submit="tambahKolom" x-on:keydown.escape="buka = false"
                           class="rounded-xl bg-[#F1F2F4] p-2 shadow-sm">
@@ -806,7 +906,7 @@
                 <button type="button" x-show="bagian !== 'utama'" x-on:click="bagian = 'utama'" aria-label="Back"
                         class="flex h-9 w-9 items-center justify-center rounded-md hover:bg-page">‹</button>
                 <h2 class="flex-1 text-center font-semibold"
-                    x-text="({ utama: 'Menu', warna: 'Change background', label: 'Label', anggota: 'Anggota', salin: 'Copy board', otomasi: 'Order card automation', arsip: 'Archived items', aktivitas: 'Aktivitas' })[bagian]">Menu</h2>
+                    x-text="({ utama: 'Menu', warna: 'Change background', label: 'Label', anggota: 'Members', salin: 'Copy board', otomasi: 'Order card automation', arsip: 'Archived items', aktivitas: 'Activity' })[bagian]">Menu</h2>
                 <button type="button" x-on:click="menu = false" aria-label="Close menu" class="flex h-9 w-9 items-center justify-center rounded-md hover:bg-page">✕</button>
             </div>
 
@@ -845,8 +945,13 @@
                         <svg class="h-4 w-4 text-ink-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 6l-5 6 5 6M15 6l5 6-5 6" /></svg>
                         Expand all lists
                     </button>
+                    <button type="button" x-on:click="toggleLabelTeks()"
+                            class="flex min-h-[40px] w-full items-center gap-3 rounded-lg px-3 text-left hover:bg-page">
+                        <svg class="h-4 w-4 text-ink-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M11.6 3.6H5.6a2 2 0 00-2 2v6.1a2 2 0 00.6 1.4l7.4 7.4a2 2 0 002.8 0l6.1-6.1a2 2 0 000-2.8L13 4.2a2 2 0 00-1.4-.6z" /><circle cx="8.3" cy="8.3" r="1.2" /></svg>
+                        <span x-text="labelTeks ? 'Hide label names' : 'Show label names'">Show label names</span>
+                    </button>
                     <button type="button" x-on:click="bagian = 'label'" class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left hover:bg-page">Label</button>
-                    <button type="button" x-on:click="bagian = 'anggota'" class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left hover:bg-page">Anggota ({{ $this->anggotaBoard->count() }})</button>
+                    <button type="button" x-on:click="bagian = 'anggota'" class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left hover:bg-page">Members ({{ $this->anggotaBoard->count() }})</button>
                     @if ($board->isOrder() && \App\Support\Kanban\Akses::admin(auth()->user()))
                         <button type="button" x-on:click="bagian = 'otomasi'" class="flex min-h-[40px] w-full items-center rounded-lg px-3 text-left hover:bg-page">Order card automation</button>
                     @endif
