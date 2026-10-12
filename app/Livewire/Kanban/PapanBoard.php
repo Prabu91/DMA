@@ -8,6 +8,7 @@ use App\Models\Kanban\Board;
 use App\Models\Kanban\Kartu;
 use App\Models\Kanban\Kolom;
 use App\Models\Kanban\Komentar;
+use App\Models\Kanban\Kunci;
 use App\Models\Kanban\Label;
 use App\Models\Kanban\Saringan;
 use App\Models\User;
@@ -16,6 +17,7 @@ use App\Services\Kanban\Gambar;
 use App\Services\Kanban\Kabar;
 use App\Services\Kanban\Tata;
 use App\Support\Kanban\Akses;
+use App\Support\Kanban\Gembok;
 use App\Support\Kanban\OtomasiOrder;
 use App\Support\Kanban\Posisi;
 use App\Support\Kanban\Warna;
@@ -120,6 +122,15 @@ class PapanBoard extends Component
 
     /** Kartu baru ditaruh di atas list (tombol + di kepala list) atau di bawah. */
     public bool $tambahKartuAtas = false;
+
+    /** Panel kunci: jenis yang sedang diatur ('board' / 'kolom'), targetnya, dan daftar aksesnya. */
+    public ?string $kunciJenis = null;
+
+    public ?int $kunciTarget = null;
+
+    public array $kunciUser = [];
+
+    public array $kunciPeran = [];
 
     public ?int $pindahListId = null;
 
@@ -230,6 +241,15 @@ class PapanBoard extends Component
         return $this->board->label()->get();
     }
 
+    /** Semua staf — dipakai memilih siapa yang boleh mengubah saat terkunci. */
+    #[Computed]
+    public function stafKunci(): Collection
+    {
+        return User::role(Akses::PERAN_STAF)
+            ->orderByRaw('coalesce(nama, name)')
+            ->get(['id', 'nama', 'name']);
+    }
+
     /** Orang yang bisa ditambahkan sebagai anggota board. */
     #[Computed]
     public function calonAnggota(): Collection
@@ -316,10 +336,25 @@ class PapanBoard extends Component
             $k->setRelation('kartu', $kartu->get($k->id, collect()));
             $k->setAttribute('jumlah_kartu', (int) ($jumlah[$k->id] ?? 0));
             $k->setAttribute('disematkan', in_array($k->id, $disematkan, true));
+            $k->setAttribute('kunci', Gembok::ini()->untukKolom($k));
+            $k->setAttribute('boleh_ubah', Gembok::ini()->bolehUbahKolom(auth()->user(), $k));
         })
             // List yang disematkan naik ke kiri, urutan aslinya dipertahankan.
             ->sortBy(fn (Kolom $k) => [$k->disematkan ? 0 : 1, $k->posisi])
             ->values();
+    }
+
+    /** Kunci yang berlaku untuk satu kartu — dipakai menampilkan gembok di mukanya. */
+    public function kunciKartu(Kartu $kartu): ?Kunci
+    {
+        return Gembok::ini()->untukKartu($kartu);
+    }
+
+    /** Kunci yang terpasang di board ini (kalau ada). */
+    #[Computed]
+    public function kunciBoard(): ?Kunci
+    {
+        return Gembok::ini()->untukBoard($this->board);
     }
 
     /** Id list yang disematkan pengguna ini (pilihan pribadi, bukan per board). */
@@ -338,7 +373,7 @@ class PapanBoard extends Component
     /** Sematkan / lepas list — seperti freeze kolom di Excel. */
     public function togglePinKolom(int $kolomId): void
     {
-        $kolom = $this->kolomMilikBoard($kolomId);
+        $kolom = $this->kolomMilikBoard($kolomId, untukUbah: false);
         $baris = DB::table('kanban_kolom_pin')->where('user_id', auth()->id())->where('kolom_id', $kolom->id);
 
         if ($baris->exists()) {
@@ -368,7 +403,7 @@ class PapanBoard extends Component
     /** Tombol "Muat lebih banyak" di kaki list. */
     public function muatLagi(int $kolomId): void
     {
-        $kolom = $this->kolomMilikBoard($kolomId);
+        $kolom = $this->kolomMilikBoard($kolomId, untukUbah: false);
         $this->batasKartu[$kolom->id] = $this->batasKolom($kolom->id) + self::BATAS_TAMBAH;
         unset($this->kolom);
     }
@@ -577,7 +612,7 @@ class PapanBoard extends Component
 
     private function segarkan(): void
     {
-        unset($this->listDisematkan, $this->boardPindahMenu, $this->kolomPindahMenu, $this->bidangBoard, $this->bidangDepan, $this->saringanTersimpan, $this->templat, $this->kolom, $this->baris, $this->kalender, $this->linimasa, $this->dasbor, $this->awalLinimasa, $this->tanpaTenggat, $this->bulanAktif, $this->arsip, $this->aktivitas, $this->labelBoard, $this->anggotaBoard, $this->calonAnggota, $this->sayaAnggota, $this->sayaBintang, $this->bolehUbah, $this->bolehKelola);
+        unset($this->kunciBoard, $this->listDisematkan, $this->boardPindahMenu, $this->kolomPindahMenu, $this->bidangBoard, $this->bidangDepan, $this->saringanTersimpan, $this->templat, $this->kolom, $this->baris, $this->kalender, $this->linimasa, $this->dasbor, $this->awalLinimasa, $this->tanpaTenggat, $this->bulanAktif, $this->arsip, $this->aktivitas, $this->labelBoard, $this->anggotaBoard, $this->calonAnggota, $this->sayaAnggota, $this->sayaBintang, $this->bolehUbah, $this->bolehKelola);
     }
 
     private function wajibUbah(): void
@@ -585,19 +620,102 @@ class PapanBoard extends Component
         abort_unless($this->bolehUbah, 403);
     }
 
+    // ---------------- Kunci ----------------
+
+    /** Buka panel kunci untuk board ini atau salah satu list-nya. */
+    public function mulaiKunci(string $jenis, ?int $targetId = null): void
+    {
+        $this->wajibKelola();
+        abort_unless(in_array($jenis, ['board', 'kolom'], true), 422);
+
+        $target = $jenis === 'board' ? (int) $this->board->id : (int) $targetId;
+        abort_unless($target > 0, 422);
+
+        if ($jenis === 'kolom') {
+            Kolom::where('board_id', $this->board->id)->findOrFail($target);
+        }
+
+        $kunci = Kunci::where('jenis', $jenis)->where('target_id', $target)->with('akses')->first();
+
+        $this->kunciJenis = $jenis;
+        $this->kunciTarget = $target;
+        $this->kunciUser = $kunci ? $kunci->akses->whereNotNull('user_id')->pluck('user_id')->map(fn ($i) => (int) $i)->values()->all() : [];
+        $this->kunciPeran = $kunci ? $kunci->akses->whereNotNull('peran')->pluck('peran')->values()->all() : [];
+    }
+
+    public function simpanKunci(): void
+    {
+        $this->wajibKelola();
+        abort_unless($this->kunciJenis !== null && $this->kunciTarget !== null, 422);
+
+        Gembok::ini()->pasang(
+            $this->kunciJenis,
+            (int) $this->kunciTarget,
+            $this->kunciUser,
+            $this->kunciPeran,
+            auth()->user(),
+        );
+
+        $this->board->catat('kunci_dipasang', $this->namaTargetKunci($this->kunciJenis, (int) $this->kunciTarget), null, auth()->id());
+        $this->kunciJenis = null;
+        $this->kunciTarget = null;
+        $this->segarkan();
+    }
+
+    public function bukaKunci(string $jenis, int $targetId): void
+    {
+        $this->wajibKelola();
+        abort_unless(in_array($jenis, ['board', 'kolom'], true), 422);
+
+        if ($jenis === 'kolom') {
+            Kolom::where('board_id', $this->board->id)->findOrFail($targetId);
+        } else {
+            abort_unless((int) $targetId === (int) $this->board->id, 403);
+        }
+
+        Gembok::ini()->lepas($jenis, $targetId);
+        $this->board->catat('kunci_dibuka', $this->namaTargetKunci($jenis, $targetId), null, auth()->id());
+        $this->kunciJenis = null;
+        $this->segarkan();
+    }
+
+    private function namaTargetKunci(string $jenis, int $targetId): string
+    {
+        return $jenis === 'board'
+            ? 'board '.$this->board->nama
+            : 'list '.(Kolom::find($targetId)?->nama ?? $targetId);
+    }
+
     private function wajibKelola(): void
     {
         abort_unless($this->bolehKelola, 403);
     }
 
-    private function kolomMilikBoard(int $id): Kolom
+    /**
+     * Ambil list milik board ini. Bawaannya sekalian memeriksa kunci — jadi
+     * kalau ada jalur ubah yang terlewat, dia tertutup, bukan bocor.
+     * Hanya jalur baca & pilihan pribadi yang memakai $untukUbah = false.
+     */
+    private function kolomMilikBoard(int $id, bool $untukUbah = true): Kolom
     {
-        return Kolom::where('board_id', $this->board->id)->findOrFail($id);
+        $kolom = Kolom::where('board_id', $this->board->id)->findOrFail($id);
+
+        if ($untukUbah) {
+            abort_unless(Gembok::ini()->bolehUbahKolom(auth()->user(), $kolom), 403);
+        }
+
+        return $kolom;
     }
 
-    private function kartuMilikBoard(int $id): Kartu
+    private function kartuMilikBoard(int $id, bool $untukUbah = true): Kartu
     {
-        return Kartu::where('board_id', $this->board->id)->findOrFail($id);
+        $kartu = Kartu::where('board_id', $this->board->id)->findOrFail($id);
+
+        if ($untukUbah) {
+            abort_unless(Gembok::ini()->bolehUbahKartu(auth()->user(), $kartu), 403);
+        }
+
+        return $kartu;
     }
 
     // ---------------- Seret ----------------
@@ -803,6 +921,9 @@ class PapanBoard extends Component
             $this->pindahKolomMenu ?: abort(422),
         );
         abort_unless(Akses::bolehUbah(auth()->user(), $kolom->board), 403);
+        // List tujuan ikut diperiksa: tanpa ini kartu masih bisa diseret MASUK
+        // ke list terkunci, dan lubangnya sama saja.
+        abort_unless(Gembok::ini()->bolehUbahKolom(auth()->user(), $kolom), 403);
 
         app(Tata::class)->pindahKartu($kartu, $kolom, max(1, $this->pindahUrutanMenu) - 1, auth()->user());
 
@@ -986,6 +1107,7 @@ class PapanBoard extends Component
         $kolom = $this->kolomMilikBoard((int) $this->pindahListId);
         $board = $this->boardPindahMenu->firstWhere('id', (int) $this->pindahListBoard);
         abort_unless($board, 403);
+        abort_unless(Gembok::ini()->bolehUbahBoard(auth()->user(), $board), 403);
 
         app(Tata::class)->pindahKolomKeBoard($kolom, $board, max(0, $this->pindahListUrutan - 1), auth()->user());
 
@@ -1028,13 +1150,13 @@ class PapanBoard extends Component
 
     public function bukaKartu(int $kartuId): void
     {
-        $this->kartuId = $this->kartuMilikBoard($kartuId)->id;
+        $this->kartuId = $this->kartuMilikBoard($kartuId, untukUbah: false)->id;
     }
 
     #[On('buka-kartu')]
     public function bukaKartuDariAnak(int $kartuId): void
     {
-        $this->kartuId = $this->kartuMilikBoard($kartuId)->id;
+        $this->kartuId = $this->kartuMilikBoard($kartuId, untukUbah: false)->id;
         $this->segarkan();
     }
 

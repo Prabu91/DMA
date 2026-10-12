@@ -32,6 +32,8 @@ class Aktivitas extends Model
         'anggota_ditambah' => 'added a member',
         'kolom_dibuat' => 'added a list',
         'kolom_pindah' => 'moved a list',
+        'kunci_dipasang' => 'locked',
+        'kunci_dibuka' => 'unlocked',
         'kolom_diarsipkan' => 'archived a list',
         'kolom_dipulihkan' => 'restored a list',
         'kartu_dibuat' => 'added a card',

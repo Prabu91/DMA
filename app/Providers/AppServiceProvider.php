@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Http\Middleware\DomainKanban;
 use App\Models\Sekolah;
+use App\Support\Kanban\Gembok;
 use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Support\Facades\URL;
@@ -13,7 +14,9 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        // Satu instansi per permintaan: kunci kanban cukup diambil sekali,
+        // papan dengan ratusan kartu tidak memicu query per kartu.
+        $this->app->singleton(Gembok::class);
     }
 
     public function boot(): void

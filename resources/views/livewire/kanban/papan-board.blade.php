@@ -399,7 +399,7 @@
                         <div class="kepala-list group flex items-start gap-0.5 px-2 pt-2"
                              x-data="{ ubah: false, nama: @js($kolom->nama), simpan() { this.ubah = false; if (this.nama.trim() && this.nama !== @js($kolom->nama)) $wire.ubahNamaKolom({{ $kolom->id }}, this.nama) } }">
                             {{-- Nama dan jumlah kartu sekaligus jadi pegangan seret, seperti kepala list Trello. --}}
-                            <div @class(['pegangan-list flex min-w-0 flex-1 items-start gap-1 rounded-md', 'cursor-grab active:cursor-grabbing' => $ubah]) @if ($ubah) wire:sort:handle @endif>
+                            <div @class(['pegangan-list flex min-w-0 flex-1 items-start gap-0.5 rounded-md', 'cursor-grab active:cursor-grabbing' => $ubah]) @if ($ubah) wire:sort:handle @endif>
                                 <div class="min-w-0 flex-1">
                                     <h2 x-show="! ubah" @if ($ubah) x-on:click="ubah = true; $nextTick(() => $refs.masukan.select())" @endif
                                         class="break-words px-2 py-1.5 text-sm font-semibold">{{ $kolom->nama }}</h2>
@@ -411,9 +411,15 @@
                                 </div>
                                 <span class="mt-1.5 shrink-0 rounded px-1 text-xs text-ink/70"
                                       title="{{ $kolom->jumlah_kartu }} cards in this list">{{ $kolom->jumlah_kartu }}</span>
+                                @if ($kolom->kunci)
+                                    <span class="mt-2 shrink-0 text-ink/70"
+                                          title="Locked — only {{ $kolom->kunci->ringkasAkses() }} can change the cards here">
+                                        <x-kanban.ikon name="gembok" kelas="h-3.5 w-3.5" />
+                                    </span>
+                                @endif
                                 @if ($kolom->disematkan)
-                                    <span class="mt-1.5 shrink-0 text-ink/70" title="Pinned list">
-                                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14.8 2.6a1 1 0 011.6.3l4.7 4.7a1 1 0 01-.3 1.6l-2.2 1-1.3 4.2a1 1 0 01-1.6.4l-2.4-2.4-4.5 4.5-1.4-1.4 4.5-4.5-2.4-2.4a1 1 0 01.4-1.6l4.2-1.3z" /></svg>
+                                    <span class="mt-2 shrink-0 text-ink/70" title="Pinned list">
+                                        <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14.8 2.6a1 1 0 011.6.3l4.7 4.7a1 1 0 01-.3 1.6l-2.2 1-1.3 4.2a1 1 0 01-1.6.4l-2.4-2.4-4.5 4.5-1.4-1.4 4.5-4.5-2.4-2.4a1 1 0 01.4-1.6l4.2-1.3z" /></svg>
                                     </span>
                                 @endif
                             </div>
@@ -443,9 +449,9 @@
                                     </button>
                                     <div x-show="buka" x-cloak x-on:keydown.escape.window="buka = false; sub = null"
                                          x-effect="buka && sub !== undefined && $nextTick(() => rapikanPanel($el))"
-                                         class="gulir-gelap absolute left-0 z-40 mt-1 w-56 overflow-y-auto rounded-xl border border-line bg-card py-1 text-sm shadow-lg">
+                                         class="gulir-gelap absolute left-0 z-40 mt-1 max-h-[70vh] w-56 overflow-y-auto rounded-xl border border-line bg-card py-1 text-sm shadow-lg">
                                         <div class="flex items-center gap-1 border-b border-line px-2 pb-1.5 pt-0.5">
-                                            <span class="min-w-0 flex-1 truncate text-center font-semibold" x-text="sub === 'pindah' ? 'Move list' : (sub === 'urut' ? 'Sort cards' : 'List actions')">List actions</span>
+                                            <span class="min-w-0 flex-1 truncate text-center font-semibold" x-text="sub === 'pindah' ? 'Move list' : (sub === 'urut' ? 'Sort cards' : (sub === 'kunci' ? 'Lock list' : 'List actions'))">List actions</span>
                                             <button type="button" x-on:click="buka = false; sub = null" aria-label="Close menu"
                                                     class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-ink-muted hover:bg-page hover:text-ink"><x-kanban.ikon name="tutup" /></button>
                                         </div>
@@ -460,6 +466,13 @@
                                         <button type="button" x-on:click="sub = 'pindah'" wire:click="mulaiPindahList({{ $kolom->id }})"
                                                 class="block w-full px-3 py-2 text-left hover:bg-page">Move list</button>
                                         <button type="button" x-on:click="sub = 'urut'" class="block w-full px-3 py-2 text-left hover:bg-page">Sort cards</button>
+                                        @if ($kelola)
+                                            <button type="button" x-on:click="sub = 'kunci'" wire:click="mulaiKunci('kolom', {{ $kolom->id }})"
+                                                    class="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-page">
+                                                <x-kanban.ikon name="{{ $kolom->kunci ? 'gembok' : 'gembok-buka' }}" />
+                                                {{ $kolom->kunci ? 'Locked — manage access' : 'Lock list' }}
+                                            </button>
+                                        @endif
 
                                         <div class="border-t border-line px-3 py-2">
                                             <p class="text-xs font-medium text-ink-muted">List colour</p>
@@ -498,6 +511,17 @@
                                                 wire:confirm="Archive list &quot;{{ $kolom->nama }}&quot; and its cards? You can restore it from the board menu."
                                                 class="block w-full px-3 py-2 text-left text-[#AE2E24] hover:bg-page">Archive list</button>
                                         </div>
+
+                                        {{-- Kunci list: siapa yang masih boleh mengubah. --}}
+                                        @if ($kelola)
+                                            <div x-show="sub === 'kunci'" x-cloak class="px-3 py-2">
+                                                <x-kanban.kembali />
+                                                @include('livewire.kanban.partials.panel-kunci', [
+                                                    'staf' => $this->stafKunci,
+                                                    'lepas' => $kolom->kunci && $kolom->kunci->jenis === 'kolom' ? "bukaKunci('kolom', {$kolom->id})" : null,
+                                                ])
+                                            </div>
+                                        @endif
 
                                         {{-- Sort cards: daftar pilihan, bukan select bawaan. --}}
                                         <div x-show="sub === 'urut'" x-cloak class="px-2 py-1">
@@ -607,6 +631,9 @@
                                                 @endif
                                                 @if ($kartu->order_id)
                                                     <span class="rounded bg-navy/10 px-1.5 py-0.5 font-medium text-navy">{{ $kartu->order?->isSusulan() ? 'Susulan' : 'Order' }}</span>
+                                                @endif
+                                                @if ($this->kunciKartu($kartu))
+                                                    <span title="Locked"><x-kanban.ikon name="gembok" kelas="h-3.5 w-3.5" /><span class="sr-only">Locked</span></span>
                                                 @endif
                                                 @if ($kartu->diikuti)
                                                     <span title="You are following this card"><svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" /><circle cx="12" cy="12" r="2.5" /></svg><span class="sr-only">Following</span></span>
@@ -945,6 +972,13 @@
                         <svg class="h-4 w-4 text-ink-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 6l-5 6 5 6M15 6l5 6-5 6" /></svg>
                         Expand all lists
                     </button>
+                    @if ($kelola)
+                        <button type="button" x-on:click="bagian = 'kunci'" wire:click="mulaiKunci('board')"
+                                class="flex min-h-[40px] w-full items-center gap-3 rounded-lg px-3 text-left hover:bg-page">
+                            <x-kanban.ikon name="{{ $this->kunciBoard && $this->kunciBoard->jenis === 'board' ? 'gembok' : 'gembok-buka' }}" kelas="h-4 w-4 text-ink-muted" />
+                            {{ $this->kunciBoard && $this->kunciBoard->jenis === 'board' ? 'Locked — manage access' : 'Lock board' }}
+                        </button>
+                    @endif
                     <button type="button" x-on:click="toggleLabelTeks()"
                             class="flex min-h-[40px] w-full items-center gap-3 rounded-lg px-3 text-left hover:bg-page">
                         <svg class="h-4 w-4 text-ink-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M11.6 3.6H5.6a2 2 0 00-2 2v6.1a2 2 0 00.6 1.4l7.4 7.4a2 2 0 002.8 0l6.1-6.1a2 2 0 000-2.8L13 4.2a2 2 0 00-1.4-.6z" /><circle cx="8.3" cy="8.3" r="1.2" /></svg>
@@ -1001,6 +1035,17 @@
                 @endif
 
                 {{-- Label --}}
+                {{-- Kunci board: semua list di dalamnya ikut terkunci, kecuali yang punya aturan sendiri. --}}
+                @if ($kelola)
+                    <div x-show="bagian === 'kunci'" x-cloak>
+                        <x-kanban.kembali x-on:click="bagian = 'utama'" />
+                        @include('livewire.kanban.partials.panel-kunci', [
+                            'staf' => $this->stafKunci,
+                            'lepas' => $this->kunciBoard && $this->kunciBoard->jenis === 'board' ? "bukaKunci('board', {$board->id})" : null,
+                        ])
+                    </div>
+                @endif
+
                 <div x-show="bagian === 'label'" x-cloak>
                     <ul class="space-y-1.5">
                         @forelse ($this->labelBoard as $l)

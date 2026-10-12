@@ -11,6 +11,7 @@ use App\Models\Kanban\ChecklistItem;
 use App\Models\Kanban\Kartu;
 use App\Models\Kanban\Kolom;
 use App\Models\Kanban\Komentar;
+use App\Models\Kanban\Kunci;
 use App\Models\Kanban\Label;
 use App\Models\Kanban\Lampiran;
 use App\Models\Kanban\Reaksi;
@@ -20,6 +21,7 @@ use App\Services\Kanban\Gambar;
 use App\Services\Kanban\Kabar;
 use App\Services\Kanban\Tata;
 use App\Support\Kanban\Akses;
+use App\Support\Kanban\Gembok;
 use App\Support\Kanban\PanelOrder;
 use App\Support\Kanban\Posisi;
 use App\Support\Kanban\Warna;
@@ -52,6 +54,13 @@ class DetailKartu extends Component
 
     /** Saat menulis deskripsi: tampilkan hasil jadinya, bukan penanda formatnya. */
     public bool $pratinjauDeskripsi = false;
+
+    /** Panel kunci kartu. */
+    public bool $panelKunci = false;
+
+    public array $kunciUser = [];
+
+    public array $kunciPeran = [];
 
     public string $komentarBaru = '';
 
@@ -154,6 +163,72 @@ class DetailKartu extends Component
         return Akses::bolehUbah(auth()->user(), $this->kartu->board) && $this->kartu->diarsipkan_at === null;
     }
 
+    /** Boleh memasang/melepas kunci: admin pusat atau admin board. */
+    #[Computed]
+    public function bolehKunci(): bool
+    {
+        return Akses::bolehKelola(auth()->user(), $this->kartu->board);
+    }
+
+    /** Buka panel kunci kartu, isi daftar aksesnya dari yang sudah ada. */
+    public function mulaiKunci(): void
+    {
+        abort_unless($this->bolehKunci, 403);
+
+        $kunci = Kunci::where('jenis', 'kartu')->where('target_id', $this->kartu->id)->with('akses')->first();
+
+        $this->panelKunci = true;
+        $this->kunciUser = $kunci ? $kunci->akses->whereNotNull('user_id')->pluck('user_id')->map(fn ($i) => (int) $i)->values()->all() : [];
+        $this->kunciPeran = $kunci ? $kunci->akses->whereNotNull('peran')->pluck('peran')->values()->all() : [];
+    }
+
+    public function simpanKunci(): void
+    {
+        abort_unless($this->bolehKunci, 403);
+
+        Gembok::ini()->pasang('kartu', (int) $this->kartu->id, $this->kunciUser, $this->kunciPeran, auth()->user());
+        $this->catat('kunci_dipasang', 'kartu '.$this->kartu->judul);
+        $this->panelKunci = false;
+        $this->segarkan();
+    }
+
+    public function bukaKunci(): void
+    {
+        abort_unless($this->bolehKunci, 403);
+
+        Gembok::ini()->lepas('kartu', (int) $this->kartu->id);
+        $this->catat('kunci_dibuka', 'kartu '.$this->kartu->judul);
+        $this->panelKunci = false;
+        $this->segarkan();
+    }
+
+    /** Semua staf — dipakai memilih siapa yang boleh mengubah saat terkunci. */
+    #[Computed]
+    public function stafKunci(): Collection
+    {
+        return User::role(Akses::PERAN_STAF)
+            ->orderByRaw('coalesce(nama, name)')
+            ->get(['id', 'nama', 'name']);
+    }
+
+    /** Kunci yang berlaku untuk kartu ini (bisa datang dari list atau board-nya). */
+    #[Computed]
+    public function kunci(): ?Kunci
+    {
+        return Gembok::ini()->untukKartu($this->kartu);
+    }
+
+    /**
+     * Boleh mengubah isi kartu. Beda dengan bolehUbah(): yang ini ikut
+     * memperhitungkan kunci. Komentar, lampiran, dan centang checklist tetap
+     * memakai bolehUbah() supaya pekerjaan tidak ikut terhenti.
+     */
+    #[Computed]
+    public function bolehUbahIsi(): bool
+    {
+        return $this->bolehUbah && Gembok::ini()->bolehUbahKartu(auth()->user(), $this->kartu);
+    }
+
     #[Computed]
     public function admin(): bool
     {
@@ -251,13 +326,29 @@ class DetailKartu extends Component
 
     private function segarkan(bool $papan = true): void
     {
-        unset($this->kartu, $this->riwayat, $this->labelBoard, $this->bolehUbah, $this->bidang, $this->checklistSumber, $this->panelOrder, $this->bolehIsiOrder);
+        unset($this->kartu, $this->riwayat, $this->labelBoard, $this->bolehUbah, $this->kunci, $this->bolehUbahIsi, $this->bolehKunci, $this->bidang, $this->checklistSumber, $this->panelOrder, $this->bolehIsiOrder);
         if ($papan) {
             $this->dispatch('kartu-berubah');
         }
     }
 
+    /**
+     * Boleh mengubah kartu ini: punya akses board DAN tidak terhalang kunci
+     * (lihat {@see Gembok}).
+     */
     private function wajibUbah(): Kartu
+    {
+        $kartu = $this->wajibKerja();
+        abort_unless(Gembok::ini()->bolehUbahKartu(auth()->user(), $kartu), 403);
+
+        return $kartu;
+    }
+
+    /**
+     * Pekerjaan yang sengaja tetap terbuka walau kartunya dikunci: komentar,
+     * lampiran, dan centang checklist. Tim produksi tetap harus bisa bekerja.
+     */
+    private function wajibKerja(): Kartu
     {
         abort_unless($this->bolehUbah, 403);
 
@@ -658,7 +749,7 @@ class DetailKartu extends Component
 
     public function toggleItem(int $itemId): void
     {
-        $this->wajibUbah();
+        $this->wajibKerja();
         $item = $this->itemMilikKartu($itemId);
         $selesai = $item->selesai_at === null;
         $item->update(['selesai_at' => $selesai ? now() : null, 'selesai_oleh' => $selesai ? auth()->id() : null]);
@@ -741,7 +832,7 @@ class DetailKartu extends Component
 
     public function kirimKomentar(): void
     {
-        $kartu = $this->wajibUbah();
+        $kartu = $this->wajibKerja();
         $this->validate(['komentarBaru' => ['required', 'string', 'max:5000']], ['komentarBaru.required' => 'Write a comment first.']);
         $isi = trim($this->komentarBaru);
         Komentar::create(['kartu_id' => $kartu->id, 'user_id' => auth()->id(), 'isi' => $isi]);
@@ -767,7 +858,7 @@ class DetailKartu extends Component
 
     public function simpanKomentar(): void
     {
-        $this->wajibUbah();
+        $this->wajibKerja();
         $komentar = $this->komentarMilikSaya((int) $this->ubahKomentarId);
         $this->validate(['isiKomentar' => ['required', 'string', 'max:5000']]);
         $komentar->update(['isi' => trim($this->isiKomentar), 'diubah_at' => now()]);
@@ -778,7 +869,7 @@ class DetailKartu extends Component
     /** Beri atau tarik reaksi emoji pada komentar. */
     public function toggleReaksi(int $komentarId, string $emoji): void
     {
-        $this->wajibUbah();
+        $this->wajibKerja();
         abort_unless(in_array($emoji, Reaksi::PILIHAN, true), 422);
 
         $komentar = Komentar::where('kartu_id', $this->kartuId)->findOrFail($komentarId);
@@ -793,7 +884,7 @@ class DetailKartu extends Component
 
     public function hapusKomentar(int $id): void
     {
-        $this->wajibUbah();
+        $this->wajibKerja();
         $this->komentarMilikSaya($id, bolehAdmin: true)->delete();
         $this->segarkan();
     }
@@ -802,7 +893,7 @@ class DetailKartu extends Component
 
     public function updatedBerkas(): void
     {
-        $kartu = $this->wajibUbah();
+        $kartu = $this->wajibKerja();
 
         if (! $this->sahkanBerkas('berkas')) {
             return;
@@ -924,7 +1015,7 @@ class DetailKartu extends Component
     /** Lampirkan tautan, mis. folder Google Drive (padanan "Attach a link"). */
     public function tambahTautan(): void
     {
-        $kartu = $this->wajibUbah();
+        $kartu = $this->wajibKerja();
         $this->validate([
             'tautanUrl' => ['required', 'url', 'max:2048', 'starts_with:http://,https://'],
             'tautanNama' => ['nullable', 'string', 'max:255'],
@@ -972,7 +1063,7 @@ class DetailKartu extends Component
 
     public function hapusLampiran(int $id): void
     {
-        $kartu = $this->wajibUbah();
+        $kartu = $this->wajibKerja();
         $lampiran = Lampiran::where('kartu_id', $kartu->id)->findOrFail($id);
         abort_unless((int) $lampiran->user_id === (int) auth()->id() || $this->admin, 403);
 
@@ -991,7 +1082,7 @@ class DetailKartu extends Component
 
     public function ubahNamaLampiran(int $id, string $nama): void
     {
-        $kartu = $this->wajibUbah();
+        $kartu = $this->wajibKerja();
         $lampiran = Lampiran::where('kartu_id', $kartu->id)->findOrFail($id);
         $nama = mb_substr(trim($nama), 0, 255);
 
@@ -1057,6 +1148,8 @@ class DetailKartu extends Component
         $board = $this->boardTujuan->firstWhere('id', $this->pindahBoard);
         abort_unless($board, 403);
         $kolom = Kolom::where('board_id', $board->id)->whereNull('diarsipkan_at')->findOrFail($this->pindahKolom);
+        // List tujuan ikut diperiksa, bukan cuma kartunya.
+        abort_unless(Gembok::ini()->bolehUbahKolom(auth()->user(), $kolom), 403);
 
         app(Tata::class)->pindahKartu($kartu, $kolom, $this->pindahUrutan - 1, auth()->user());
         $this->kabar()->perubahan($kartu, KanbanKabar::KARTU_PINDAH, auth()->user(), 'ke list '.$kolom->nama);
@@ -1074,6 +1167,8 @@ class DetailKartu extends Component
 
         $kolom = Kolom::whereNull('diarsipkan_at')->findOrFail($this->salinKolom);
         abort_unless(Akses::bolehUbah(auth()->user(), $kolom->board), 403);
+        // Menyalin kartu = membuat kartu baru di list tujuan, jadi kuncinya berlaku.
+        abort_unless(Gembok::ini()->bolehUbahKolom(auth()->user(), $kolom), 403);
 
         $salinan = app(Tata::class)->salinKartu($kartu, $kolom, $this->judulSalinan, $this->bawaSalinan, auth()->user());
 
