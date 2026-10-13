@@ -12,9 +12,11 @@ const withVar = (name) => `rgb(var(${name}) / <alpha-value>)`;
 export default {
     darkMode: 'class',
 
+    // Cache Blade (storage/framework/views) sengaja TIDAK dipindai: isinya beda
+    // tiap mesin dan tiap saat, jadi hasil build ikut berubah-ubah. Sumber aslinya
+    // sudah dipindai lewat resources/views dan app/Support.
     content: [
         './vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php',
-        './storage/framework/views/*.php',
         './resources/views/**/*.blade.php',
         './app/Support/**/*.php',
     ],
