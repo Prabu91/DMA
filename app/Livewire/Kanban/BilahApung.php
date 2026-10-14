@@ -65,6 +65,27 @@ class BilahApung extends Component
         $this->cari = '';
     }
 
+    /**
+     * Beri / lepas bintang dari panel ini, tanpa perlu membuka board-nya dulu.
+     * Memakai pivot yang sama dengan tombol bintang di kepala board.
+     */
+    public function toggleBintang(int $boardId): void
+    {
+        $user = auth()->user();
+        $board = Board::findOrFail($boardId);
+        abort_unless(Akses::bolehLihat($user, $board), 403);
+
+        $baris = $board->anggota()->whereKey($user->id)->first();
+
+        if ($baris) {
+            $board->anggota()->updateExistingPivot($user->id, ['berbintang' => ! $baris->pivot->berbintang]);
+        } else {
+            $board->anggota()->attach($user->id, ['peran' => 'pengamat', 'berbintang' => true]);
+        }
+
+        unset($this->kelompok);
+    }
+
     /** Board yang boleh dilihat, dikelompokkan seperti halaman Semua board. */
     #[Computed]
     public function kelompok(): array

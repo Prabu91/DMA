@@ -36,6 +36,12 @@
 
             /* Bilah bawah menyingkir selama kartu terbuka. */
             body.kartu-terbuka .bilah-apung { display: none; }
+            /* Sidebar board yang dipaku: di layar besar isi halaman digeser,
+               di layar kecil dia menimpa supaya tidak menyisakan ruang sempit. */
+            @media (min-width: 768px) {
+                body.papan-tersemat header,
+                body.papan-tersemat main { padding-left: min(18rem, 85vw); }
+            }
             /* Deskripsi & komentar berformat (Markdown). */
             .isi-teks > *:first-child { margin-top: 0; }
             .isi-teks > *:last-child { margin-bottom: 0; }
@@ -217,6 +223,26 @@
 
             document.addEventListener('alpine:init', () => {
                 Alpine.data('editorTeks', () => window.editorTeksDasar('isi'));
+
+                /**
+                 * Panel "Switch boards" yang dipaku jadi sidebar kiri. Pilihannya
+                 * diingat per browser, seperti lipat list dan nama label.
+                 */
+                Alpine.store('papan', {
+                    sematkan: false,
+                    init() {
+                        try { this.sematkan = localStorage.getItem('kanban:sematkan-board') === '1' } catch (e) {}
+                        this.terapkan();
+                    },
+                    togglePaku() {
+                        this.sematkan = ! this.sematkan;
+                        try { localStorage.setItem('kanban:sematkan-board', this.sematkan ? '1' : '0') } catch (e) {}
+                        this.terapkan();
+                    },
+                    terapkan() {
+                        document.body.classList.toggle('papan-tersemat', this.sematkan);
+                    },
+                });
             });
         </script>
 

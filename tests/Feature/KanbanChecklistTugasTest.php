@@ -191,7 +191,12 @@ class KanbanChecklistTugasTest extends TestCase
         $this->assertSame(0, Checklist::where('judul', 'Kosong')->firstOrFail()->item()->count());
     }
 
-    public function test_pilihan_salin_hanya_checklist_berisi_di_board_ini(): void
+    /**
+     * Sumber salinan sengaja lintas board: checklist acuan tim hidup di board
+     * lain (mis. board editing), jadi kalau dibatasi satu board daftarnya kosong
+     * dan fiturnya terlihat mati. Yang dibatasi hanya board yang boleh diubah.
+     */
+    public function test_pilihan_salin_mencakup_board_lain_yang_boleh_diubah(): void
     {
         Checklist::create(['kartu_id' => $this->kartu->id, 'judul' => 'Masih kosong', 'posisi' => 2]);
 
@@ -199,10 +204,34 @@ class KanbanChecklistTugasTest extends TestCase
         $kolomLain = app(Tata::class)->tambahKolom($lain, 'List', $this->faris);
         $kartuLain = app(Tata::class)->tambahKartu($kolomLain, 'Kartu board lain', $this->faris);
         $clLain = Checklist::create(['kartu_id' => $kartuLain->id, 'judul' => 'Punya board lain', 'posisi' => 1]);
-        ChecklistItem::create(['checklist_id' => $clLain->id, 'teks' => 'Tak boleh muncul', 'posisi' => 1]);
+        ChecklistItem::create(['checklist_id' => $clLain->id, 'teks' => 'Boleh disalin', 'posisi' => 1]);
 
         $judul = $this->detail()->get('checklistSumber')->pluck('judul')->all();
+        sort($judul);
 
-        $this->assertSame(['QC'], $judul);
+        $this->assertSame(['Punya board lain', 'QC'], $judul, 'yang berisi dari board lain ikut, yang kosong tidak');
+    }
+
+    public function test_pilihan_salin_tidak_memuat_board_yang_tak_boleh_diubah(): void
+    {
+        $dewi = User::factory()->create(['nama' => 'Dewi', 'cabang_id' => $this->faris->cabang_id]);
+        $dewi->assignRole('editor');
+
+        $rahasia = app(Tata::class)->buatBoard('Rahasia Dewi', 'merah', 'privat', $dewi);
+        $kolom = app(Tata::class)->tambahKolom($rahasia, 'List', $dewi);
+        $kartu = app(Tata::class)->tambahKartu($kolom, 'Kartu Dewi', $dewi);
+        $cl = Checklist::create(['kartu_id' => $kartu->id, 'judul' => 'Rahasia', 'posisi' => 1]);
+        ChecklistItem::create(['checklist_id' => $cl->id, 'teks' => 'Tak boleh muncul', 'posisi' => 1]);
+
+        // Diperiksa sebagai editor biasa; admin pusat memang berhak melihat semua board.
+        $rizky = User::factory()->create(['nama' => 'Rizky', 'cabang_id' => $this->faris->cabang_id]);
+        $rizky->assignRole('editor');
+        $this->kartu->board->anggota()->attach($rizky->id, ['peran' => 'anggota']);
+
+        $judul = Livewire::actingAs($rizky)
+            ->test(DetailKartu::class, ['kartuId' => $this->kartu->id])
+            ->get('checklistSumber')->pluck('judul')->all();
+
+        $this->assertNotContains('Rahasia', $judul);
     }
 }

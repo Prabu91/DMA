@@ -120,6 +120,34 @@ class KanbanBilahApungTest extends TestCase
         $this->bilah()->call('togglePanel')->assertDontSee('Rahasia Rizky');
     }
 
+    // ---------------- Bintang dari panel ----------------
+
+    public function test_bintang_bisa_dipasang_dan_dilepas_dari_panel(): void
+    {
+        $bilah = $this->bilah()->call('togglePanel');
+
+        $bilah->call('toggleBintang', $this->desain->id);
+        $this->assertTrue((bool) $this->desain->anggota()->whereKey($this->faris->id)->first()?->pivot?->berbintang);
+
+        // Masuk kelompok "Starred" tanpa perlu membuka board-nya.
+        $kelompok = collect($bilah->get('kelompok'))->firstWhere('judul', 'Starred');
+        $this->assertSame(['6. Desain'], $kelompok['board']->pluck('nama')->all());
+
+        $bilah->call('toggleBintang', $this->desain->id);
+        $this->assertFalse((bool) $this->desain->anggota()->whereKey($this->faris->id)->first()?->pivot?->berbintang);
+    }
+
+    public function test_bintang_board_yang_tak_boleh_dilihat_ditolak(): void
+    {
+        $dewi = User::factory()->create(['nama' => 'Dewi', 'cabang_id' => $this->faris->cabang_id]);
+        $dewi->assignRole('editor');
+        $rahasia = app(Tata::class)->buatBoard('Rahasia Dewi', 'merah', 'privat', $dewi);
+
+        $this->bilah()->call('toggleBintang', $rahasia->id)->assertForbidden();
+
+        $this->assertSame(0, $rahasia->anggota()->whereKey($this->faris->id)->count());
+    }
+
     public function test_board_diarsipkan_tidak_muncul_di_panel(): void
     {
         $this->desain->update(['diarsipkan_at' => now()]);

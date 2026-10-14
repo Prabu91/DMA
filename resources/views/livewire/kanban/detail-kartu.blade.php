@@ -270,11 +270,13 @@
                                         <x-kanban.pilih-cari x-show="! pilihan"
                                             :pilihan="$this->checklistSumber->map(fn ($c) => [
                                                 'nilai' => $c->id,
-                                                'teks' => Str::limit($c->kartu?->judul, 26).' — '.$c->judul,
-                                                'petunjuk' => $c->item_count.' items',
+                                                'teks' => Str::limit($c->kartu?->judul, 24).' — '.$c->judul,
+                                                'petunjuk' => ($c->kartu?->board?->nama ? $c->kartu->board->nama.' · ' : '').$c->item_count.' items',
                                             ])"
                                             onpilih="pilihan = p.teks; $wire.set('salinItemDari', p.nilai)"
-                                            cari="Search checklist…" kosong="No checklist with items yet." tinggi="max-h-40" />
+                                            cari="Search checklist…"
+                                            kosong="Nothing to copy yet — no card has a checklist with items."
+                                            tinggi="max-h-40" />
                                     </div>
                                     <button type="submit" class="mt-2 h-9 w-full rounded-md bg-navy px-3 text-sm font-medium text-white">Add</button>
                                 </form>

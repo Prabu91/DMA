@@ -647,16 +647,21 @@ class DetailKartu extends Component
         }
     }
 
-    /** Checklist berisi di board ini — sumber untuk "Copy items from". */
+    /**
+     * Checklist berisi yang bisa disalin. Sengaja TIDAK dibatasi board ini saja:
+     * checklist acuan tim biasanya hidup di board lain (mis. board editing),
+     * jadi kalau dibatasi satu board daftarnya kosong dan fiturnya terlihat mati.
+     * Diambil 50 terbaru; pencariannya berjalan di sisi browser.
+     */
     #[Computed]
     public function checklistSumber(): Collection
     {
-        $kartu = $this->kartu;
+        $boardId = $this->boardTujuan->pluck('id');
 
         return Checklist::query()
             ->has('item')
-            ->whereHas('kartu', fn ($q) => $q->where('board_id', $kartu->board_id)->whereNull('diarsipkan_at'))
-            ->with('kartu:id,judul')
+            ->whereHas('kartu', fn ($q) => $q->whereIn('board_id', $boardId)->whereNull('diarsipkan_at'))
+            ->with(['kartu:id,judul,board_id', 'kartu.board:id,nama'])
             ->withCount('item')
             ->orderByDesc('id')
             ->limit(50)

@@ -8,23 +8,28 @@
 {{-- Bilah mengambang: selalu ada di bawah layar, di halaman kanban mana pun. --}}
 <div class="bilah-apung pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-3"
      style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom))">
-    <div class="pointer-events-auto relative" x-on:keydown.escape.window="$wire.tutupPanel()">
+    <div class="pointer-events-auto relative" x-data
+         x-init="if ($store.papan.sematkan && ! $wire.buka) $wire.togglePanel()"
+         x-on:keydown.escape.window="if (! $store.papan.sematkan) $wire.tutupPanel()">
 
         {{-- Panel pindah board: grid bergambar atau daftar ringkas --}}
         @if ($buka)
-            <div x-on:click.outside="$wire.tutupPanel()"
+            <div x-on:click.outside="if (! $store.papan.sematkan) $wire.tutupPanel()"
                  x-data="{
                     tata: 'grid',
                     init() {
                         try { this.tata = localStorage.getItem('kanban:tata-board') ?? 'grid' } catch (e) {}
-                        this.$nextTick(() => this.$refs.cariBoard?.focus());
+                        if (! this.$store.papan.sematkan) this.$nextTick(() => this.$refs.cariBoard?.focus());
                     },
                     pilihTata(t) {
                         this.tata = t;
                         try { localStorage.setItem('kanban:tata-board', t) } catch (e) {}
                     },
                  }"
-                 class="absolute bottom-full left-1/2 mb-2 w-[min(28rem,calc(100vw-1.5rem))] -translate-x-1/2 overflow-hidden rounded-xl border border-line bg-card text-ink shadow-xl">
+                 x-bind:class="$store.papan.sematkan
+                    ? 'fixed inset-y-0 left-0 w-[min(18rem,85vw)] rounded-none border-r'
+                    : 'absolute bottom-full left-1/2 mb-2 w-[min(28rem,calc(100vw-1.5rem))] -translate-x-1/2 rounded-xl border'"
+                 class="flex flex-col overflow-hidden border-line bg-card text-ink shadow-xl">
                 <div class="flex items-center gap-2 border-b border-line px-3 py-2.5">
                     <h2 class="text-sm font-semibold">Switch boards</h2>
 
@@ -42,7 +47,20 @@
                         </button>
                     </div>
 
+                    {{-- Paku panelnya jadi sidebar kiri; pilihannya diingat per browser. --}}
+                    <button type="button" x-on:click="$store.papan.togglePaku()"
+                            x-bind:aria-pressed="$store.papan.sematkan ? 'true' : 'false'"
+                            x-bind:title="$store.papan.sematkan ? 'Unpin sidebar' : 'Pin as sidebar'"
+                            aria-label="Pin board list as sidebar"
+                            x-bind:class="$store.papan.sematkan ? 'bg-page text-ink' : 'text-ink-muted hover:bg-page'"
+                            class="flex h-7 w-7 items-center justify-center rounded-md">
+                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 3.5h6l-.8 5.2 3.3 3.3H6.5l3.3-3.3zM12 12v8.5" />
+                        </svg>
+                    </button>
+
                     <button type="button" wire:click="tutupPanel" aria-label="Close board list"
+                            x-show="! $store.papan.sematkan"
                             class="flex h-7 w-7 items-center justify-center rounded-md text-ink-muted hover:bg-page">
                         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18" /></svg>
                     </button>
@@ -55,45 +73,46 @@
                            class="block min-h-[38px] w-full rounded-md border-line text-sm focus:border-brand focus:ring-brand/30">
                 </div>
 
-                <div class="gulir-gelap max-h-[55vh] overflow-y-auto px-3 pb-2">
+                <div class="gulir-gelap min-h-0 flex-1 overflow-y-auto px-3 pb-2"
+                     x-bind:class="$store.papan.sematkan ? '' : 'max-h-[55vh]'">
                     @forelse ($this->kelompok as $grup)
                         <div wire:key="grup-{{ Str::slug($grup['judul']) }}">
                             <h3 class="pb-1.5 pt-2 text-xs font-medium uppercase tracking-wide text-ink-muted">{{ $grup['judul'] }}</h3>
 
                             {{-- Grid bergambar --}}
-                            <div x-show="tata === 'grid'" class="grid grid-cols-3 gap-2 pb-1">
+                            <div x-show="tata === 'grid'" class="grid gap-2 pb-1"
+                                 x-bind:class="$store.papan.sematkan ? 'grid-cols-2' : 'grid-cols-3'">
                                 @foreach ($grup['board'] as $b)
-                                    <a href="{{ route('kanban.board', $b) }}" wire:navigate wire:key="grid-{{ $grup['judul'] }}-{{ $b->id }}"
-                                       title="{{ $b->nama }}"
-                                       @class(['group overflow-hidden rounded-lg ring-1 ring-line hover:ring-brand', 'ring-2 ring-navy' => $b->id === $boardId])>
-                                        <span class="relative block h-16 w-full bg-cover bg-center {{ $b->latar_path ? '' : Warna::board($b->warna) }}"
-                                              @if ($b->latar_path) style="background-image: url('{{ route('kanban.latar', $b) }}')" @endif>
-                                            @if ($b->saya_bintang)
-                                                <svg class="absolute right-1 top-1 h-3.5 w-3.5 text-[#E2B203] drop-shadow" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.48 3.5a.56.56 0 011.04 0l2.13 5.11a.56.56 0 00.47.34l5.52.44c.5.04.7.66.32.99l-4.2 3.6a.56.56 0 00-.18.56l1.28 5.39a.56.56 0 01-.84.61l-4.73-2.89a.56.56 0 00-.58 0l-4.73 2.89a.56.56 0 01-.84-.61l1.28-5.39a.56.56 0 00-.18-.56l-4.2-3.6a.56.56 0 01.32-.99l5.52-.44a.56.56 0 00.47-.34l2.13-5.11z" /></svg>
-                                            @endif
-                                        </span>
-                                        <span class="block truncate px-1.5 py-1 text-[11px] font-medium leading-tight">{{ $b->nama }}</span>
-                                    </a>
+                                    <div wire:key="grid-{{ $grup['judul'] }}-{{ $b->id }}" class="group relative">
+                                        <a href="{{ route('kanban.board', $b) }}" wire:navigate title="{{ $b->nama }}"
+                                           @class(['block overflow-hidden rounded-lg ring-1 ring-line hover:ring-brand', 'ring-2 ring-navy' => $b->id === $boardId])>
+                                            <span class="block h-16 w-full bg-cover bg-center {{ $b->latar_path ? '' : Warna::board($b->warna) }}"
+                                                  @if ($b->latar_path) style="background-image: url('{{ route('kanban.latar', $b) }}')" @endif></span>
+                                            <span class="block truncate px-1.5 py-1 text-[11px] font-medium leading-tight">{{ $b->nama }}</span>
+                                        </a>
+                                        <x-kanban.bintang-board :board="$b" class="absolute right-1 top-1 h-6 w-6 drop-shadow" />
+                                    </div>
                                 @endforeach
                             </div>
 
                             {{-- Daftar ringkas --}}
                             <div x-show="tata === 'daftar'" x-cloak class="-mx-1">
                                 @foreach ($grup['board'] as $b)
-                                    <a href="{{ route('kanban.board', $b) }}" wire:navigate wire:key="daftar-{{ $grup['judul'] }}-{{ $b->id }}"
-                                       @class([
-                                           'flex items-center gap-2.5 rounded-lg px-1 py-1.5 text-sm hover:bg-page',
-                                           'bg-page font-medium' => $b->id === $boardId,
-                                       ])>
-                                        <span class="h-7 w-10 shrink-0 rounded bg-cover bg-center {{ $b->latar_path ? '' : Warna::board($b->warna) }}"
-                                              @if ($b->latar_path) style="background-image: url('{{ route('kanban.latar', $b) }}')" @endif></span>
-                                        <span class="min-w-0 flex-1 truncate">{{ $b->nama }}</span>
-                                        @if ($b->id === $boardId)
-                                            <span class="shrink-0 text-xs text-ink-muted">Currently open</span>
-                                        @elseif ($b->saya_bintang)
-                                            <svg class="h-4 w-4 shrink-0 text-[#E2B203]" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.48 3.5a.56.56 0 011.04 0l2.13 5.11a.56.56 0 00.47.34l5.52.44c.5.04.7.66.32.99l-4.2 3.6a.56.56 0 00-.18.56l1.28 5.39a.56.56 0 01-.84.61l-4.73-2.89a.56.56 0 00-.58 0l-4.73 2.89a.56.56 0 01-.84-.61l1.28-5.39a.56.56 0 00-.18-.56l-4.2-3.6a.56.56 0 01.32-.99l5.52-.44a.56.56 0 00.47-.34l2.13-5.11z" /></svg>
-                                        @endif
-                                    </a>
+                                    <div wire:key="daftar-{{ $grup['judul'] }}-{{ $b->id }}"
+                                         @class([
+                                             'group flex items-center gap-2.5 rounded-lg px-1 text-sm hover:bg-page',
+                                             'bg-page font-medium' => $b->id === $boardId,
+                                         ])>
+                                        <a href="{{ route('kanban.board', $b) }}" wire:navigate class="flex min-w-0 flex-1 items-center gap-2.5 py-1.5">
+                                            <span class="h-7 w-10 shrink-0 rounded bg-cover bg-center {{ $b->latar_path ? '' : Warna::board($b->warna) }}"
+                                                  @if ($b->latar_path) style="background-image: url('{{ route('kanban.latar', $b) }}')" @endif></span>
+                                            <span class="min-w-0 flex-1 truncate">{{ $b->nama }}</span>
+                                            @if ($b->id === $boardId)
+                                                <span class="shrink-0 text-xs text-ink-muted">Currently open</span>
+                                            @endif
+                                        </a>
+                                        <x-kanban.bintang-board :board="$b" class="h-7 w-7 shrink-0" />
+                                    </div>
                                 @endforeach
                             </div>
                         </div>
@@ -128,7 +147,10 @@
                 </span>
             @endif
 
+            {{-- Saat panelnya dipaku jadi sidebar, tombol ini tidak perlu: sidebarnya
+                 sudah selalu terbuka, dan menekannya malah akan menutup sidebar. --}}
             <button type="button" wire:click="togglePanel" aria-haspopup="menu" aria-expanded="{{ $buka ? 'true' : 'false' }}"
+                    x-show="! $store.papan.sematkan"
                     @class([
                         'flex h-9 items-center gap-2 rounded-full px-3 text-sm',
                         'bg-white/20 font-medium' => $buka,
